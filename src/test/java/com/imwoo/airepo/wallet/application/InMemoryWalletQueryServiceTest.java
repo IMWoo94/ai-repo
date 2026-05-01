@@ -8,7 +8,7 @@ import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.WalletAccount;
 import com.imwoo.airepo.wallet.domain.WalletAccountStatus;
 import com.imwoo.airepo.wallet.domain.WalletBalance;
-import com.imwoo.airepo.wallet.infra.InMemoryWalletQueryRepository;
+import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
@@ -19,7 +19,7 @@ class InMemoryWalletQueryServiceTest {
 
     private final InMemoryWalletQueryService service = new InMemoryWalletQueryService(
             Clock.fixed(Instant.parse("2026-05-01T00:00:00Z"), ZoneOffset.UTC),
-            new InMemoryWalletQueryRepository()
+            new InMemoryWalletRepository()
     );
 
     @Test
@@ -78,7 +78,7 @@ class InMemoryWalletQueryServiceTest {
                 .hasMessage("Wallet is not queryable: wallet-owner-suspended");
     }
 
-    private static class SuspendedWalletRepository extends InMemoryWalletQueryRepository {
+    private static class SuspendedWalletRepository extends InMemoryWalletRepository {
 
         @Override
         public Optional<WalletAccount> findWalletAccount(String walletId) {
@@ -99,7 +99,7 @@ class InMemoryWalletQueryServiceTest {
         }
     }
 
-    private static class ClosedWalletRepository extends InMemoryWalletQueryRepository {
+    private static class ClosedWalletRepository extends InMemoryWalletRepository {
 
         @Override
         public Optional<WalletAccount> findWalletAccount(String walletId) {
@@ -120,7 +120,7 @@ class InMemoryWalletQueryServiceTest {
         }
     }
 
-    private static class SuspendedOwnerRepository extends InMemoryWalletQueryRepository {
+    private static class SuspendedOwnerRepository extends InMemoryWalletRepository {
 
         @Override
         public Optional<Member> findMember(String memberId) {
