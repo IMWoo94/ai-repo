@@ -46,4 +46,12 @@ class MoneyTest {
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("currency must be same");
     }
+
+    @Test
+    void treatsDifferentBigDecimalScaleAsSameMoney() {
+        Money money = new Money(new BigDecimal("1000"), "KRW");
+
+        assertThat(money).isEqualTo(new Money(new BigDecimal("1000.00"), "KRW"));
+        assertThat(money.hashCode()).isEqualTo(new Money(new BigDecimal("1000.00"), "KRW").hashCode());
+    }
 }

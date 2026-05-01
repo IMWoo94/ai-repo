@@ -200,3 +200,21 @@
 - 원장과 감사 로그는 아직 인메모리이며 프로세스 재시작 시 초기화된다.
 - 원장 append-only DB 제약은 PostgreSQL 도입 시 별도 결정한다.
 - 기준 결정은 ADR-0007을 따른다.
+
+## PostgreSQL 영속화 1차 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| 기본 프로필은 인메모리 저장소를 사용한다 | 로컬 실행과 CI 안정성을 유지한다 | ADR-0008 |
+| `postgres` 프로필은 JDBC 저장소를 사용한다 | PostgreSQL 스키마와 저장소 매핑을 검증한다 | ADR-0008 |
+| 멱등키는 DB에 저장한다 | 재시도 중복 반영 방지를 프로세스 수명 밖으로 옮긴다 | ADR-0008 |
+| 원장과 감사 로그는 DB에 저장한다 | 잔액 변경 검증과 명령 처리 추적 기록을 보존한다 | ADR-0008 |
+| 충전/송금 성공 저장은 트랜잭션으로 묶는다 | 잔액, 거래내역, 원장, 감사 로그, 멱등키 기록의 부분 반영을 막는다 | ADR-0008 |
+
+### Issue #9 구현 기준
+
+- `src/main/resources/db/postgresql/schema.sql`에 1차 스키마를 둔다.
+- `src/main/resources/db/postgresql/fixtures.sql`에 샘플 데이터를 둔다.
+- `JdbcWalletRepository`는 `postgres` 프로필에서만 활성화한다.
+- H2 PostgreSQL mode 테스트로 JDBC 매핑과 멱등성 동작을 검증한다.
+- 실제 PostgreSQL 컨테이너 검증은 후속 Testcontainers 또는 Docker Compose 작업으로 남긴다.

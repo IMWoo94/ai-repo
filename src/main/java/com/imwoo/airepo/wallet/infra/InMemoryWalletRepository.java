@@ -24,9 +24,11 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
 @Repository
+@Profile("!postgres")
 public class InMemoryWalletRepository implements WalletCommandRepository, WalletLedgerQueryRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";

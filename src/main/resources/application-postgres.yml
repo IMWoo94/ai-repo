@@ -1,0 +1,11 @@
+spring:
+  datasource:
+    url: ${AI_REPO_POSTGRES_URL:jdbc:postgresql://localhost:5432/ai_repo}
+    username: ${AI_REPO_POSTGRES_USERNAME:ai_repo}
+    password: ${AI_REPO_POSTGRES_PASSWORD:ai_repo}
+    driver-class-name: org.postgresql.Driver
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:db/postgresql/schema.sql
+      data-locations: classpath:db/postgresql/fixtures.sql
