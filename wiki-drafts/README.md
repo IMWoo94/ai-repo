@@ -4,6 +4,8 @@
 
 GitHub Wiki는 역할별 사고 과정, 긴 설명, 도메인 학습 기록을 남기는 공간입니다. 중요한 결정의 source of truth는 `docs/adr`입니다.
 
+단계별 작업 완료 흔적은 `docs/progress/`에 기록합니다. Wiki는 도메인 지식과 운영 규칙을 정리하고, Progress Reports는 실제 작업 단계의 결과와 남은 일을 추적합니다.
+
 ## 초안 목록
 
 - `Development-Workflow.md`: 기능 작업의 시작부터 릴리스까지의 흐름
