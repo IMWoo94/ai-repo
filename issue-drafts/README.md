@@ -7,10 +7,11 @@
 ## 목록
 
 - `0001-balance-and-transaction-history.md`: 첫 기능 흐름인 잔액/거래내역 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/1
 
 ## GitHub CLI로 생성
 
-GitHub CLI가 설치되어 있고 인증되어 있다면 다음 명령으로 첫 Issue를 생성합니다.
+GitHub CLI가 설치되어 있고 인증되어 있다면 다음 명령으로 첫 Issue를 생성할 수 있습니다.
 
 ```bash
 gh issue create \
