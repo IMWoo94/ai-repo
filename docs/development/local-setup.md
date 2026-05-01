@@ -25,6 +25,7 @@ ADR-0003 기준:
 
 ```bash
 ./gradlew test
+./gradlew scenarioTest
 ./gradlew check
 ```
 

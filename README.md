@@ -115,10 +115,13 @@ GitHub 작업 템플릿:
 
 ```bash
 ./gradlew test
+./gradlew scenarioTest
 ./gradlew check
 ```
 
-현재 브랜치에는 Gradle Wrapper가 포함되어 있으므로 위 명령을 표준 품질 게이트로 사용합니다.
+현재 브랜치에는 Gradle Wrapper가 포함되어 있으므로 위 명령을 표준 품질 게이트로 사용합니다. `test`는 단위/API/저장소 중심의 빠른 회귀 게이트이고, `scenarioTest`는 대표 사용자/운영 흐름을 검증하는 시나리오 게이트입니다.
+
+시나리오 테스트 추가 기준은 [Scenario Test Strategy](docs/testing/scenario-test-strategy.md)를 따릅니다.
 
 ## 로컬 실행
 

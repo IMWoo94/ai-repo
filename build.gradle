@@ -31,5 +31,19 @@ dependencies {
 }
 
 tasks.named('test') {
-    useJUnitPlatform()
+    useJUnitPlatform {
+        excludeTags 'scenario'
+    }
+}
+
+tasks.register('scenarioTest', Test) {
+    description = 'Runs scenario-based user and operations flow tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter tasks.named('test')
+
+    useJUnitPlatform {
+        includeTags 'scenario'
+    }
 }
