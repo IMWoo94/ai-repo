@@ -50,7 +50,10 @@ class WalletQueryControllerTest {
     @Test
     void returnsNotFoundForUnknownWallet() throws Exception {
         mockMvc.perform(get("/api/v1/wallets/unknown/balance"))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("WALLET_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Wallet not found: unknown"))
+                .andExpect(jsonPath("$.timestamp").value("2026-05-01T00:00:00Z"));
     }
 
     @TestConfiguration

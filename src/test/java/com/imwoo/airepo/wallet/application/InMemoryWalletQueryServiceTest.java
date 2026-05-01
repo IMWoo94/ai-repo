@@ -7,8 +7,6 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.HttpStatus;
-import org.springframework.web.server.ResponseStatusException;
 
 class InMemoryWalletQueryServiceTest {
 
@@ -25,14 +23,14 @@ class InMemoryWalletQueryServiceTest {
     @Test
     void rejectsBlankWalletId() {
         assertThatThrownBy(() -> service.getBalance(" "))
-                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.BAD_REQUEST));
+                .isInstanceOf(InvalidWalletIdException.class)
+                .hasMessage("walletId must not be blank");
     }
 
     @Test
     void rejectsUnknownWalletId() {
         assertThatThrownBy(() -> service.getBalance("unknown"))
-                .isInstanceOfSatisfying(ResponseStatusException.class, exception ->
-                        assertThat(exception.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND));
+                .isInstanceOf(WalletNotFoundException.class)
+                .hasMessage("Wallet not found: unknown");
     }
 }

@@ -12,9 +12,7 @@ import java.time.Instant;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
-import org.springframework.web.server.ResponseStatusException;
 
 @Service
 public class InMemoryWalletQueryService implements WalletQueryService {
@@ -81,11 +79,11 @@ public class InMemoryWalletQueryService implements WalletQueryService {
 
     private void validateWalletId(String walletId) {
         if (walletId == null || walletId.isBlank()) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "walletId must not be blank");
+            throw new InvalidWalletIdException("walletId must not be blank");
         }
     }
 
-    private ResponseStatusException walletNotFound(String walletId) {
-        return new ResponseStatusException(HttpStatus.NOT_FOUND, "Wallet not found: " + walletId);
+    private WalletNotFoundException walletNotFound(String walletId) {
+        return new WalletNotFoundException(walletId);
     }
 }
