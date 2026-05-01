@@ -331,7 +331,8 @@
 | 발행 성공 event는 `PUBLISHED`가 된다 | relay가 발행 완료 시간을 기록한다 | ADR-0015 |
 | 발행 실패 event는 `FAILED`가 된다 | 실패 횟수와 마지막 오류를 기록한다 | ADR-0015 |
 | relay 상태 전이는 돈 이동 결과를 바꾸지 않는다 | 지갑 잔액, 원장, 감사 기록과 outbox 발행 상태를 분리한다 | ADR-0015 |
-| 병렬 claiming은 아직 범위 밖이다 | `SKIP LOCKED`와 다중 relay 처리는 후속 정책으로 남긴다 | ADR-0015 |
+| 병렬 claiming은 `PROCESSING` 상태로 분리한다 | claim된 event는 다른 relay가 다시 가져가지 않도록 처리 중 상태로 전이한다 | ADR-0016 |
+| 실패 event는 재시도 예정 시각을 가진다 | `nextRetryAt` 이전에는 retry claim 대상이 아니다 | ADR-0016 |
 
 ### Issue #23 구현 기준
 
@@ -341,3 +342,13 @@
 - PostgreSQL은 Flyway `V5__add_outbox_relay_state.sql`로 컬럼을 추가한다.
 - H2 빠른 저장소 테스트용 `schema.sql`에도 같은 컬럼을 반영한다.
 - 기준 결정은 ADR-0015를 따른다.
+
+### Issue #27 구현 기준
+
+- `PENDING` 또는 retry 가능한 `FAILED` event를 제한 개수만큼 claim한다.
+- claim된 event는 `PROCESSING` 상태로 전이한다.
+- PostgreSQL은 `FOR UPDATE SKIP LOCKED`로 claim 대상 row를 잠근다.
+- 발행 실패 시 `FAILED`, `attemptCount + 1`, `lastError`, `nextRetryAt`을 기록한다.
+- 발행 성공 시 `PUBLISHED`, `publishedAt`을 기록하고 retry/error 필드를 초기화한다.
+- PostgreSQL은 Flyway `V6__add_outbox_retry_schedule.sql`로 `next_retry_at` 컬럼을 추가한다.
+- 기준 결정은 ADR-0016을 따른다.

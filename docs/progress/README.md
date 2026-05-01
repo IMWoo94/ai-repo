@@ -28,9 +28,10 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0010 | [Operation Step Log](0010-operation-step-log.md) | 완료 |
 | 0011 | [Transactional Outbox](0011-transactional-outbox-boundary.md) | 완료 |
 | 0012 | [Outbox Relay 상태](0012-outbox-relay-state.md) | 완료 |
+| 0013 | [Outbox Claiming과 Retry](0013-outbox-claiming-retry.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox relay 상태 관리
-- 아직 미완료: GitHub Release/tag 발행, 실제 broker 발행, relay claiming/retry 정책, GitHub Wiki 동기화
+- 최신 완료 기능: Outbox claiming과 retry schedule
+- 아직 미완료: GitHub Release/tag 발행, 실제 broker 발행, relay lease/DLQ 정책, GitHub Wiki 동기화

@@ -2,12 +2,15 @@ package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.Instant;
 import java.util.List;
 import org.springframework.stereotype.Service;
 
 @Service
 public class OperationOutboxRelayService {
+
+    private static final Duration RETRY_BACKOFF = Duration.ofSeconds(30);
 
     private final Clock clock;
     private final OperationOutboxRelayRepository operationOutboxRelayRepository;
@@ -27,6 +30,13 @@ public class OperationOutboxRelayService {
         return operationOutboxRelayRepository.findPendingOutboxEvents(limit);
     }
 
+    public List<OperationOutboxEvent> claimReadyEvents(int limit) {
+        if (limit <= 0) {
+            throw new InvalidWalletOperationException("limit must be positive");
+        }
+        return operationOutboxRelayRepository.claimReadyOutboxEvents(limit, Instant.now(clock));
+    }
+
     public void markPublished(String outboxEventId) {
         validateOutboxEventId(outboxEventId);
         operationOutboxRelayRepository.markOutboxEventPublished(outboxEventId, Instant.now(clock));
@@ -37,7 +47,11 @@ public class OperationOutboxRelayService {
         if (lastError == null || lastError.isBlank()) {
             throw new InvalidWalletOperationException("lastError must not be blank");
         }
-        operationOutboxRelayRepository.markOutboxEventFailed(outboxEventId, lastError);
+        operationOutboxRelayRepository.markOutboxEventFailed(
+                outboxEventId,
+                lastError,
+                Instant.now(clock).plus(RETRY_BACKOFF)
+        );
     }
 
     private void validateOutboxEventId(String outboxEventId) {

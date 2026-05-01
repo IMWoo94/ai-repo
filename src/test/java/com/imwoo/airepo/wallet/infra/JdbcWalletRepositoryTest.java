@@ -105,6 +105,7 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.aggregateId()).isEqualTo("op-001");
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
                     assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
                     assertThat(outboxEvent.publishedAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                     assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
@@ -144,6 +145,7 @@ class JdbcWalletRepositoryTest {
                 .satisfies(outboxEvent -> {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
                     assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                 });
         assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
@@ -153,17 +155,59 @@ class JdbcWalletRepositoryTest {
     void outboxRelayFailureIncrementsAttemptCount() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
-        repository.markOutboxEventFailed("outbox-001", "broker unavailable");
+        repository.markOutboxEventFailed(
+                "outbox-001",
+                "broker unavailable",
+                Instant.parse("2026-05-01T00:01:30Z")
+        );
 
         assertThat(repository.findOperationOutboxEvents("op-001"))
                 .singleElement()
                 .satisfies(outboxEvent -> {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.FAILED);
                     assertThat(outboxEvent.attemptCount()).isEqualTo(1);
+                    assertThat(outboxEvent.nextRetryAt()).isEqualTo(Instant.parse("2026-05-01T00:01:30Z"));
                     assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
                     assertThat(outboxEvent.publishedAt()).isNull();
                 });
         assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
+    }
+
+    @Test
+    void outboxClaimMovesReadyEventsToProcessing() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.transfer("wallet-001", new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금"));
+
+        assertThat(repository.claimReadyOutboxEvents(1, Instant.parse("2026-05-01T00:01:00Z")))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(repository.findPendingOutboxEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-002"));
+    }
+
+    @Test
+    void outboxClaimWaitsUntilFailedEventRetryTime() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.markOutboxEventFailed(
+                "outbox-001",
+                "broker unavailable",
+                Instant.parse("2026-05-01T00:01:30Z")
+        );
+
+        assertThat(repository.claimReadyOutboxEvents(10, Instant.parse("2026-05-01T00:01:00Z"))).isEmpty();
+        assertThat(repository.claimReadyOutboxEvents(10, Instant.parse("2026-05-01T00:01:30Z")))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
     }
 
     @Test
