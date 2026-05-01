@@ -7,3 +7,15 @@
 ## 목록
 
 - `0001-balance-and-transaction-history.md`: 첫 기능 흐름인 잔액/거래내역 작업 초안
+
+## GitHub CLI로 생성
+
+GitHub CLI가 설치되어 있고 인증되어 있다면 다음 명령으로 첫 Issue를 생성합니다.
+
+```bash
+gh issue create \
+  --repo IMWoo94/ai-repo \
+  --title "[Feature] 잔액 조회와 거래내역 조회 기준 정의" \
+  --label feature \
+  --body-file issue-drafts/0001-balance-and-transaction-history.md
+```
