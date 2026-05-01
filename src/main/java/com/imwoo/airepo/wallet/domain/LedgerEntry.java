@@ -1,37 +1,38 @@
-package com.imwoo.airepo.wallet.application;
+package com.imwoo.airepo.wallet.domain;
 
-import com.imwoo.airepo.wallet.domain.Money;
-import com.imwoo.airepo.wallet.domain.TransactionDirection;
-import com.imwoo.airepo.wallet.domain.TransactionStatus;
-import com.imwoo.airepo.wallet.domain.TransactionType;
-import com.imwoo.airepo.wallet.domain.WalletBalance;
 import java.time.Instant;
 import java.util.Objects;
 
-public record WalletOperationResult(
+public record LedgerEntry(
+        String ledgerEntryId,
         String operationId,
-        String transactionId,
         String walletId,
-        String counterpartyWalletId,
         Instant occurredAt,
         TransactionType type,
-        TransactionStatus status,
         TransactionDirection direction,
         Money money,
-        WalletBalance balance,
+        Money balanceAfter,
         String description
 ) {
 
-    public WalletOperationResult {
+    public LedgerEntry {
+        Objects.requireNonNull(ledgerEntryId, "ledgerEntryId must not be null");
         Objects.requireNonNull(operationId, "operationId must not be null");
-        Objects.requireNonNull(transactionId, "transactionId must not be null");
         Objects.requireNonNull(walletId, "walletId must not be null");
         Objects.requireNonNull(occurredAt, "occurredAt must not be null");
         Objects.requireNonNull(type, "type must not be null");
-        Objects.requireNonNull(status, "status must not be null");
         Objects.requireNonNull(direction, "direction must not be null");
         Objects.requireNonNull(money, "money must not be null");
-        Objects.requireNonNull(balance, "balance must not be null");
+        Objects.requireNonNull(balanceAfter, "balanceAfter must not be null");
         Objects.requireNonNull(description, "description must not be null");
+        if (ledgerEntryId.isBlank()) {
+            throw new IllegalArgumentException("ledgerEntryId must not be blank");
+        }
+        if (operationId.isBlank()) {
+            throw new IllegalArgumentException("operationId must not be blank");
+        }
+        if (walletId.isBlank()) {
+            throw new IllegalArgumentException("walletId must not be blank");
+        }
     }
 }
