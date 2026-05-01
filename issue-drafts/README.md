@@ -22,6 +22,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/13
 - `0008-postgresql-transfer-concurrency-lock.md`: PostgreSQL 송금 동시성 잠금 정책 검증 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/15
+- `0009-postgresql-lock-timeout-policy.md`: PostgreSQL lock timeout과 busy wallet 오류 정책 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/17
 
 ## GitHub CLI로 생성
 
