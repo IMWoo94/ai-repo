@@ -41,4 +41,20 @@ public record Money(BigDecimal amount, String currency) {
             throw new IllegalArgumentException("currency must be same");
         }
     }
+
+    @Override
+    public boolean equals(Object other) {
+        if (this == other) {
+            return true;
+        }
+        if (!(other instanceof Money money)) {
+            return false;
+        }
+        return amount.compareTo(money.amount()) == 0 && currency.equals(money.currency());
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(amount.stripTrailingZeros(), currency);
+    }
 }

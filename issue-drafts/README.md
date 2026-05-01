@@ -14,6 +14,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/5
 - `0004-ledger-and-audit-log.md`: 원장/감사 로그 1차 모델과 조회 API 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/7
+- `0005-postgresql-persistence.md`: PostgreSQL 저장소와 멱등키/원장 영속화 1차 도입 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/9
 
 ## GitHub CLI로 생성
 
