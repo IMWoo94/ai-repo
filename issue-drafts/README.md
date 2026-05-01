@@ -10,6 +10,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/1
 - `0002-member-wallet-account.md`: 회원/지갑 계정 모델 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/3
+- `0003-charge-and-transfer.md`: 충전/송금 1차 흐름 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/5
 
 ## GitHub CLI로 생성
 

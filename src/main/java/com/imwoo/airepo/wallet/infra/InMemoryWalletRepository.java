@@ -1,0 +1,258 @@
+package com.imwoo.airepo.wallet.infra;
+
+import com.imwoo.airepo.wallet.application.WalletCommandRepository;
+import com.imwoo.airepo.wallet.application.WalletOperationRecord;
+import com.imwoo.airepo.wallet.application.WalletOperationResult;
+import com.imwoo.airepo.wallet.domain.Member;
+import com.imwoo.airepo.wallet.domain.MemberStatus;
+import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.TransactionDirection;
+import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
+import com.imwoo.airepo.wallet.domain.TransactionStatus;
+import com.imwoo.airepo.wallet.domain.TransactionType;
+import com.imwoo.airepo.wallet.domain.WalletAccount;
+import com.imwoo.airepo.wallet.domain.WalletAccountStatus;
+import com.imwoo.airepo.wallet.domain.WalletBalance;
+import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Optional;
+import org.springframework.stereotype.Repository;
+
+@Repository
+public class InMemoryWalletRepository implements WalletCommandRepository {
+
+    private static final String DEFAULT_CURRENCY = "KRW";
+
+    private final Map<String, Member> members = new HashMap<>();
+    private final Map<String, WalletAccount> walletAccounts = new HashMap<>();
+    private final Map<String, WalletBalance> balances = new HashMap<>();
+    private final Map<String, List<TransactionHistoryItem>> transactions = new HashMap<>();
+    private final Map<String, WalletOperationRecord> operations = new HashMap<>();
+    private int transactionSequence = 2;
+
+    public InMemoryWalletRepository() {
+        members.put(
+                "member-001",
+                new Member("member-001", MemberStatus.ACTIVE, Instant.parse("2026-05-01T00:00:00Z"))
+        );
+        members.put(
+                "member-002",
+                new Member("member-002", MemberStatus.ACTIVE, Instant.parse("2026-05-01T00:00:00Z"))
+        );
+        walletAccounts.put(
+                "wallet-001",
+                new WalletAccount(
+                        "wallet-001",
+                        "member-001",
+                        WalletAccountStatus.ACTIVE,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                )
+        );
+        walletAccounts.put(
+                "wallet-002",
+                new WalletAccount(
+                        "wallet-002",
+                        "member-002",
+                        WalletAccountStatus.ACTIVE,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                )
+        );
+        balances.put(
+                "wallet-001",
+                new WalletBalance(
+                        "wallet-001",
+                        new Money(new BigDecimal("125000"), DEFAULT_CURRENCY),
+                        Instant.parse("2026-05-01T00:00:00Z")
+                )
+        );
+        balances.put(
+                "wallet-002",
+                new WalletBalance(
+                        "wallet-002",
+                        new Money(new BigDecimal("30000"), DEFAULT_CURRENCY),
+                        Instant.parse("2026-05-01T00:00:00Z")
+                )
+        );
+        transactions.put(
+                "wallet-001",
+                new ArrayList<>(List.of(
+                        new TransactionHistoryItem(
+                                "txn-002",
+                                "wallet-001",
+                                Instant.parse("2026-05-01T00:00:00Z"),
+                                TransactionType.REWARD,
+                                TransactionStatus.COMPLETED,
+                                TransactionDirection.CREDIT,
+                                new Money(new BigDecimal("25000"), DEFAULT_CURRENCY),
+                                "학습용 리워드 적립"
+                        ),
+                        new TransactionHistoryItem(
+                                "txn-001",
+                                "wallet-001",
+                                Instant.parse("2026-04-30T00:00:00Z"),
+                                TransactionType.CHARGE,
+                                TransactionStatus.COMPLETED,
+                                TransactionDirection.CREDIT,
+                                new Money(new BigDecimal("100000"), DEFAULT_CURRENCY),
+                                "학습용 충전"
+                        )
+                ))
+        );
+        transactions.put("wallet-002", new ArrayList<>());
+    }
+
+    @Override
+    public synchronized Optional<Member> findMember(String memberId) {
+        return Optional.ofNullable(members.get(memberId));
+    }
+
+    @Override
+    public synchronized Optional<WalletAccount> findWalletAccount(String walletId) {
+        return Optional.ofNullable(walletAccounts.get(walletId));
+    }
+
+    @Override
+    public synchronized Optional<WalletBalance> findBalance(String walletId) {
+        return Optional.ofNullable(balances.get(walletId));
+    }
+
+    @Override
+    public synchronized List<TransactionHistoryItem> findTransactions(String walletId) {
+        return List.copyOf(transactions.getOrDefault(walletId, List.of()));
+    }
+
+    @Override
+    public synchronized Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
+        return Optional.ofNullable(operations.get(idempotencyKey));
+    }
+
+    @Override
+    public synchronized WalletOperationRecord applyCharge(
+            String idempotencyKey,
+            String fingerprint,
+            String walletId,
+            Money money,
+            String description,
+            Instant occurredAt
+    ) {
+        WalletBalance currentBalance = balances.get(walletId);
+        WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
+        balances.put(walletId, updatedBalance);
+
+        TransactionHistoryItem transaction = transaction(
+                walletId,
+                occurredAt,
+                TransactionType.CHARGE,
+                TransactionDirection.CREDIT,
+                money,
+                description
+        );
+        transactions.computeIfAbsent(walletId, ignored -> new ArrayList<>()).add(transaction);
+
+        WalletOperationResult result = new WalletOperationResult(
+                transaction.transactionId(),
+                walletId,
+                null,
+                occurredAt,
+                TransactionType.CHARGE,
+                TransactionStatus.COMPLETED,
+                TransactionDirection.CREDIT,
+                money,
+                updatedBalance,
+                description
+        );
+        WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
+        operations.put(idempotencyKey, record);
+        return record;
+    }
+
+    @Override
+    public synchronized WalletOperationRecord applyTransfer(
+            String idempotencyKey,
+            String fingerprint,
+            String sourceWalletId,
+            String targetWalletId,
+            Money money,
+            String description,
+            Instant occurredAt
+    ) {
+        WalletBalance sourceBalance = balances.get(sourceWalletId);
+        WalletBalance targetBalance = balances.get(targetWalletId);
+        WalletBalance updatedSourceBalance = new WalletBalance(
+                sourceWalletId,
+                sourceBalance.money().subtract(money),
+                occurredAt
+        );
+        WalletBalance updatedTargetBalance = new WalletBalance(
+                targetWalletId,
+                targetBalance.money().add(money),
+                occurredAt
+        );
+        balances.put(sourceWalletId, updatedSourceBalance);
+        balances.put(targetWalletId, updatedTargetBalance);
+
+        TransactionHistoryItem sourceTransaction = transaction(
+                sourceWalletId,
+                occurredAt,
+                TransactionType.TRANSFER,
+                TransactionDirection.DEBIT,
+                money,
+                description
+        );
+        TransactionHistoryItem targetTransaction = transaction(
+                targetWalletId,
+                occurredAt,
+                TransactionType.TRANSFER,
+                TransactionDirection.CREDIT,
+                money,
+                description
+        );
+        transactions.computeIfAbsent(sourceWalletId, ignored -> new ArrayList<>()).add(sourceTransaction);
+        transactions.computeIfAbsent(targetWalletId, ignored -> new ArrayList<>()).add(targetTransaction);
+
+        WalletOperationResult result = new WalletOperationResult(
+                sourceTransaction.transactionId(),
+                sourceWalletId,
+                targetWalletId,
+                occurredAt,
+                TransactionType.TRANSFER,
+                TransactionStatus.COMPLETED,
+                TransactionDirection.DEBIT,
+                money,
+                updatedSourceBalance,
+                description
+        );
+        WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
+        operations.put(idempotencyKey, record);
+        return record;
+    }
+
+    private TransactionHistoryItem transaction(
+            String walletId,
+            Instant occurredAt,
+            TransactionType type,
+            TransactionDirection direction,
+            Money money,
+            String description
+    ) {
+        return new TransactionHistoryItem(
+                nextTransactionId(),
+                walletId,
+                occurredAt,
+                type,
+                TransactionStatus.COMPLETED,
+                direction,
+                money,
+                description
+        );
+    }
+
+    private String nextTransactionId() {
+        transactionSequence += 1;
+        return "txn-%03d".formatted(transactionSequence);
+    }
+}

@@ -1,6 +1,9 @@
 package com.imwoo.airepo.wallet.api;
 
 import com.imwoo.airepo.wallet.application.InvalidWalletIdException;
+import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
+import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
+import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletAccountNotQueryableException;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
 import java.time.Clock;
@@ -32,6 +35,21 @@ public class WalletApiExceptionHandler {
     @ExceptionHandler(WalletAccountNotQueryableException.class)
     ResponseEntity<ApiErrorResponse> handleWalletAccountNotQueryable(WalletAccountNotQueryableException exception) {
         return error(HttpStatus.CONFLICT, "WALLET_NOT_QUERYABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(InvalidWalletOperationException.class)
+    ResponseEntity<ApiErrorResponse> handleInvalidWalletOperation(InvalidWalletOperationException exception) {
+        return error(HttpStatus.BAD_REQUEST, "INVALID_WALLET_OPERATION", exception.getMessage());
+    }
+
+    @ExceptionHandler(InsufficientBalanceException.class)
+    ResponseEntity<ApiErrorResponse> handleInsufficientBalance(InsufficientBalanceException exception) {
+        return error(HttpStatus.CONFLICT, "INSUFFICIENT_BALANCE", exception.getMessage());
+    }
+
+    @ExceptionHandler(IdempotencyKeyConflictException.class)
+    ResponseEntity<ApiErrorResponse> handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
+        return error(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_CONFLICT", exception.getMessage());
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
