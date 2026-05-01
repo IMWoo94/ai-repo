@@ -118,7 +118,16 @@ GitHub 작업 템플릿:
 ./gradlew check
 ```
 
-프로젝트 스캐폴딩 전까지 위 명령은 준비 예정 상태입니다.
+현재 브랜치에는 Gradle Wrapper가 아직 없으므로 IntelliJ 또는 로컬 Gradle로 먼저 검증합니다. Wrapper가 추가되면 위 명령을 표준 품질 게이트로 사용합니다.
+
+## 로컬 실행
+
+IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을 따릅니다.
+
+현재 첫 기능 브랜치에서는 잔액/거래내역 조회 API의 초기 스캐폴딩을 제공합니다.
+
+- `GET /api/v1/wallets/wallet-001/balance`
+- `GET /api/v1/wallets/wallet-001/transactions`
 
 ## 문서화 전략
 
