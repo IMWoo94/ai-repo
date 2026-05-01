@@ -190,8 +190,41 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void returnsAndRequeuesManualReviewEvents() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+
+        assertThat(relayService.getManualReviewEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW);
+                    assertThat(outboxEvent.attemptCount()).isEqualTo(3);
+                });
+
+        relayService.requeueManualReviewEvent("outbox-001");
+
+        assertThat(relayService.getManualReviewEvents(10)).isEmpty();
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
+                    assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(relayService.claimReadyEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING));
+    }
+
+    @Test
     void rejectsInvalidRelayInputs() {
         assertThatThrownBy(() -> relayService.getPendingEvents(0))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("limit must be positive");
+        assertThatThrownBy(() -> relayService.getManualReviewEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("limit must be positive");
         assertThatThrownBy(() -> relayService.claimReadyEvents(0))
@@ -203,6 +236,9 @@ class OperationOutboxRelayServiceTest {
         assertThatThrownBy(() -> relayService.markFailed("outbox-001", " "))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("lastError must not be blank");
+        assertThatThrownBy(() -> relayService.requeueManualReviewEvent(" "))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outboxEventId must not be blank");
     }
 
     private Money money(String amount) {

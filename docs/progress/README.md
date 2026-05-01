@@ -31,9 +31,10 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0013 | [Outbox Claiming과 Retry](0013-outbox-claiming-retry.md) | 완료 |
 | 0014 | [Outbox Processing Lease Recovery](0014-outbox-processing-lease-recovery.md) | 완료 |
 | 0015 | [Outbox Max Attempt와 Manual Review](0015-outbox-max-attempt-manual-review.md) | 완료 |
+| 0016 | [Outbox Manual Review API](0016-outbox-manual-review-api.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox max attempt와 manual review 격리
-- 아직 미완료: GitHub Release/tag 발행, 실제 broker 발행, manual review 재처리 API, GitHub Wiki 동기화
+- 최신 완료 기능: Outbox manual review 조회와 requeue API
+- 아직 미완료: GitHub Release/tag 발행, 실제 broker 발행, requeue 감사 이력, GitHub Wiki 동기화

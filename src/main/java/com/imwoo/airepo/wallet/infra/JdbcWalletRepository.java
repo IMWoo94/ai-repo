@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
+import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
@@ -173,6 +174,25 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select outbox_event_id, operation_id, event_type, aggregate_type,
+                               aggregate_id, payload, status, occurred_at,
+                               attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                               published_at, last_error
+                        from operation_outbox_events
+                        where status = ?
+                        order by occurred_at, outbox_event_id
+                        limit ?
+                        """,
+                operationOutboxEventMapper(),
+                OperationOutboxStatus.MANUAL_REVIEW.name(),
+                limit
+        );
+    }
+
+    @Override
     public List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         return transactionTemplate.execute(status -> {
             List<String> outboxEventIds = claimReadyOutboxEventIds(limit, now);
@@ -249,6 +269,25 @@ public class JdbcWalletRepository implements
                 lastError,
                 outboxEventId
         );
+    }
+
+    @Override
+    public void requeueManualReviewOutboxEvent(String outboxEventId) {
+        int updatedRows = jdbcTemplate.update(
+                """
+                        update operation_outbox_events
+                        set status = ?, attempt_count = 0, next_retry_at = null,
+                            claimed_at = null, lease_expires_at = null, published_at = null, last_error = null
+                        where outbox_event_id = ?
+                          and status = ?
+                        """,
+                OperationOutboxStatus.PENDING.name(),
+                outboxEventId,
+                OperationOutboxStatus.MANUAL_REVIEW.name()
+        );
+        if (updatedRows == 0) {
+            throw new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId);
+        }
     }
 
     private List<String> claimReadyOutboxEventIds(int limit, Instant now) {

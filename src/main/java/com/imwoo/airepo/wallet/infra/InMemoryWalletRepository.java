@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
+import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
@@ -175,13 +176,17 @@ public class InMemoryWalletRepository implements
         return operationOutboxEvents.values().stream()
                 .flatMap(List::stream)
                 .filter(outboxEvent -> outboxEvent.status() == OperationOutboxStatus.PENDING)
-                .sorted((left, right) -> {
-                    int occurredComparison = left.occurredAt().compareTo(right.occurredAt());
-                    if (occurredComparison != 0) {
-                        return occurredComparison;
-                    }
-                    return left.outboxEventId().compareTo(right.outboxEventId());
-                })
+                .sorted(this::compareOutboxEvents)
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit) {
+        return operationOutboxEvents.values().stream()
+                .flatMap(List::stream)
+                .filter(outboxEvent -> outboxEvent.status() == OperationOutboxStatus.MANUAL_REVIEW)
+                .sorted(this::compareOutboxEvents)
                 .limit(limit)
                 .toList();
     }
@@ -191,13 +196,7 @@ public class InMemoryWalletRepository implements
         List<OperationOutboxEvent> claimedEvents = operationOutboxEvents.values().stream()
                 .flatMap(List::stream)
                 .filter(outboxEvent -> isReadyToClaim(outboxEvent, now))
-                .sorted((left, right) -> {
-                    int occurredComparison = left.occurredAt().compareTo(right.occurredAt());
-                    if (occurredComparison != 0) {
-                        return occurredComparison;
-                    }
-                    return left.outboxEventId().compareTo(right.outboxEventId());
-                })
+                .sorted(this::compareOutboxEvents)
                 .limit(limit)
                 .map(outboxEvent -> processingOutboxEvent(outboxEvent, now, leaseExpiresAt))
                 .toList();
@@ -249,6 +248,30 @@ public class InMemoryWalletRepository implements
                 null,
                 null,
                 lastError
+        ));
+    }
+
+    @Override
+    public synchronized void requeueManualReviewOutboxEvent(String outboxEventId) {
+        OperationOutboxEvent event = findOutboxEvent(outboxEventId);
+        if (event.status() != OperationOutboxStatus.MANUAL_REVIEW) {
+            throw new InvalidWalletOperationException("outboxEventId must be in MANUAL_REVIEW: " + outboxEventId);
+        }
+        replaceOutboxEvent(outboxEventId, ignored -> new OperationOutboxEvent(
+                event.outboxEventId(),
+                event.operationId(),
+                event.eventType(),
+                event.aggregateType(),
+                event.aggregateId(),
+                event.payload(),
+                OperationOutboxStatus.PENDING,
+                event.occurredAt(),
+                0,
+                null,
+                null,
+                null,
+                null,
+                null
         ));
     }
 
@@ -469,6 +492,22 @@ public class InMemoryWalletRepository implements
             return null;
         }
         return nextRetryAt;
+    }
+
+    private OperationOutboxEvent findOutboxEvent(String outboxEventId) {
+        return operationOutboxEvents.values().stream()
+                .flatMap(List::stream)
+                .filter(outboxEvent -> outboxEvent.outboxEventId().equals(outboxEventId))
+                .findFirst()
+                .orElseThrow(() -> new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId));
+    }
+
+    private int compareOutboxEvents(OperationOutboxEvent left, OperationOutboxEvent right) {
+        int occurredComparison = left.occurredAt().compareTo(right.occurredAt());
+        if (occurredComparison != 0) {
+            return occurredComparison;
+        }
+        return left.outboxEventId().compareTo(right.outboxEventId());
     }
 
     private OperationOutboxEvent processingOutboxEvent(

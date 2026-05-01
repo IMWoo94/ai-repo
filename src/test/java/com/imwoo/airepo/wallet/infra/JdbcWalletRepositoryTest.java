@@ -287,6 +287,37 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void outboxManualReviewCanBeRequeued() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+
+        assertThat(repository.findManualReviewOutboxEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW));
+
+        repository.requeueManualReviewOutboxEvent("outbox-001");
+
+        assertThat(repository.findManualReviewOutboxEvents(10)).isEmpty();
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
+                    assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:10:00Z"),
+                Instant.parse("2026-05-01T00:11:00Z")
+        ))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING));
+    }
+
+    @Test
     void sameIdempotencyKeyWithDifferentRequestFails() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 

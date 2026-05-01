@@ -8,9 +8,13 @@ public interface OperationOutboxRelayRepository {
 
     List<OperationOutboxEvent> findPendingOutboxEvents(int limit);
 
+    List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit);
+
     List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt);
 
     void markOutboxEventPublished(String outboxEventId, Instant publishedAt);
 
     void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt, int maxAttempts);
+
+    void requeueManualReviewOutboxEvent(String outboxEventId);
 }

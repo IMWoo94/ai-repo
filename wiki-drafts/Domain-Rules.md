@@ -336,6 +336,7 @@
 | 처리 중 event는 lease를 가진다 | `PROCESSING` event는 `claimedAt`, `leaseExpiresAt`으로 회수 가능 시각을 가진다 | ADR-0017 |
 | lease 만료 event는 재claim 가능하다 | worker crash로 고착된 event를 다시 처리 대상으로 가져올 수 있다 | ADR-0017 |
 | 반복 실패 event는 수동 확인 상태로 격리한다 | 3회 실패한 event는 `MANUAL_REVIEW`가 되고 자동 claim 대상에서 제외된다 | ADR-0018 |
+| 수동 확인 event는 requeue할 수 있다 | 원인 조치 후 `MANUAL_REVIEW` event를 `PENDING`으로 되돌려 자동 처리 흐름에 넣는다 | ADR-0019 |
 
 ### Issue #23 구현 기준
 
@@ -374,3 +375,12 @@
 - `MANUAL_REVIEW` event는 자동 claim 대상이 아니다.
 - `MANUAL_REVIEW` event는 `lastError`와 `attemptCount`를 유지한다.
 - 기준 결정은 ADR-0018을 따른다.
+
+### Issue #33 구현 기준
+
+- `GET /api/v1/outbox-events/manual-review`로 수동 확인 대상 event를 조회한다.
+- `POST /api/v1/outbox-events/{outboxEventId}/requeue`로 수동 확인 event를 다시 처리 대기 상태로 전환한다.
+- requeue 대상은 `MANUAL_REVIEW` 상태 event로 제한한다.
+- requeue 결과는 `PENDING`, `attemptCount = 0`, retry/lease/publish/error 필드 초기화다.
+- 인증/인가와 requeue 승인 이력은 후속 작업으로 남긴다.
+- 기준 결정은 ADR-0019를 따른다.
