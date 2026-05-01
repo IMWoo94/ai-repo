@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletCommandService;
 import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
@@ -13,6 +14,12 @@ import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -115,6 +122,75 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
     }
 
+    @Test
+    void concurrentTransfersLockBalanceRowsAndPreventOverdraft() throws Exception {
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<TransferAttempt> firstAttempt = executorService.submit(() -> applyConcurrentTransfer(
+                    startLatch,
+                    "postgres-concurrent-transfer-001",
+                    "postgres-concurrent-transfer-fingerprint-001"
+            ));
+            Future<TransferAttempt> secondAttempt = executorService.submit(() -> applyConcurrentTransfer(
+                    startLatch,
+                    "postgres-concurrent-transfer-002",
+                    "postgres-concurrent-transfer-fingerprint-002"
+            ));
+
+            startLatch.countDown();
+
+            List<TransferAttempt> attempts = List.of(
+                    firstAttempt.get(10, TimeUnit.SECONDS),
+                    secondAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(TransferAttempt::successful).hasSize(1);
+            assertThat(attempts)
+                    .filteredOn(attempt -> !attempt.successful())
+                    .singleElement()
+                    .satisfies(attempt -> assertThat(attempt.exception())
+                            .isInstanceOf(InsufficientBalanceException.class));
+            assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("45000"));
+            assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("110000"));
+            assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+            assertThat(ledgerQueryService.getLedgerEntries("wallet-002")).hasSize(1);
+            assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
+            assertThat(
+                    repository.findOperation("postgres-concurrent-transfer-001").isPresent()
+                            ^ repository.findOperation("postgres-concurrent-transfer-002").isPresent()
+            ).isTrue();
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    private TransferAttempt applyConcurrentTransfer(
+            CountDownLatch startLatch,
+            String idempotencyKey,
+            String fingerprint
+    ) throws InterruptedException {
+        if (!startLatch.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting for concurrent transfer start");
+        }
+
+        try {
+            repository.applyTransfer(
+                    idempotencyKey,
+                    fingerprint,
+                    "wallet-001",
+                    "wallet-002",
+                    money("80000"),
+                    "PostgreSQL 동시 송금",
+                    Instant.parse("2026-05-01T00:00:00Z")
+            );
+            return TransferAttempt.success();
+        } catch (RuntimeException exception) {
+            return TransferAttempt.failure(exception);
+        }
+    }
+
     private void resetDatabase(DriverManagerDataSource dataSource) {
         Flyway flyway = Flyway.configure()
                 .dataSource(dataSource)
@@ -128,5 +204,16 @@ class PostgresContainerWalletRepositoryTest {
 
     private Money money(String amount) {
         return new Money(new BigDecimal(amount), "KRW");
+    }
+
+    private record TransferAttempt(boolean successful, RuntimeException exception) {
+
+        private static TransferAttempt success() {
+            return new TransferAttempt(true, null);
+        }
+
+        private static TransferAttempt failure(RuntimeException exception) {
+            return new TransferAttempt(false, exception);
+        }
     }
 }

@@ -20,6 +20,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/11
 - `0007-flyway-schema-migrations.md`: Flyway 기반 스키마 버전 관리 도입 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/13
+- `0008-postgresql-transfer-concurrency-lock.md`: PostgreSQL 송금 동시성 잠금 정책 검증 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/15
 
 ## GitHub CLI로 생성
 

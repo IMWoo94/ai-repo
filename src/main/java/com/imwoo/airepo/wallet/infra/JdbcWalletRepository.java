@@ -1,9 +1,11 @@
 package com.imwoo.airepo.wallet.infra;
 
+import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletOperationResult;
+import com.imwoo.airepo.wallet.application.WalletNotFoundException;
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.AuditEventType;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
@@ -130,7 +132,7 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             Instant occurredAt
     ) {
         return transactionTemplate.execute(status -> {
-            WalletBalance currentBalance = findBalance(walletId).orElseThrow();
+            WalletBalance currentBalance = findBalanceForUpdate(walletId);
             WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
             updateBalance(updatedBalance);
 
@@ -195,8 +197,13 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             Instant occurredAt
     ) {
         return transactionTemplate.execute(status -> {
-            WalletBalance sourceBalance = findBalance(sourceWalletId).orElseThrow();
-            WalletBalance targetBalance = findBalance(targetWalletId).orElseThrow();
+            List<WalletBalance> lockedBalances = findTransferBalancesForUpdate(sourceWalletId, targetWalletId);
+            WalletBalance sourceBalance = findLockedBalance(lockedBalances, sourceWalletId);
+            WalletBalance targetBalance = findLockedBalance(lockedBalances, targetWalletId);
+            if (sourceBalance.money().lessThan(money)) {
+                throw new InsufficientBalanceException(sourceWalletId);
+            }
+
             WalletBalance updatedSourceBalance = new WalletBalance(
                     sourceWalletId,
                     sourceBalance.money().subtract(money),
@@ -279,6 +286,41 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             insertOperation(record);
             return record;
         });
+    }
+
+    private WalletBalance findBalanceForUpdate(String walletId) {
+        return queryOptional(
+                "select wallet_id, amount, currency, as_of from wallet_balances where wallet_id = ? for update",
+                walletBalanceMapper(),
+                walletId
+        )
+                .orElseThrow(() -> new WalletNotFoundException(walletId));
+    }
+
+    private List<WalletBalance> findTransferBalancesForUpdate(String sourceWalletId, String targetWalletId) {
+        List<String> walletIds = List.of(sourceWalletId, targetWalletId).stream()
+                .sorted()
+                .toList();
+
+        return jdbcTemplate.query(
+                """
+                        select wallet_id, amount, currency, as_of
+                        from wallet_balances
+                        where wallet_id in (?, ?)
+                        order by wallet_id
+                        for update
+                        """,
+                walletBalanceMapper(),
+                walletIds.get(0),
+                walletIds.get(1)
+        );
+    }
+
+    private WalletBalance findLockedBalance(List<WalletBalance> lockedBalances, String walletId) {
+        return lockedBalances.stream()
+                .filter(walletBalance -> walletBalance.walletId().equals(walletId))
+                .findFirst()
+                .orElseThrow(() -> new WalletNotFoundException(walletId));
     }
 
     private void updateBalance(WalletBalance walletBalance) {
