@@ -10,11 +10,10 @@ import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import java.math.BigDecimal;
-import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
-import java.util.Objects;
+import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -48,8 +47,9 @@ class PostgresContainerWalletRepositoryTest {
         dataSource.setUsername(POSTGRES.getUsername());
         dataSource.setPassword(POSTGRES.getPassword());
 
+        resetDatabase(dataSource);
+
         JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
-        resetDatabase(jdbcTemplate);
 
         repository = new JdbcWalletRepository(
                 jdbcTemplate,
@@ -115,28 +115,15 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
     }
 
-    private void resetDatabase(JdbcTemplate jdbcTemplate) {
-        jdbcTemplate.execute(readResource("/db/postgresql/schema.sql"));
-        jdbcTemplate.execute("""
-                truncate audit_events, ledger_entries, wallet_operations, transaction_history,
-                         wallet_balances, wallet_accounts, members restart identity cascade
-                """);
-        jdbcTemplate.execute("alter sequence transaction_id_seq restart with 3");
-        jdbcTemplate.execute("alter sequence operation_id_seq restart with 1");
-        jdbcTemplate.execute("alter sequence ledger_entry_id_seq restart with 1");
-        jdbcTemplate.execute("alter sequence audit_event_id_seq restart with 1");
-        jdbcTemplate.execute(readResource("/db/postgresql/fixtures.sql"));
-    }
+    private void resetDatabase(DriverManagerDataSource dataSource) {
+        Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .locations("classpath:db/migration")
+                .cleanDisabled(false)
+                .load();
 
-    private String readResource(String path) {
-        try {
-            return new String(
-                    Objects.requireNonNull(getClass().getResourceAsStream(path)).readAllBytes(),
-                    StandardCharsets.UTF_8
-            );
-        } catch (Exception exception) {
-            throw new IllegalStateException("Cannot read resource: " + path, exception);
-        }
+        flyway.clean();
+        flyway.migrate();
     }
 
     private Money money(String amount) {

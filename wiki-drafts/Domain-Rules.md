@@ -233,3 +233,21 @@
 - 충전, 송금, 멱등 재시도, 원장/감사 로그 저장을 실제 PostgreSQL에서 검증한다.
 - 로컬 PostgreSQL은 `docker compose up -d postgres`로 실행한다.
 - Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있음을 문서화한다.
+
+## Flyway 스키마 버전 관리 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| PostgreSQL 프로필은 Flyway migration을 기준으로 한다 | 운영 유사 실행 경로에서 Spring SQL init 대신 migration 이력을 사용한다 | ADR-0010 |
+| 적용된 migration은 수정하지 않는다 | 이미 적용된 DB와 코드 기준의 불일치를 막는다 | ADR-0010 |
+| 스키마 변경은 새 migration으로 추가한다 | PR과 릴리스에서 DB 변경 여부를 추적한다 | ADR-0010 |
+| 기존 SQL 파일은 일시 유지한다 | H2 빠른 테스트와 수동 비교 경로를 보존한다 | ADR-0010 |
+| 샘플 데이터는 운영 정책이 아니다 | `V2` fixture는 학습/검증 seed이며 실서비스 데이터 정책과 분리한다 | 초안 |
+
+### Issue #13 구현 기준
+
+- `postgres` 프로필은 `spring.sql.init`이 아니라 Flyway를 사용한다.
+- `V1__create_wallet_schema.sql`은 회원, 지갑, 잔액, 거래내역, 멱등키, 원장, 감사 로그 스키마를 생성한다.
+- `V2__seed_wallet_fixture.sql`은 학습용 회원, 지갑, 잔액, 거래내역 샘플 데이터를 생성한다.
+- Testcontainers PostgreSQL 테스트는 Flyway migration으로 DB를 준비한다.
+- 기준 결정은 ADR-0010을 따른다.
