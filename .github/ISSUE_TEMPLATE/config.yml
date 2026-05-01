@@ -1,0 +1,8 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Documentation Source of Truth
+    url: https://github.com/IMWoo94/ai-repo/blob/main/docs/adr/0001-documentation-source-of-truth.md
+    about: 중요한 결정은 ADR을 기준으로 기록합니다.
+  - name: Test Strategy
+    url: https://github.com/IMWoo94/ai-repo/blob/main/docs/adr/0002-test-strategy.md
+    about: 기능 완료에는 테스트 전략 준수가 필요합니다.

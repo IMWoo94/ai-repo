@@ -1,0 +1,168 @@
+name: 기능 작업
+description: 핀테크 기능, 문서, 하네스 개선 작업을 정의합니다.
+title: "[Feature] "
+labels:
+  - feature
+body:
+  - type: markdown
+    attributes:
+      value: |
+        이 템플릿은 작업 착수 전 문제, 범위, 수용 기준, 하네스 역할 검토를 정렬하기 위한 게이트입니다.
+
+        기준 문서:
+        - ADR-0001: Documentation Source of Truth
+        - ADR-0002: Test Strategy
+
+  - type: input
+    id: summary
+    attributes:
+      label: 작업 요약
+      description: 이 작업을 한 문장으로 설명합니다.
+      placeholder: 예) 잔액 조회 API와 거래내역 조회 기준을 정의한다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: background
+    attributes:
+      label: 배경과 문제
+      description: 왜 지금 이 작업이 필요한지 작성합니다.
+      placeholder: |
+        - 현재 어떤 문제가 있는가?
+        - 이 작업이 핀테크 학습 목표에 어떻게 연결되는가?
+        - 사용자가 무엇을 검증할 수 있어야 하는가?
+    validations:
+      required: true
+
+  - type: dropdown
+    id: work_type
+    attributes:
+      label: 작업 유형
+      description: 가장 가까운 유형을 선택합니다.
+      options:
+        - 도메인 기능
+        - 문서/ADR
+        - 테스트/QA
+        - 하네스/스킬/MCP
+        - 릴리스/운영
+        - 리팩터링
+        - 버그 수정
+    validations:
+      required: true
+
+  - type: dropdown
+    id: domain_area
+    attributes:
+      label: 도메인 영역
+      description: 기능 작업이면 해당 영역을 선택합니다.
+      options:
+        - 잔액/거래내역
+        - 회원/지갑 계정
+        - 충전/송금
+        - 원장/감사 로그
+        - 정산/재처리
+        - 이상거래 탐지
+        - 공통/해당 없음
+    validations:
+      required: true
+
+  - type: textarea
+    id: scope
+    attributes:
+      label: 범위
+      description: 이번 작업에서 하는 것과 하지 않는 것을 분리합니다.
+      value: |
+        ### 하는 것
+        -
+
+        ### 하지 않는 것
+        -
+    validations:
+      required: true
+
+  - type: textarea
+    id: acceptance_criteria
+    attributes:
+      label: 수용 기준
+      description: 완료 여부를 체크 가능한 문장으로 작성합니다.
+      placeholder: |
+        - [ ] 문서만 보고 작업 목적과 검증 기준을 이해할 수 있다.
+        - [ ] 코드 변경이 있다면 테스트 코드가 포함된다.
+        - [ ] 관련 ADR 또는 Wiki 링크가 정리된다.
+    validations:
+      required: true
+
+  - type: textarea
+    id: domain_rules
+    attributes:
+      label: 도메인 규칙과 불변식
+      description: 금융 도메인 규칙, 상태 전이, 금액/잔액/거래내역 관련 불변식을 작성합니다.
+      placeholder: |
+        - 잔액은 음수가 될 수 없다.
+        - 거래내역은 감사 목적상 삭제하지 않는다.
+        - 중복 요청은 동일 결과를 반환해야 한다.
+    validations:
+      required: false
+
+  - type: checkboxes
+    id: harness_roles
+    attributes:
+      label: 하네스 역할 체크
+      description: 초기 단계에서는 촘촘히 적용하고, 안정 후 체크리스트 중심으로 경량화합니다.
+      options:
+        - label: 기획자 관점에서 사용자 시나리오와 수용 기준을 검토했다.
+        - label: 도메인 전문가 관점에서 규칙, 불변식, 예외를 검토했다.
+        - label: 코드 개발자 A 관점에서 구현 방향과 테스트 범위를 검토했다.
+        - label: 코드 개발자 B 관점에서 대안과 리뷰 포인트를 검토했다.
+        - label: QA 관점에서 경계값, 실패 시나리오, 회귀 위험을 검토했다.
+        - label: 릴리스 관리자 관점에서 실행 검증과 릴리스 기록 필요성을 검토했다.
+
+  - type: checkboxes
+    id: test_scope
+    attributes:
+      label: 예상 테스트 범위
+      description: ADR-0002 기준으로 필요한 테스트를 선택합니다.
+      options:
+        - label: 단위 테스트가 필요하다.
+        - label: API 또는 Repository 통합 테스트가 필요하다.
+        - label: 동시성 테스트가 필요하다.
+        - label: 멱등성 테스트가 필요하다.
+        - label: 회귀 테스트가 필요하다.
+        - label: 릴리스 실행 검증이 필요하다.
+        - label: 코드 변경이 없는 문서 작업이다.
+
+  - type: checkboxes
+    id: documentation
+    attributes:
+      label: 문서화 필요 여부
+      description: ADR-0001 기준으로 문서 위치를 정합니다.
+      options:
+        - label: ADR이 필요하다.
+        - label: Wiki 사고 과정 기록이 필요하다.
+        - label: README 요약 갱신이 필요하다.
+        - label: PR 설명만으로 충분하다.
+
+  - type: textarea
+    id: tradeoffs
+    attributes:
+      label: 대안과 트레이드오프
+      description: 선택 가능한 대안과 포기하는 비용을 작성합니다.
+      placeholder: |
+        - 대안 A:
+        - 대안 B:
+        - 현재 선호안:
+        - 포기하는 것:
+    validations:
+      required: false
+
+  - type: textarea
+    id: release_note
+    attributes:
+      label: 릴리스 고려사항
+      description: 릴리스 대상이면 실행 방법, 마이그레이션, 알려진 리스크 후보를 작성합니다.
+      placeholder: |
+        - 실행 검증:
+        - 마이그레이션:
+        - 알려진 리스크:
+    validations:
+      required: false
