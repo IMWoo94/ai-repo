@@ -32,6 +32,13 @@ public class OperationOutboxRelayService {
         return operationOutboxRelayRepository.findPendingOutboxEvents(limit);
     }
 
+    public List<OperationOutboxEvent> getManualReviewEvents(int limit) {
+        if (limit <= 0) {
+            throw new InvalidWalletOperationException("limit must be positive");
+        }
+        return operationOutboxRelayRepository.findManualReviewOutboxEvents(limit);
+    }
+
     public List<OperationOutboxEvent> claimReadyEvents(int limit) {
         if (limit <= 0) {
             throw new InvalidWalletOperationException("limit must be positive");
@@ -56,6 +63,11 @@ public class OperationOutboxRelayService {
                 Instant.now(clock).plus(RETRY_BACKOFF),
                 MAX_ATTEMPTS
         );
+    }
+
+    public void requeueManualReviewEvent(String outboxEventId) {
+        validateOutboxEventId(outboxEventId);
+        operationOutboxRelayRepository.requeueManualReviewOutboxEvent(outboxEventId);
     }
 
     private void validateOutboxEventId(String outboxEventId) {

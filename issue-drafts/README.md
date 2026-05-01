@@ -36,6 +36,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/29
 - `0015-outbox-max-attempt-manual-review.md`: Outbox max attempt와 manual review 격리 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/31
+- `0016-outbox-manual-review-api.md`: Outbox manual review 조회와 requeue API 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/33
 
 ## GitHub CLI로 생성
 
