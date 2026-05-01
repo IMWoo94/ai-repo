@@ -333,6 +333,8 @@
 | relay 상태 전이는 돈 이동 결과를 바꾸지 않는다 | 지갑 잔액, 원장, 감사 기록과 outbox 발행 상태를 분리한다 | ADR-0015 |
 | 병렬 claiming은 `PROCESSING` 상태로 분리한다 | claim된 event는 다른 relay가 다시 가져가지 않도록 처리 중 상태로 전이한다 | ADR-0016 |
 | 실패 event는 재시도 예정 시각을 가진다 | `nextRetryAt` 이전에는 retry claim 대상이 아니다 | ADR-0016 |
+| 처리 중 event는 lease를 가진다 | `PROCESSING` event는 `claimedAt`, `leaseExpiresAt`으로 회수 가능 시각을 가진다 | ADR-0017 |
+| lease 만료 event는 재claim 가능하다 | worker crash로 고착된 event를 다시 처리 대상으로 가져올 수 있다 | ADR-0017 |
 
 ### Issue #23 구현 기준
 
@@ -352,3 +354,13 @@
 - 발행 성공 시 `PUBLISHED`, `publishedAt`을 기록하고 retry/error 필드를 초기화한다.
 - PostgreSQL은 Flyway `V6__add_outbox_retry_schedule.sql`로 `next_retry_at` 컬럼을 추가한다.
 - 기준 결정은 ADR-0016을 따른다.
+
+### Issue #29 구현 기준
+
+- claim된 event는 `claimedAt`, `leaseExpiresAt`을 가진다.
+- lease 길이는 60초로 고정한다.
+- lease가 만료되지 않은 `PROCESSING` event는 claim 대상이 아니다.
+- lease가 만료된 `PROCESSING` event는 다시 claim할 수 있다.
+- 발행 성공/실패 시 lease 필드는 초기화한다.
+- PostgreSQL은 Flyway `V7__add_outbox_processing_lease.sql`로 lease 컬럼을 추가한다.
+- 기준 결정은 ADR-0017을 따른다.

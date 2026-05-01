@@ -8,7 +8,7 @@ public interface OperationOutboxRelayRepository {
 
     List<OperationOutboxEvent> findPendingOutboxEvents(int limit);
 
-    List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now);
+    List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt);
 
     void markOutboxEventPublished(String outboxEventId, Instant publishedAt);
 

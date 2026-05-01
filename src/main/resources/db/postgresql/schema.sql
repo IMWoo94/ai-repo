@@ -92,6 +92,8 @@ CREATE TABLE IF NOT EXISTS operation_outbox_events (
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
     attempt_count INTEGER NOT NULL DEFAULT 0,
     next_retry_at TIMESTAMP WITH TIME ZONE,
+    claimed_at TIMESTAMP WITH TIME ZONE,
+    lease_expires_at TIMESTAMP WITH TIME ZONE,
     published_at TIMESTAMP WITH TIME ZONE,
     last_error VARCHAR(255)
 );
