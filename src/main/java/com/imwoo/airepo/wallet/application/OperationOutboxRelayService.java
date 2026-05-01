@@ -12,6 +12,7 @@ public class OperationOutboxRelayService {
 
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(30);
     private static final Duration PROCESSING_LEASE = Duration.ofSeconds(60);
+    private static final int MAX_ATTEMPTS = 3;
 
     private final Clock clock;
     private final OperationOutboxRelayRepository operationOutboxRelayRepository;
@@ -52,7 +53,8 @@ public class OperationOutboxRelayService {
         operationOutboxRelayRepository.markOutboxEventFailed(
                 outboxEventId,
                 lastError,
-                Instant.now(clock).plus(RETRY_BACKOFF)
+                Instant.now(clock).plus(RETRY_BACKOFF),
+                MAX_ATTEMPTS
         );
     }
 

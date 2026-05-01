@@ -162,7 +162,8 @@ class JdbcWalletRepositoryTest {
         repository.markOutboxEventFailed(
                 "outbox-001",
                 "broker unavailable",
-                Instant.parse("2026-05-01T00:01:30Z")
+                Instant.parse("2026-05-01T00:01:30Z"),
+                3
         );
 
         assertThat(repository.findOperationOutboxEvents("op-001"))
@@ -209,7 +210,8 @@ class JdbcWalletRepositoryTest {
         repository.markOutboxEventFailed(
                 "outbox-001",
                 "broker unavailable",
-                Instant.parse("2026-05-01T00:01:30Z")
+                Instant.parse("2026-05-01T00:01:30Z"),
+                3
         );
 
         assertThat(repository.claimReadyOutboxEvents(
@@ -257,6 +259,31 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
                     assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(Instant.parse("2026-05-01T00:03:00Z"));
                 });
+    }
+
+    @Test
+    void outboxFailureMovesToManualReviewAtMaxAttempts() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW);
+                    assertThat(outboxEvent.attemptCount()).isEqualTo(3);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isNull();
+                    assertThat(outboxEvent.leaseExpiresAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
+                });
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:10:00Z"),
+                Instant.parse("2026-05-01T00:11:00Z")
+        )).isEmpty();
     }
 
     @Test

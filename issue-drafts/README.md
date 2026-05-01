@@ -34,6 +34,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/27
 - `0014-outbox-processing-lease-recovery.md`: Outbox processing lease recovery 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/29
+- `0015-outbox-max-attempt-manual-review.md`: Outbox max attempt와 manual review 격리 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/31
 
 ## GitHub CLI로 생성
 

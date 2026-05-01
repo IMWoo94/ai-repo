@@ -4,5 +4,6 @@ public enum OperationOutboxStatus {
     PENDING,
     PROCESSING,
     PUBLISHED,
-    FAILED
+    FAILED,
+    MANUAL_REVIEW
 }

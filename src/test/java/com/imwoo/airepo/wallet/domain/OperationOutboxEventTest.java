@@ -118,6 +118,50 @@ class OperationOutboxEventTest {
     }
 
     @Test
+    void requiresLastErrorWhenManualReview() {
+        assertThatThrownBy(() -> new OperationOutboxEvent(
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                "{}",
+                OperationOutboxStatus.MANUAL_REVIEW,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                3,
+                null,
+                null,
+                null,
+                null,
+                " "
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("lastError must not be blank when status is MANUAL_REVIEW");
+    }
+
+    @Test
+    void rejectsNextRetryAtWhenManualReview() {
+        assertThatThrownBy(() -> new OperationOutboxEvent(
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                "{}",
+                OperationOutboxStatus.MANUAL_REVIEW,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                3,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                null,
+                null,
+                null,
+                "broker unavailable"
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("nextRetryAt must be null when status is MANUAL_REVIEW");
+    }
+
+    @Test
     void rejectsPublishedAtWhenProcessing() {
         assertThatThrownBy(() -> new OperationOutboxEvent(
                 "outbox-001",

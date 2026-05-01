@@ -12,5 +12,5 @@ public interface OperationOutboxRelayRepository {
 
     void markOutboxEventPublished(String outboxEventId, Instant publishedAt);
 
-    void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt);
+    void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt, int maxAttempts);
 }
