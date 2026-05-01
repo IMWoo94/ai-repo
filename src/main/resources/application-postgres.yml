@@ -4,8 +4,9 @@ spring:
     username: ${AI_REPO_POSTGRES_USERNAME:ai_repo}
     password: ${AI_REPO_POSTGRES_PASSWORD:ai_repo}
     driver-class-name: org.postgresql.Driver
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
   sql:
     init:
-      mode: always
-      schema-locations: classpath:db/postgresql/schema.sql
-      data-locations: classpath:db/postgresql/fixtures.sql
+      mode: never

@@ -18,6 +18,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/9
 - `0006-postgresql-runtime-verification.md`: PostgreSQL 런타임 검증과 로컬 DB 실행 환경 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/11
+- `0007-flyway-schema-migrations.md`: Flyway 기반 스키마 버전 관리 도입 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/13
 
 ## GitHub CLI로 생성
 

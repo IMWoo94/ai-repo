@@ -55,7 +55,20 @@ SPRING_PROFILES_ACTIVE=postgres \
 ./gradlew bootRun
 ```
 
-`postgres` 프로필은 `src/main/resources/db/postgresql/schema.sql`과 `src/main/resources/db/postgresql/fixtures.sql`을 실행합니다. 이번 단계에서는 Flyway/Liquibase를 도입하지 않았으므로 스키마 변경 이력 관리는 후속 작업으로 남깁니다.
+`postgres` 프로필은 Flyway를 활성화하고 `src/main/resources/db/migration`의 migration을 실행합니다.
+
+현재 migration 기준:
+
+- `V1__create_wallet_schema.sql`: 회원, 지갑, 잔액, 거래내역, 멱등키, 원장, 감사 로그 스키마
+- `V2__seed_wallet_fixture.sql`: 학습용 회원, 지갑, 잔액, 거래내역 샘플 데이터
+
+`src/main/resources/db/postgresql/schema.sql`과 `src/main/resources/db/postgresql/fixtures.sql`은 H2 기반 빠른 저장소 테스트와 수동 비교를 위해 일시적으로 유지합니다. PostgreSQL 프로필의 기준은 Flyway migration입니다.
+
+스키마 변경 규칙:
+
+- 이미 적용된 `V*__*.sql` migration은 수정하지 않습니다.
+- 스키마 변경은 새 버전 migration으로 추가합니다.
+- 샘플 데이터 정책 변경은 운영 데이터 정책이 아니라 개발/검증 seed 정책으로 분리해서 기록합니다.
 
 로컬 PostgreSQL 정리:
 
@@ -67,7 +80,7 @@ docker compose down
 
 Gradle Wrapper는 `9.3.0`을 사용합니다. Java 25 SDK가 설치되어 있지 않으면 toolchain 해석 또는 컴파일 단계에서 실패할 수 있습니다.
 
-PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있습니다.
+PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. Testcontainers 테스트는 Flyway migration 경로를 실행해 PostgreSQL 런타임 스키마를 준비합니다. Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있습니다.
 
 ## 의존성 관리
 
