@@ -89,7 +89,10 @@ CREATE TABLE IF NOT EXISTS operation_outbox_events (
     aggregate_id VARCHAR(64) NOT NULL,
     payload TEXT NOT NULL,
     status VARCHAR(32) NOT NULL,
-    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL
+    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    attempt_count INTEGER NOT NULL DEFAULT 0,
+    published_at TIMESTAMP WITH TIME ZONE,
+    last_error VARCHAR(255)
 );
 
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;

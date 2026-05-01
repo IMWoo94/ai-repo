@@ -11,7 +11,10 @@ public record OperationOutboxEvent(
         String aggregateId,
         String payload,
         OperationOutboxStatus status,
-        Instant occurredAt
+        Instant occurredAt,
+        int attemptCount,
+        Instant publishedAt,
+        String lastError
 ) {
 
     public OperationOutboxEvent {
@@ -40,6 +43,15 @@ public record OperationOutboxEvent(
         }
         if (payload.isBlank()) {
             throw new IllegalArgumentException("payload must not be blank");
+        }
+        if (attemptCount < 0) {
+            throw new IllegalArgumentException("attemptCount must not be negative");
+        }
+        if (status == OperationOutboxStatus.PUBLISHED && publishedAt == null) {
+            throw new IllegalArgumentException("publishedAt must not be null when status is PUBLISHED");
+        }
+        if (status == OperationOutboxStatus.FAILED && (lastError == null || lastError.isBlank())) {
+            throw new IllegalArgumentException("lastError must not be blank when status is FAILED");
         }
     }
 }

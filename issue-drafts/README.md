@@ -28,6 +28,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/19
 - `0011-transactional-outbox-boundary.md`: Transactional Outbox 경계 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/21
+- `0012-outbox-relay-state.md`: Outbox relay 상태 전이와 재시도 메타데이터 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/23
 
 ## GitHub CLI로 생성
 
