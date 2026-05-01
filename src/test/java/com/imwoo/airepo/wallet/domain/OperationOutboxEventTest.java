@@ -20,6 +20,7 @@ class OperationOutboxEventTest {
                 Instant.parse("2026-05-01T00:00:00Z"),
                 0,
                 null,
+                null,
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -38,6 +39,7 @@ class OperationOutboxEventTest {
                 OperationOutboxStatus.PENDING,
                 Instant.parse("2026-05-01T00:00:00Z"),
                 0,
+                null,
                 null,
                 null
         ))
@@ -58,6 +60,7 @@ class OperationOutboxEventTest {
                 Instant.parse("2026-05-01T00:00:00Z"),
                 -1,
                 null,
+                null,
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -76,6 +79,7 @@ class OperationOutboxEventTest {
                 OperationOutboxStatus.PUBLISHED,
                 Instant.parse("2026-05-01T00:00:00Z"),
                 0,
+                null,
                 null,
                 null
         ))
@@ -96,9 +100,30 @@ class OperationOutboxEventTest {
                 Instant.parse("2026-05-01T00:00:00Z"),
                 1,
                 null,
+                null,
                 " "
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("lastError must not be blank when status is FAILED");
+    }
+
+    @Test
+    void rejectsPublishedAtWhenProcessing() {
+        assertThatThrownBy(() -> new OperationOutboxEvent(
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                "{}",
+                OperationOutboxStatus.PROCESSING,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                0,
+                null,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("publishedAt must be null when status is PROCESSING");
     }
 }

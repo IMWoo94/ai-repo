@@ -91,6 +91,7 @@ CREATE TABLE IF NOT EXISTS operation_outbox_events (
     status VARCHAR(32) NOT NULL,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
     attempt_count INTEGER NOT NULL DEFAULT 0,
+    next_retry_at TIMESTAMP WITH TIME ZONE,
     published_at TIMESTAMP WITH TIME ZONE,
     last_error VARCHAR(255)
 );

@@ -13,6 +13,7 @@ public record OperationOutboxEvent(
         OperationOutboxStatus status,
         Instant occurredAt,
         int attemptCount,
+        Instant nextRetryAt,
         Instant publishedAt,
         String lastError
 ) {
@@ -46,6 +47,9 @@ public record OperationOutboxEvent(
         }
         if (attemptCount < 0) {
             throw new IllegalArgumentException("attemptCount must not be negative");
+        }
+        if (status == OperationOutboxStatus.PROCESSING && publishedAt != null) {
+            throw new IllegalArgumentException("publishedAt must be null when status is PROCESSING");
         }
         if (status == OperationOutboxStatus.PUBLISHED && publishedAt == null) {
             throw new IllegalArgumentException("publishedAt must not be null when status is PUBLISHED");

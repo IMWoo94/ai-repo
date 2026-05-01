@@ -38,9 +38,32 @@ class OperationOutboxRelayServiceTest {
                     assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-001");
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
                     assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
                     assertThat(outboxEvent.publishedAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                 });
+    }
+
+    @Test
+    void claimsPendingEventsAsProcessingWithLimit() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.transfer(
+                "wallet-001",
+                new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
+        );
+
+        assertThat(relayService.claimReadyEvents(1))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(relayService.getPendingEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-002"));
     }
 
     @Test
@@ -55,6 +78,7 @@ class OperationOutboxRelayServiceTest {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
                     assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
                     assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                 });
         assertThat(relayService.getPendingEvents(10)).isEmpty();
@@ -71,6 +95,7 @@ class OperationOutboxRelayServiceTest {
                 .satisfies(outboxEvent -> {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.FAILED);
                     assertThat(outboxEvent.attemptCount()).isEqualTo(1);
+                    assertThat(outboxEvent.nextRetryAt()).isEqualTo(Instant.parse("2026-05-01T00:01:30Z"));
                     assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
                     assertThat(outboxEvent.publishedAt()).isNull();
                 });
@@ -78,8 +103,31 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void claimsFailedEventOnlyAfterNextRetryAt() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+
+        assertThat(relayService.claimReadyEvents(10)).isEmpty();
+
+        OperationOutboxRelayService retryReadyRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:01:31Z"), ZoneOffset.UTC),
+                repository
+        );
+        assertThat(retryReadyRelayService.claimReadyEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+    }
+
+    @Test
     void rejectsInvalidRelayInputs() {
         assertThatThrownBy(() -> relayService.getPendingEvents(0))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("limit must be positive");
+        assertThatThrownBy(() -> relayService.claimReadyEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("limit must be positive");
         assertThatThrownBy(() -> relayService.markPublished(" "))
