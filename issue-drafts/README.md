@@ -38,6 +38,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/31
 - `0016-outbox-manual-review-api.md`: Outbox manual review 조회와 requeue API 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/33
+- `0017-outbox-requeue-audit-trail.md`: Outbox requeue 감사 이력 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/35
 
 ## GitHub CLI로 생성
 

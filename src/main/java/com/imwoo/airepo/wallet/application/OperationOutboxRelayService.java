@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -39,6 +40,11 @@ public class OperationOutboxRelayService {
         return operationOutboxRelayRepository.findManualReviewOutboxEvents(limit);
     }
 
+    public List<OperationOutboxRequeueAudit> getRequeueAudits(String outboxEventId) {
+        validateOutboxEventId(outboxEventId);
+        return operationOutboxRelayRepository.findOutboxRequeueAudits(outboxEventId);
+    }
+
     public List<OperationOutboxEvent> claimReadyEvents(int limit) {
         if (limit <= 0) {
             throw new InvalidWalletOperationException("limit must be positive");
@@ -65,14 +71,27 @@ public class OperationOutboxRelayService {
         );
     }
 
-    public void requeueManualReviewEvent(String outboxEventId) {
+    public void requeueManualReviewEvent(String outboxEventId, String operator, String reason) {
         validateOutboxEventId(outboxEventId);
-        operationOutboxRelayRepository.requeueManualReviewOutboxEvent(outboxEventId);
+        validateRequired("operator", operator);
+        validateRequired("reason", reason);
+        operationOutboxRelayRepository.requeueManualReviewOutboxEvent(
+                outboxEventId,
+                Instant.now(clock),
+                operator,
+                reason
+        );
     }
 
     private void validateOutboxEventId(String outboxEventId) {
         if (outboxEventId == null || outboxEventId.isBlank()) {
             throw new InvalidWalletOperationException("outboxEventId must not be blank");
+        }
+    }
+
+    private void validateRequired(String fieldName, String value) {
+        if (value == null || value.isBlank()) {
+            throw new InvalidWalletOperationException(fieldName + " must not be blank");
         }
     }
 }

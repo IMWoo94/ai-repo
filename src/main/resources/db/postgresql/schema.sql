@@ -98,9 +98,19 @@ CREATE TABLE IF NOT EXISTS operation_outbox_events (
     last_error VARCHAR(255)
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_requeue_audits (
+    audit_id VARCHAR(64) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    operation_id VARCHAR(64) NOT NULL,
+    requeued_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    operator_name VARCHAR(64) NOT NULL,
+    reason VARCHAR(255) NOT NULL
+);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS audit_event_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS operation_step_log_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_event_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS outbox_requeue_audit_id_seq START WITH 1;

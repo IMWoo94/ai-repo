@@ -16,6 +16,7 @@ import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
@@ -193,6 +194,20 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public List<OperationOutboxRequeueAudit> findOutboxRequeueAudits(String outboxEventId) {
+        return jdbcTemplate.query(
+                """
+                        select audit_id, outbox_event_id, operation_id, requeued_at, operator_name, reason
+                        from operation_outbox_requeue_audits
+                        where outbox_event_id = ?
+                        order by requeued_at, audit_id
+                        """,
+                outboxRequeueAuditMapper(),
+                outboxEventId
+        );
+    }
+
+    @Override
     public List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         return transactionTemplate.execute(status -> {
             List<String> outboxEventIds = claimReadyOutboxEventIds(limit, now);
@@ -272,22 +287,56 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public void requeueManualReviewOutboxEvent(String outboxEventId) {
-        int updatedRows = jdbcTemplate.update(
-                """
-                        update operation_outbox_events
-                        set status = ?, attempt_count = 0, next_retry_at = null,
-                            claimed_at = null, lease_expires_at = null, published_at = null, last_error = null
-                        where outbox_event_id = ?
-                          and status = ?
-                        """,
-                OperationOutboxStatus.PENDING.name(),
-                outboxEventId,
-                OperationOutboxStatus.MANUAL_REVIEW.name()
-        );
-        if (updatedRows == 0) {
-            throw new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId);
-        }
+    public void requeueManualReviewOutboxEvent(
+            String outboxEventId,
+            Instant requeuedAt,
+            String operator,
+            String reason
+    ) {
+        transactionTemplate.executeWithoutResult(status -> {
+            OperationOutboxEvent event = queryOptional(
+                    """
+                            select outbox_event_id, operation_id, event_type, aggregate_type,
+                                   aggregate_id, payload, status, occurred_at,
+                                   attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                                   published_at, last_error
+                            from operation_outbox_events
+                            where outbox_event_id = ?
+                              and status = ?
+                            """,
+                    operationOutboxEventMapper(),
+                    outboxEventId,
+                    OperationOutboxStatus.MANUAL_REVIEW.name()
+            )
+                    .orElseThrow(() -> new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId));
+
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_events
+                            set status = ?, attempt_count = 0, next_retry_at = null,
+                                claimed_at = null, lease_expires_at = null, published_at = null, last_error = null
+                            where outbox_event_id = ?
+                              and status = ?
+                            """,
+                    OperationOutboxStatus.PENDING.name(),
+                    outboxEventId,
+                    OperationOutboxStatus.MANUAL_REVIEW.name()
+            );
+            jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_requeue_audits (
+                                audit_id, outbox_event_id, operation_id, requeued_at, operator_name, reason
+                            )
+                            values (?, ?, ?, ?, ?, ?)
+                            """,
+                    nextId("outbox-requeue-audit", "outbox_requeue_audit_id_seq"),
+                    outboxEventId,
+                    event.operationId(),
+                    timestamp(requeuedAt),
+                    operator,
+                    reason
+            );
+        });
     }
 
     private List<String> claimReadyOutboxEventIds(int limit, Instant now) {
@@ -955,6 +1004,17 @@ public class JdbcWalletRepository implements
                 nullableInstant(resultSet, "lease_expires_at"),
                 nullableInstant(resultSet, "published_at"),
                 resultSet.getString("last_error")
+        );
+    }
+
+    private RowMapper<OperationOutboxRequeueAudit> outboxRequeueAuditMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxRequeueAudit(
+                resultSet.getString("audit_id"),
+                resultSet.getString("outbox_event_id"),
+                resultSet.getString("operation_id"),
+                instant(resultSet, "requeued_at"),
+                resultSet.getString("operator_name"),
+                resultSet.getString("reason")
         );
     }
 
