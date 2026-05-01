@@ -1,6 +1,5 @@
 package com.imwoo.airepo.wallet.api;
 
-import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -43,7 +42,7 @@ class WalletQueryControllerTest {
     void returnsTransactionHistoryByLatestFirst() throws Exception {
         mockMvc.perform(get("/api/v1/wallets/wallet-001/transactions"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$", hasSize(2)))
+                .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].transactionId").value("txn-002"))
                 .andExpect(jsonPath("$[1].transactionId").value("txn-001"));
     }

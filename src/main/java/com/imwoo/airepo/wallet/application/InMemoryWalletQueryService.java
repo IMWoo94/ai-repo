@@ -60,6 +60,7 @@ public class InMemoryWalletQueryService implements WalletQueryService {
 
     @Override
     public WalletBalance getBalance(String walletId) {
+        validateWalletId(walletId);
         WalletBalance balance = balances.get(walletId);
         if (balance == null) {
             throw walletNotFound(walletId);
@@ -69,12 +70,19 @@ public class InMemoryWalletQueryService implements WalletQueryService {
 
     @Override
     public List<TransactionHistoryItem> getTransactions(String walletId) {
+        validateWalletId(walletId);
         if (!balances.containsKey(walletId)) {
             throw walletNotFound(walletId);
         }
         return transactions.getOrDefault(walletId, List.of()).stream()
                 .sorted(Comparator.comparing(TransactionHistoryItem::occurredAt).reversed())
                 .toList();
+    }
+
+    private void validateWalletId(String walletId) {
+        if (walletId == null || walletId.isBlank()) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "walletId must not be blank");
+        }
     }
 
     private ResponseStatusException walletNotFound(String walletId) {
