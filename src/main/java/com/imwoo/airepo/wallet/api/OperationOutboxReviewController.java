@@ -2,11 +2,13 @@ package com.imwoo.airepo.wallet.api;
 
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayService;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import java.util.List;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -27,8 +29,16 @@ public class OperationOutboxReviewController {
     }
 
     @PostMapping("/{outboxEventId}/requeue")
-    public ResponseEntity<Void> requeueManualReviewEvent(@PathVariable String outboxEventId) {
-        operationOutboxRelayService.requeueManualReviewEvent(outboxEventId);
+    public ResponseEntity<Void> requeueManualReviewEvent(
+            @PathVariable String outboxEventId,
+            @RequestBody OperationOutboxRequeueRequest request
+    ) {
+        operationOutboxRelayService.requeueManualReviewEvent(outboxEventId, request.operator(), request.reason());
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{outboxEventId}/requeue-audits")
+    public List<OperationOutboxRequeueAudit> requeueAudits(@PathVariable String outboxEventId) {
+        return operationOutboxRelayService.getRequeueAudits(outboxEventId);
     }
 }

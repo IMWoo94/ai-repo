@@ -56,7 +56,14 @@ class OperationOutboxReviewControllerTest {
     void requeuesManualReviewOutboxEvent() throws Exception {
         makeManualReviewEvent();
 
-        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue"))
+        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "operator": "ops-user",
+                                  "reason": "broker recovered"
+                                }
+                                """))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/outbox-events/manual-review"))
@@ -67,12 +74,35 @@ class OperationOutboxReviewControllerTest {
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
                 .andExpect(jsonPath("$[0].attemptCount").value(0))
                 .andExpect(jsonPath("$[0].lastError").doesNotExist());
+        mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
+                .andExpect(jsonPath("$[0].operationId").value("op-001"))
+                .andExpect(jsonPath("$[0].operator").value("ops-user"))
+                .andExpect(jsonPath("$[0].reason").value("broker recovered"));
     }
 
     @Test
     void rejectsInvalidManualReviewLimit() throws Exception {
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
                         .param("limit", "0"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"));
+    }
+
+    @Test
+    void rejectsInvalidRequeueRequest() throws Exception {
+        makeManualReviewEvent();
+
+        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "operator": " ",
+                                  "reason": "broker recovered"
+                                }
+                                """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"));
     }

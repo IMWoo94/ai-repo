@@ -13,6 +13,7 @@ import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
@@ -50,6 +51,7 @@ public class InMemoryWalletRepository implements
     private final List<AuditEvent> auditEvents = new ArrayList<>();
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
+    private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -57,6 +59,7 @@ public class InMemoryWalletRepository implements
     private int auditEventSequence = 0;
     private int operationStepLogSequence = 0;
     private int outboxEventSequence = 0;
+    private int outboxRequeueAuditSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -192,6 +195,11 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized List<OperationOutboxRequeueAudit> findOutboxRequeueAudits(String outboxEventId) {
+        return List.copyOf(outboxRequeueAudits.getOrDefault(outboxEventId, List.of()));
+    }
+
+    @Override
     public synchronized List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         List<OperationOutboxEvent> claimedEvents = operationOutboxEvents.values().stream()
                 .flatMap(List::stream)
@@ -252,7 +260,12 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
-    public synchronized void requeueManualReviewOutboxEvent(String outboxEventId) {
+    public synchronized void requeueManualReviewOutboxEvent(
+            String outboxEventId,
+            Instant requeuedAt,
+            String operator,
+            String reason
+    ) {
         OperationOutboxEvent event = findOutboxEvent(outboxEventId);
         if (event.status() != OperationOutboxStatus.MANUAL_REVIEW) {
             throw new InvalidWalletOperationException("outboxEventId must be in MANUAL_REVIEW: " + outboxEventId);
@@ -273,6 +286,15 @@ public class InMemoryWalletRepository implements
                 null,
                 null
         ));
+        outboxRequeueAudits.computeIfAbsent(outboxEventId, ignored -> new ArrayList<>())
+                .add(new OperationOutboxRequeueAudit(
+                        nextOutboxRequeueAuditId(),
+                        outboxEventId,
+                        event.operationId(),
+                        requeuedAt,
+                        operator,
+                        reason
+                ));
     }
 
     @Override
@@ -668,5 +690,10 @@ public class InMemoryWalletRepository implements
     private String nextOutboxEventId() {
         outboxEventSequence += 1;
         return "outbox-%03d".formatted(outboxEventSequence);
+    }
+
+    private String nextOutboxRequeueAuditId() {
+        outboxRequeueAuditSequence += 1;
+        return "outbox-requeue-audit-%03d".formatted(outboxRequeueAuditSequence);
     }
 }

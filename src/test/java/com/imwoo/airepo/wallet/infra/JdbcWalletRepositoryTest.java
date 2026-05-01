@@ -297,9 +297,24 @@ class JdbcWalletRepositoryTest {
                 .singleElement()
                 .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW));
 
-        repository.requeueManualReviewOutboxEvent("outbox-001");
+        repository.requeueManualReviewOutboxEvent(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-user",
+                "broker recovered"
+        );
 
         assertThat(repository.findManualReviewOutboxEvents(10)).isEmpty();
+        assertThat(repository.findOutboxRequeueAudits("outbox-001"))
+                .singleElement()
+                .satisfies(audit -> {
+                    assertThat(audit.auditId()).isEqualTo("outbox-requeue-audit-001");
+                    assertThat(audit.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(audit.operationId()).isEqualTo("op-001");
+                    assertThat(audit.requeuedAt()).isEqualTo(Instant.parse("2026-05-01T00:10:00Z"));
+                    assertThat(audit.operator()).isEqualTo("ops-user");
+                    assertThat(audit.reason()).isEqualTo("broker recovered");
+                });
         assertThat(repository.findOperationOutboxEvents("op-001"))
                 .singleElement()
                 .satisfies(outboxEvent -> {

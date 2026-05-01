@@ -8,6 +8,7 @@ Outbox event는 3회 실패하면 `MANUAL_REVIEW` 상태로 격리된다. 하지
 
 - `MANUAL_REVIEW` outbox event를 제한 개수만큼 조회한다.
 - 운영자가 manual review event를 다시 `PENDING`으로 requeue할 수 있게 한다.
+- requeue 요청의 operator와 reason을 감사 이력으로 남긴다.
 - requeue 시 retry/lease/publish/error 메타데이터를 초기화한다.
 - 코드, 테스트, ADR, Wiki, Progress Report를 함께 갱신한다.
 
@@ -15,6 +16,9 @@ Outbox event는 3회 실패하면 `MANUAL_REVIEW` 상태로 격리된다. 하지
 
 - [ ] `MANUAL_REVIEW` event 조회 API가 있다.
 - [ ] manual review event requeue API가 있다.
+- [ ] requeue 요청 body에 operator, reason이 있다.
+- [ ] requeue 성공 시 감사 이력이 저장된다.
+- [ ] requeue 감사 이력 조회 API가 있다.
 - [ ] requeue된 event는 다시 claim 대상이 된다.
 - [ ] `MANUAL_REVIEW`가 아닌 event requeue 정책이 명확하다.
 - [ ] in-memory와 JDBC 구현 모두 테스트가 있다.
@@ -24,7 +28,7 @@ Outbox event는 3회 실패하면 `MANUAL_REVIEW` 상태로 격리된다. 하지
 ## 범위 제외
 
 - 인증/인가
-- 운영자 승인 이력 테이블
+- 승인 워크플로우
 - 알림/모니터링 연동
 - 실제 broker DLQ replay
 

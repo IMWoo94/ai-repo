@@ -203,9 +203,18 @@ class OperationOutboxRelayServiceTest {
                     assertThat(outboxEvent.attemptCount()).isEqualTo(3);
                 });
 
-        relayService.requeueManualReviewEvent("outbox-001");
+        relayService.requeueManualReviewEvent("outbox-001", "ops-user", "broker recovered");
 
         assertThat(relayService.getManualReviewEvents(10)).isEmpty();
+        assertThat(relayService.getRequeueAudits("outbox-001"))
+                .singleElement()
+                .satisfies(audit -> {
+                    assertThat(audit.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(audit.operationId()).isEqualTo("op-001");
+                    assertThat(audit.requeuedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                    assertThat(audit.operator()).isEqualTo("ops-user");
+                    assertThat(audit.reason()).isEqualTo("broker recovered");
+                });
         assertThat(repository.findOperationOutboxEvents("op-001"))
                 .singleElement()
                 .satisfies(outboxEvent -> {
@@ -236,9 +245,15 @@ class OperationOutboxRelayServiceTest {
         assertThatThrownBy(() -> relayService.markFailed("outbox-001", " "))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("lastError must not be blank");
-        assertThatThrownBy(() -> relayService.requeueManualReviewEvent(" "))
+        assertThatThrownBy(() -> relayService.requeueManualReviewEvent(" ", "ops-user", "reason"))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("outboxEventId must not be blank");
+        assertThatThrownBy(() -> relayService.requeueManualReviewEvent("outbox-001", " ", "reason"))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("operator must not be blank");
+        assertThatThrownBy(() -> relayService.requeueManualReviewEvent("outbox-001", "ops-user", " "))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("reason must not be blank");
     }
 
     private Money money(String amount) {
