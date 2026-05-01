@@ -129,6 +129,8 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 - `GET /api/v1/wallets/wallet-001/balance`
 - `GET /api/v1/wallets/wallet-001/transactions`
 
+회원/지갑 계정 모델은 Issue #3 기준으로 확장 중입니다.
+
 ## 문서화 전략
 
 README는 저장소의 계약과 방향을 담고, 상세 문서는 GitHub Wiki를 사용합니다.

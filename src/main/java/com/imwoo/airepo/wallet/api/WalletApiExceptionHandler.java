@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.api;
 
 import com.imwoo.airepo.wallet.application.InvalidWalletIdException;
+import com.imwoo.airepo.wallet.application.WalletAccountNotQueryableException;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,6 +27,11 @@ public class WalletApiExceptionHandler {
     @ExceptionHandler(WalletNotFoundException.class)
     ResponseEntity<ApiErrorResponse> handleWalletNotFound(WalletNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, "WALLET_NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(WalletAccountNotQueryableException.class)
+    ResponseEntity<ApiErrorResponse> handleWalletAccountNotQueryable(WalletAccountNotQueryableException exception) {
+        return error(HttpStatus.CONFLICT, "WALLET_NOT_QUERYABLE", exception.getMessage());
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
