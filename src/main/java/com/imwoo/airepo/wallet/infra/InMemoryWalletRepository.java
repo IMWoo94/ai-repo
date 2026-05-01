@@ -10,6 +10,8 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
@@ -42,12 +44,14 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     private final Map<String, List<LedgerEntry>> ledgerEntries = new HashMap<>();
     private final List<AuditEvent> auditEvents = new ArrayList<>();
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
+    private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
     private int ledgerEntrySequence = 0;
     private int auditEventSequence = 0;
     private int operationStepLogSequence = 0;
+    private int outboxEventSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -158,6 +162,11 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     }
 
     @Override
+    public synchronized List<OperationOutboxEvent> findOperationOutboxEvents(String operationId) {
+        return List.copyOf(operationOutboxEvents.getOrDefault(operationId, List.of()));
+    }
+
+    @Override
     public synchronized Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
         return Optional.ofNullable(operations.get(idempotencyKey));
     }
@@ -226,6 +235,7 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
         operations.put(idempotencyKey, record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
+        addOutboxEvent(result);
         return record;
     }
 
@@ -325,7 +335,42 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
         operations.put(idempotencyKey, record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
+        addOutboxEvent(result);
         return record;
+    }
+
+    private void addOutboxEvent(WalletOperationResult result) {
+        operationOutboxEvents.computeIfAbsent(result.operationId(), ignored -> new ArrayList<>())
+                .add(new OperationOutboxEvent(
+                        nextOutboxEventId(),
+                        result.operationId(),
+                        result.type().name() + "_COMPLETED",
+                        "WALLET_OPERATION",
+                        result.operationId(),
+                        outboxPayload(result),
+                        OperationOutboxStatus.PENDING,
+                        result.occurredAt()
+                ));
+    }
+
+    private String outboxPayload(WalletOperationResult result) {
+        return """
+                {"operationId":"%s","walletId":"%s","counterpartyWalletId":%s,"type":"%s","amount":"%s","currency":"%s"}
+                """.formatted(
+                result.operationId(),
+                result.walletId(),
+                nullableJsonString(result.counterpartyWalletId()),
+                result.type().name(),
+                result.money().amount().stripTrailingZeros().toPlainString(),
+                result.money().currency()
+        ).trim();
+    }
+
+    private String nullableJsonString(String value) {
+        if (value == null) {
+            return "null";
+        }
+        return "\"" + value + "\"";
     }
 
     private void addStepLog(String operationId, OperationStep step, Instant occurredAt, String detail) {
@@ -421,5 +466,10 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     private String nextOperationStepLogId() {
         operationStepLogSequence += 1;
         return "step-%03d".formatted(operationStepLogSequence);
+    }
+
+    private String nextOutboxEventId() {
+        outboxEventSequence += 1;
+        return "outbox-%03d".formatted(outboxEventSequence);
     }
 }

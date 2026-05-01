@@ -69,6 +69,20 @@ class WalletLedgerControllerTest {
                 .andExpect(jsonPath("$[5].step").value("IDEMPOTENCY_RECORDED"));
     }
 
+    @Test
+    void returnsOperationOutboxEventsAfterCharge() throws Exception {
+        charge();
+
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].operationId").value("op-001"))
+                .andExpect(jsonPath("$[0].eventType").value("CHARGE_COMPLETED"))
+                .andExpect(jsonPath("$[0].aggregateType").value("WALLET_OPERATION"))
+                .andExpect(jsonPath("$[0].aggregateId").value("op-001"))
+                .andExpect(jsonPath("$[0].status").value("PENDING"));
+    }
+
     private void charge() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
                         .contentType(MediaType.APPLICATION_JSON)

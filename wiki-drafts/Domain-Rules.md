@@ -303,3 +303,22 @@
 - PostgreSQL은 Flyway `V3__create_operation_step_logs.sql`로 테이블을 추가한다.
 - H2 빠른 저장소 테스트용 `schema.sql`에도 같은 테이블을 반영한다.
 - 기준 결정은 ADR-0013을 따른다.
+
+## Transactional Outbox 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| outbox event는 외부 반응 후보이다 | 알림, 정산, 리포팅, 이상거래 탐지 같은 서비스로 전달할 integration event 경계다 | ADR-0014 |
+| outbox event는 돈 이동 결과와 같은 트랜잭션에 저장한다 | 성공 결과와 이벤트 적재의 이중 쓰기 문제를 줄인다 | ADR-0014 |
+| step log와 outbox event는 다르다 | step log는 내부 처리 과정 관측 기록이고 outbox는 외부 전달 후보이다 | ADR-0014 |
+| 멱등 재시도는 outbox event를 중복 생성하지 않는다 | 재시도는 기존 operation 결과로 수렴한다 | ADR-0014 |
+| 실패 요청은 outbox event를 남기지 않는다 | 1차 범위에서는 성공한 operation만 외부 반응 후보가 된다 | ADR-0014 |
+
+### Issue #21 구현 기준
+
+- 충전/송금 성공 시 `operation_outbox_events`에 `PENDING` event를 1건 저장한다.
+- `GET /api/v1/operations/{operationId}/outbox-events`로 outbox event를 조회한다.
+- PostgreSQL은 Flyway `V4__create_operation_outbox_events.sql`로 테이블을 추가한다.
+- H2 빠른 저장소 테스트용 `schema.sql`에도 같은 테이블을 반영한다.
+- relay/publisher와 메시지 브로커는 후속 작업으로 남긴다.
+- 기준 결정은 ADR-0014를 따른다.
