@@ -8,6 +8,8 @@
 
 - `0001-balance-and-transaction-history.md`: 첫 기능 흐름인 잔액/거래내역 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/1
+- `0002-member-wallet-account.md`: 회원/지갑 계정 모델 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/3
 
 ## GitHub CLI로 생성
 
