@@ -49,6 +49,7 @@
 | --- | --- | --- |
 | 존재하지 않는 지갑 | 실패 응답 | 상태 코드와 오류 형식은 API 설계 시 결정 |
 | 거래내역 없음 | 빈 목록 반환 | 정상 응답 |
+| 조회 불가능한 지갑의 원장 조회 | 실패 응답 | 잔액/거래내역 조회와 같은 계정 생명주기 정책 적용 |
 | 잘못된 페이지 요청 | 실패 또는 보정 | 정책 결정 필요 |
 | 지원하지 않는 정렬 조건 | 실패 응답 | 정책 결정 필요 |
 | 인증 없는 접근 | 아직 범위 밖 | 인증/인가 ADR 이후 결정 |
@@ -294,6 +295,7 @@
 | 성공한 명령은 단계별 완료 기록을 남긴다 | 모놀리스 내부에서도 논리적 트랜잭션 진행 순서를 확인한다 | ADR-0013 |
 | 멱등 재시도는 step log를 중복 생성하지 않는다 | 재시도는 기존 operation 결과로 수렴한다 | ADR-0013 |
 | 실패 요청은 step log를 남기지 않는다 | 1차 범위에서는 성공 단계의 완료 증거만 기록한다 | ADR-0013 |
+| 미존재 operation의 step log 조회는 실패한다 | 잘못된 operationId를 빈 정상 결과로 위장하지 않는다 | ADR-0023 |
 | 단계 경계는 MSA 전환 후보가 된다 | 추후 Saga step 또는 Outbox event 후보를 식별한다 | ADR-0013 |
 
 ### Issue #19 구현 기준
@@ -313,6 +315,7 @@
 | step log와 outbox event는 다르다 | step log는 내부 처리 과정 관측 기록이고 outbox는 외부 전달 후보이다 | ADR-0014 |
 | 멱등 재시도는 outbox event를 중복 생성하지 않는다 | 재시도는 기존 operation 결과로 수렴한다 | ADR-0014 |
 | 실패 요청은 outbox event를 남기지 않는다 | 1차 범위에서는 성공한 operation만 외부 반응 후보가 된다 | ADR-0014 |
+| 미존재 operation의 outbox 조회는 실패한다 | 잘못된 operationId를 빈 정상 결과로 위장하지 않는다 | ADR-0023 |
 
 ### Issue #21 구현 기준
 
@@ -337,7 +340,7 @@
 | lease 만료 event는 재claim 가능하다 | worker crash로 고착된 event를 다시 처리 대상으로 가져올 수 있다 | ADR-0017 |
 | 반복 실패 event는 수동 확인 상태로 격리한다 | 3회 실패한 event는 `MANUAL_REVIEW`가 되고 자동 claim 대상에서 제외된다 | ADR-0018 |
 | 수동 확인 event는 requeue할 수 있다 | 원인 조치 후 `MANUAL_REVIEW` event를 `PENDING`으로 되돌려 자동 처리 흐름에 넣는다 | ADR-0019 |
-| requeue 행위는 감사 이력으로 남긴다 | operator, reason, requeuedAt을 저장해 운영 조치 흔적을 남긴다 | ADR-0019 |
+| requeue 행위는 감사 이력으로 남긴다 | operator, reason, requeuedAt을 저장해 운영 조치 흔적을 남긴다 | ADR-0020 |
 
 ### Issue #23 구현 기준
 

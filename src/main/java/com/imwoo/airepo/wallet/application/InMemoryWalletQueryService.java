@@ -1,6 +1,5 @@
 package com.imwoo.airepo.wallet.application;
 
-import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.WalletAccount;
 import com.imwoo.airepo.wallet.domain.WalletBalance;
@@ -24,7 +23,7 @@ public class InMemoryWalletQueryService implements WalletQueryService {
     @Override
     public WalletBalance getBalance(String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = findQueryableWallet(walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
         WalletBalance balance = walletQueryRepository.findBalance(walletAccount.walletId())
                 .orElseThrow(() -> walletNotFound(walletId));
         return new WalletBalance(balance.walletId(), balance.money(), Instant.now(clock));
@@ -33,24 +32,10 @@ public class InMemoryWalletQueryService implements WalletQueryService {
     @Override
     public List<TransactionHistoryItem> getTransactions(String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = findQueryableWallet(walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
         return walletQueryRepository.findTransactions(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(TransactionHistoryItem::occurredAt).reversed())
                 .toList();
-    }
-
-    private WalletAccount findQueryableWallet(String walletId) {
-        WalletAccount walletAccount = walletQueryRepository.findWalletAccount(walletId)
-                .orElseThrow(() -> walletNotFound(walletId));
-        if (!walletAccount.queryable()) {
-            throw new WalletAccountNotQueryableException(walletId);
-        }
-        Member owner = walletQueryRepository.findMember(walletAccount.memberId())
-                .orElseThrow(() -> new WalletAccountNotQueryableException(walletId));
-        if (!owner.active()) {
-            throw new WalletAccountNotQueryableException(walletId);
-        }
-        return walletAccount;
     }
 
     private void validateWalletId(String walletId) {

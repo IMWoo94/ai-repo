@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.api;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.imwoo.airepo.wallet.application.OperationNotFoundException;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import java.time.Clock;
 import java.time.Instant;
@@ -26,6 +27,20 @@ class WalletApiExceptionHandlerTest {
         assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
                 "WALLET_BALANCE_BUSY",
                 "Wallet balance is busy. Please retry.",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+    }
+
+    @Test
+    void mapsOperationNotFoundToNotFound() {
+        ResponseEntity<ApiErrorResponse> response = exceptionHandler.handleOperationNotFound(
+                new OperationNotFoundException("op-9999")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.NOT_FOUND);
+        assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
+                "OPERATION_NOT_FOUND",
+                "Operation not found: op-9999",
                 Instant.parse("2026-05-01T00:00:00Z")
         ));
     }

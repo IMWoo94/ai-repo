@@ -175,6 +175,12 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized boolean existsOperationId(String operationId) {
+        return operations.values().stream()
+                .anyMatch(operation -> operation.result().operationId().equals(operationId));
+    }
+
+    @Override
     public synchronized List<OperationOutboxEvent> findPendingOutboxEvents(int limit) {
         return operationOutboxEvents.values().stream()
                 .flatMap(List::stream)

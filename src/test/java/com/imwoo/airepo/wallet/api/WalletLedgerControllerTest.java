@@ -83,6 +83,22 @@ class WalletLedgerControllerTest {
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
     }
 
+    @Test
+    void rejectsUnknownOperationStepLogQuery() throws Exception {
+        mockMvc.perform(get("/api/v1/operations/op-9999/step-logs"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("OPERATION_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Operation not found: op-9999"));
+    }
+
+    @Test
+    void rejectsUnknownOperationOutboxEventQuery() throws Exception {
+        mockMvc.perform(get("/api/v1/operations/op-9999/outbox-events"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("OPERATION_NOT_FOUND"))
+                .andExpect(jsonPath("$.message").value("Operation not found: op-9999"));
+    }
+
     private void charge() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
                         .contentType(MediaType.APPLICATION_JSON)
