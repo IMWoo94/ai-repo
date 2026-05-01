@@ -4,15 +4,20 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.Member;
+import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
+import com.imwoo.airepo.wallet.domain.WalletAccount;
+import com.imwoo.airepo.wallet.domain.WalletAccountStatus;
 import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 
 class InMemoryWalletLedgerQueryServiceTest {
@@ -114,6 +119,75 @@ class InMemoryWalletLedgerQueryServiceTest {
     }
 
     @Test
+    void rejectsLedgerQueryWhenWalletSuspended() {
+        SuspendedWalletRepository suspendedRepository = new SuspendedWalletRepository();
+        InMemoryWalletLedgerQueryService service = new InMemoryWalletLedgerQueryService(
+                suspendedRepository,
+                suspendedRepository
+        );
+
+        assertThatThrownBy(() -> service.getLedgerEntries("wallet-suspended"))
+                .isInstanceOf(WalletAccountNotQueryableException.class)
+                .hasMessage("Wallet is not queryable: wallet-suspended");
+    }
+
+    @Test
+    void rejectsLedgerQueryWhenWalletClosed() {
+        ClosedWalletRepository closedRepository = new ClosedWalletRepository();
+        InMemoryWalletLedgerQueryService service = new InMemoryWalletLedgerQueryService(
+                closedRepository,
+                closedRepository
+        );
+
+        assertThatThrownBy(() -> service.getLedgerEntries("wallet-closed"))
+                .isInstanceOf(WalletAccountNotQueryableException.class)
+                .hasMessage("Wallet is not queryable: wallet-closed");
+    }
+
+    @Test
+    void rejectsLedgerQueryWhenOwnerMemberSuspended() {
+        SuspendedOwnerRepository suspendedOwnerRepository = new SuspendedOwnerRepository();
+        InMemoryWalletLedgerQueryService service = new InMemoryWalletLedgerQueryService(
+                suspendedOwnerRepository,
+                suspendedOwnerRepository
+        );
+
+        assertThatThrownBy(() -> service.getLedgerEntries("wallet-owner-suspended"))
+                .isInstanceOf(WalletAccountNotQueryableException.class)
+                .hasMessage("Wallet is not queryable: wallet-owner-suspended");
+    }
+
+    @Test
+    void transferCreatesLedgerEntryOnTargetWallet() {
+        commandService.transfer(
+                "wallet-001",
+                new WalletTransferCommand("wallet-002", money("25000"), "transfer-001", "테스트 송금")
+        );
+
+        assertThat(ledgerQueryService.getLedgerEntries("wallet-002"))
+                .singleElement()
+                .satisfies(ledgerEntry -> {
+                    assertThat(ledgerEntry.type()).isEqualTo(TransactionType.TRANSFER);
+                    assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.CREDIT);
+                    assertThat(ledgerEntry.balanceAfter()).isEqualTo(money("55000"));
+                });
+    }
+
+    @Test
+    void rejectsUnknownOperationStepLogQuery() {
+        assertThatThrownBy(() -> ledgerQueryService.getOperationStepLogs("op-9999"))
+                .isInstanceOf(OperationNotFoundException.class)
+                .hasMessage("Operation not found: op-9999");
+    }
+
+    @Test
+    void rejectsUnknownOperationOutboxEventQuery() {
+        assertThatThrownBy(() -> ledgerQueryService.getOperationOutboxEvents("op-9999"))
+                .isInstanceOf(OperationNotFoundException.class)
+                .hasMessage("Operation not found: op-9999");
+    }
+
+    @Test
     void rejectsUnknownWalletLedgerQuery() {
         assertThatThrownBy(() -> ledgerQueryService.getLedgerEntries("unknown"))
                 .isInstanceOf(WalletNotFoundException.class)
@@ -122,5 +196,65 @@ class InMemoryWalletLedgerQueryServiceTest {
 
     private Money money(String amount) {
         return new Money(new BigDecimal(amount), "KRW");
+    }
+
+    private static class SuspendedWalletRepository extends InMemoryWalletRepository {
+
+        @Override
+        public Optional<WalletAccount> findWalletAccount(String walletId) {
+            if ("wallet-suspended".equals(walletId)) {
+                return Optional.of(new WalletAccount(
+                        "wallet-suspended",
+                        "member-001",
+                        WalletAccountStatus.SUSPENDED,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                ));
+            }
+            return super.findWalletAccount(walletId);
+        }
+    }
+
+    private static class ClosedWalletRepository extends InMemoryWalletRepository {
+
+        @Override
+        public Optional<WalletAccount> findWalletAccount(String walletId) {
+            if ("wallet-closed".equals(walletId)) {
+                return Optional.of(new WalletAccount(
+                        "wallet-closed",
+                        "member-001",
+                        WalletAccountStatus.CLOSED,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                ));
+            }
+            return super.findWalletAccount(walletId);
+        }
+    }
+
+    private static class SuspendedOwnerRepository extends InMemoryWalletRepository {
+
+        @Override
+        public Optional<Member> findMember(String memberId) {
+            if ("member-suspended".equals(memberId)) {
+                return Optional.of(new Member(
+                        "member-suspended",
+                        MemberStatus.SUSPENDED,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                ));
+            }
+            return super.findMember(memberId);
+        }
+
+        @Override
+        public Optional<WalletAccount> findWalletAccount(String walletId) {
+            if ("wallet-owner-suspended".equals(walletId)) {
+                return Optional.of(new WalletAccount(
+                        "wallet-owner-suspended",
+                        "member-suspended",
+                        WalletAccountStatus.ACTIVE,
+                        Instant.parse("2026-05-01T00:00:00Z")
+                ));
+            }
+            return super.findWalletAccount(walletId);
+        }
     }
 }

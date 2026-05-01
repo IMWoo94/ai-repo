@@ -4,6 +4,7 @@ import com.imwoo.airepo.wallet.application.InvalidWalletIdException;
 import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
+import com.imwoo.airepo.wallet.application.OperationNotFoundException;
 import com.imwoo.airepo.wallet.application.WalletAccountNotQueryableException;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
@@ -31,6 +32,11 @@ public class WalletApiExceptionHandler {
     @ExceptionHandler(WalletNotFoundException.class)
     ResponseEntity<ApiErrorResponse> handleWalletNotFound(WalletNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, "WALLET_NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(OperationNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> handleOperationNotFound(OperationNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, "OPERATION_NOT_FOUND", exception.getMessage());
     }
 
     @ExceptionHandler(WalletAccountNotQueryableException.class)

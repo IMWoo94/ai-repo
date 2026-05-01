@@ -15,4 +15,6 @@ public interface WalletLedgerQueryRepository {
     List<OperationStepLog> findOperationStepLogs(String operationId);
 
     List<OperationOutboxEvent> findOperationOutboxEvents(String operationId);
+
+    boolean existsOperationId(String operationId);
 }

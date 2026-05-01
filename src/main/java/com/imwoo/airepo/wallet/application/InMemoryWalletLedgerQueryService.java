@@ -25,9 +25,8 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     @Override
     public List<LedgerEntry> getLedgerEntries(String walletId) {
         validateWalletId(walletId);
-        walletQueryRepository.findWalletAccount(walletId)
-                .orElseThrow(() -> new WalletNotFoundException(walletId));
-        return walletLedgerQueryRepository.findLedgerEntries(walletId).stream()
+        String queryableWalletId = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId).walletId();
+        return walletLedgerQueryRepository.findLedgerEntries(queryableWalletId).stream()
                 .sorted(Comparator.comparing(LedgerEntry::occurredAt)
                         .thenComparing(LedgerEntry::ledgerEntryId)
                         .reversed())
@@ -46,6 +45,7 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     @Override
     public List<OperationStepLog> getOperationStepLogs(String operationId) {
         validateOperationId(operationId);
+        validateOperationExists(operationId);
         return walletLedgerQueryRepository.findOperationStepLogs(operationId).stream()
                 .sorted(Comparator.comparing(OperationStepLog::occurredAt)
                         .thenComparing(OperationStepLog::operationStepLogId))
@@ -55,6 +55,7 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     @Override
     public List<OperationOutboxEvent> getOperationOutboxEvents(String operationId) {
         validateOperationId(operationId);
+        validateOperationExists(operationId);
         return walletLedgerQueryRepository.findOperationOutboxEvents(operationId).stream()
                 .sorted(Comparator.comparing(OperationOutboxEvent::occurredAt)
                         .thenComparing(OperationOutboxEvent::outboxEventId))
@@ -70,6 +71,12 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     private void validateOperationId(String operationId) {
         if (operationId == null || operationId.isBlank()) {
             throw new InvalidWalletOperationException("operationId must not be blank");
+        }
+    }
+
+    private void validateOperationExists(String operationId) {
+        if (!walletLedgerQueryRepository.existsOperationId(operationId)) {
+            throw new OperationNotFoundException(operationId);
         }
     }
 }

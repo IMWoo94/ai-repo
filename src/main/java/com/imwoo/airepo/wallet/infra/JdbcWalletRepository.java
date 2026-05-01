@@ -156,6 +156,16 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public boolean existsOperationId(String operationId) {
+        Integer count = jdbcTemplate.queryForObject(
+                "select count(*) from wallet_operations where operation_id = ?",
+                Integer.class,
+                operationId
+        );
+        return count != null && count > 0;
+    }
+
+    @Override
     public List<OperationOutboxEvent> findPendingOutboxEvents(int limit) {
         return jdbcTemplate.query(
                 """

@@ -44,6 +44,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/37
 - `0019-scenario-test-pipeline.md`: 시나리오 기반 테스트 파이프라인 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/39
+- `0020-validation-summary-hardening.md`: 검증 요약 기반 코드 하드닝 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/41
 
 ## GitHub CLI로 생성
 

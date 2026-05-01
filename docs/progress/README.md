@@ -35,10 +35,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0017 | [Outbox Requeue Audit Trail](0017-outbox-requeue-audit-trail.md) | 완료 |
 | 0018 | [Release Version Baseline](0018-release-version-baseline.md) | 완료 |
 | 0019 | [Scenario Test Pipeline](0019-scenario-test-pipeline.md) | 완료 |
+| 0020 | [Validation Summary Hardening](0020-validation-summary-hardening.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Scenario Test Pipeline
+- 최신 완료 기능: Validation Summary Hardening
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 실제 broker 발행, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화
+- 아직 미완료: 실제 broker 발행, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책
