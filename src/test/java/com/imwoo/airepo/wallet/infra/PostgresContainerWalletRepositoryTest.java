@@ -1,9 +1,11 @@
 package com.imwoo.airepo.wallet.infra;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletCommandService;
+import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
@@ -46,10 +48,11 @@ class PostgresContainerWalletRepositoryTest {
     private JdbcWalletRepository repository;
     private InMemoryWalletCommandService commandService;
     private InMemoryWalletLedgerQueryService ledgerQueryService;
+    private DriverManagerDataSource dataSource;
 
     @BeforeEach
     void setUp() {
-        DriverManagerDataSource dataSource = new DriverManagerDataSource();
+        dataSource = new DriverManagerDataSource();
         dataSource.setUrl(POSTGRES.getJdbcUrl());
         dataSource.setUsername(POSTGRES.getUsername());
         dataSource.setPassword(POSTGRES.getPassword());
@@ -163,6 +166,65 @@ class PostgresContainerWalletRepositoryTest {
             ).isTrue();
         } finally {
             executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void lockTimeoutReturnsWalletConcurrencyExceptionWithoutWritingRecords() throws Exception {
+        ExecutorService executorService = Executors.newSingleThreadExecutor();
+        CountDownLatch lockedLatch = new CountDownLatch(1);
+        CountDownLatch releaseLatch = new CountDownLatch(1);
+        Future<?> lockHolder = executorService.submit(() -> holdWalletBalanceLock(lockedLatch, releaseLatch));
+
+        try {
+            assertThat(lockedLatch.await(5, TimeUnit.SECONDS)).isTrue();
+
+            assertThatThrownBy(() -> repository.applyCharge(
+                    "postgres-lock-timeout-001",
+                    "postgres-lock-timeout-fingerprint-001",
+                    "wallet-001",
+                    money("5000"),
+                    "PostgreSQL lock timeout 충전",
+                    Instant.parse("2026-05-01T00:00:00Z")
+            ))
+                    .isInstanceOf(WalletConcurrencyException.class)
+                    .hasMessage("Wallet balance is busy. Please retry.");
+
+            assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("125000"));
+            assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).isEmpty();
+            assertThat(ledgerQueryService.getAuditEvents()).isEmpty();
+            assertThat(repository.findOperation("postgres-lock-timeout-001")).isEmpty();
+        } finally {
+            releaseLatch.countDown();
+            lockHolder.get(5, TimeUnit.SECONDS);
+            executorService.shutdownNow();
+        }
+    }
+
+    private Void holdWalletBalanceLock(CountDownLatch lockedLatch, CountDownLatch releaseLatch) {
+        TransactionTemplate lockTransaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
+        lockTransaction.execute(status -> {
+            JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+            jdbcTemplate.queryForObject(
+                    "select wallet_id from wallet_balances where wallet_id = ? for update",
+                    String.class,
+                    "wallet-001"
+            );
+            lockedLatch.countDown();
+            awaitRelease(releaseLatch);
+            return null;
+        });
+        return null;
+    }
+
+    private void awaitRelease(CountDownLatch releaseLatch) {
+        try {
+            if (!releaseLatch.await(5, TimeUnit.SECONDS)) {
+                throw new IllegalStateException("Timed out waiting to release wallet balance lock");
+            }
+        } catch (InterruptedException exception) {
+            Thread.currentThread().interrupt();
+            throw new IllegalStateException("Interrupted while holding wallet balance lock", exception);
         }
     }
 

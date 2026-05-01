@@ -268,3 +268,20 @@
 - 동시 송금으로 잔액을 초과하면 하나만 성공하고 나머지는 `InsufficientBalanceException`으로 실패한다.
 - 성공한 송금만 원장/감사 로그/멱등 기록을 생성한다.
 - 기준 결정은 ADR-0011을 따른다.
+
+## PostgreSQL Lock Timeout 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| 잔액 row lock 대기는 1초로 제한한다 | 경합 요청이 사용자 응답 없이 오래 대기하지 않도록 한다 | ADR-0012 |
+| lock timeout은 잔액 부족과 구분한다 | 잔액 부족은 돈이 모자란 상태이고, busy는 재시도 가능한 동시성 경합이다 | ADR-0012 |
+| busy 실패는 기록을 남기지 않는다 | lock을 얻지 못한 요청은 잔액 변경, 거래내역, 원장, 감사 로그, 멱등 기록을 만들지 않는다 | ADR-0012 |
+| API는 `WALLET_BALANCE_BUSY`를 반환한다 | 클라이언트가 재시도 가능한 상태를 구분할 수 있게 한다 | ADR-0012 |
+
+### Issue #17 구현 기준
+
+- 충전/송금 저장소 트랜잭션은 row lock 획득 전에 lock timeout을 설정한다.
+- PostgreSQL lock timeout은 `WalletConcurrencyException`으로 변환한다.
+- API는 `WalletConcurrencyException`을 `409 Conflict`, `WALLET_BALANCE_BUSY`로 반환한다.
+- Testcontainers PostgreSQL 테스트는 row lock 보유 상황에서 timeout 변환과 기록 미생성을 검증한다.
+- 기준 결정은 ADR-0012를 따른다.

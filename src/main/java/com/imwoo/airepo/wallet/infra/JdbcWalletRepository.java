@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
+import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletOperationResult;
@@ -26,8 +27,12 @@ import java.sql.Timestamp;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.function.Supplier;
 import org.springframework.context.annotation.Profile;
+import org.springframework.dao.CannotAcquireLockException;
+import org.springframework.dao.DataAccessException;
 import org.springframework.dao.EmptyResultDataAccessException;
+import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -36,6 +41,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 @Repository
 @Profile("postgres")
 public class JdbcWalletRepository implements WalletCommandRepository, WalletLedgerQueryRepository {
+
+    private static final int LOCK_TIMEOUT_MILLIS = 1000;
+    private static final String BUSY_BALANCE_MESSAGE = "Wallet balance is busy. Please retry.";
 
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -131,7 +139,7 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             String description,
             Instant occurredAt
     ) {
-        return transactionTemplate.execute(status -> {
+        return executeWithLockTimeout(() -> {
             WalletBalance currentBalance = findBalanceForUpdate(walletId);
             WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
             updateBalance(updatedBalance);
@@ -196,7 +204,7 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             String description,
             Instant occurredAt
     ) {
-        return transactionTemplate.execute(status -> {
+        return executeWithLockTimeout(() -> {
             List<WalletBalance> lockedBalances = findTransferBalancesForUpdate(sourceWalletId, targetWalletId);
             WalletBalance sourceBalance = findLockedBalance(lockedBalances, sourceWalletId);
             WalletBalance targetBalance = findLockedBalance(lockedBalances, targetWalletId);
@@ -286,6 +294,44 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             insertOperation(record);
             return record;
         });
+    }
+
+    private WalletOperationRecord executeWithLockTimeout(Supplier<WalletOperationRecord> operation) {
+        try {
+            return transactionTemplate.execute(status -> {
+                applyLockTimeout();
+                return operation.get();
+            });
+        } catch (DataAccessException exception) {
+            if (!causedByLockTimeout(exception)) {
+                throw exception;
+            }
+            throw new WalletConcurrencyException(BUSY_BALANCE_MESSAGE, exception);
+        }
+    }
+
+    private boolean causedByLockTimeout(DataAccessException exception) {
+        if (exception instanceof CannotAcquireLockException) {
+            return true;
+        }
+
+        Throwable cause = exception;
+        while (cause != null) {
+            if (cause instanceof SQLException sqlException && "55P03".equals(sqlException.getSQLState())) {
+                return true;
+            }
+            cause = cause.getCause();
+        }
+
+        return false;
+    }
+
+    private void applyLockTimeout() {
+        try {
+            jdbcTemplate.execute("set local lock_timeout = '" + LOCK_TIMEOUT_MILLIS + "ms'");
+        } catch (BadSqlGrammarException exception) {
+            jdbcTemplate.execute("set lock_timeout " + LOCK_TIMEOUT_MILLIS);
+        }
     }
 
     private WalletBalance findBalanceForUpdate(String walletId) {

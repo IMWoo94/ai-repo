@@ -5,6 +5,7 @@ import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletAccountNotQueryableException;
+import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
 import java.time.Clock;
 import java.time.Instant;
@@ -50,6 +51,11 @@ public class WalletApiExceptionHandler {
     @ExceptionHandler(IdempotencyKeyConflictException.class)
     ResponseEntity<ApiErrorResponse> handleIdempotencyKeyConflict(IdempotencyKeyConflictException exception) {
         return error(HttpStatus.CONFLICT, "IDEMPOTENCY_KEY_CONFLICT", exception.getMessage());
+    }
+
+    @ExceptionHandler(WalletConcurrencyException.class)
+    ResponseEntity<ApiErrorResponse> handleWalletConcurrency(WalletConcurrencyException exception) {
+        return error(HttpStatus.CONFLICT, "WALLET_BALANCE_BUSY", exception.getMessage());
     }
 
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
