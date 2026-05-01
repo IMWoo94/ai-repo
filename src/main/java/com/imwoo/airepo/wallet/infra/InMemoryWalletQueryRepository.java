@@ -74,6 +74,11 @@ public class InMemoryWalletQueryRepository implements WalletQueryRepository {
     }
 
     @Override
+    public Optional<Member> findMember(String memberId) {
+        return Optional.ofNullable(members.get(memberId));
+    }
+
+    @Override
     public Optional<WalletAccount> findWalletAccount(String walletId) {
         return Optional.ofNullable(walletAccounts.get(walletId));
     }
@@ -86,9 +91,5 @@ public class InMemoryWalletQueryRepository implements WalletQueryRepository {
     @Override
     public List<TransactionHistoryItem> findTransactions(String walletId) {
         return transactions.getOrDefault(walletId, List.of());
-    }
-
-    public Optional<Member> findMember(String memberId) {
-        return Optional.ofNullable(members.get(memberId));
     }
 }

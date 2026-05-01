@@ -13,4 +13,8 @@ public record Member(String memberId, MemberStatus status, Instant createdAt) {
             throw new IllegalArgumentException("memberId must not be blank");
         }
     }
+
+    public boolean active() {
+        return status == MemberStatus.ACTIVE;
+    }
 }

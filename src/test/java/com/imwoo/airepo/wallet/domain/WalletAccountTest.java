@@ -33,6 +33,18 @@ class WalletAccountTest {
     }
 
     @Test
+    void closedWalletIsNotQueryable() {
+        WalletAccount walletAccount = new WalletAccount(
+                "wallet-001",
+                "member-001",
+                WalletAccountStatus.CLOSED,
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(walletAccount.queryable()).isFalse();
+    }
+
+    @Test
     void rejectsBlankMemberId() {
         assertThatThrownBy(() -> new WalletAccount(
                 "wallet-001",

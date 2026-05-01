@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.application;
 
+import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.WalletAccount;
 import com.imwoo.airepo.wallet.domain.WalletBalance;
@@ -42,6 +43,11 @@ public class InMemoryWalletQueryService implements WalletQueryService {
         WalletAccount walletAccount = walletQueryRepository.findWalletAccount(walletId)
                 .orElseThrow(() -> walletNotFound(walletId));
         if (!walletAccount.queryable()) {
+            throw new WalletAccountNotQueryableException(walletId);
+        }
+        Member owner = walletQueryRepository.findMember(walletAccount.memberId())
+                .orElseThrow(() -> new WalletAccountNotQueryableException(walletId));
+        if (!owner.active()) {
             throw new WalletAccountNotQueryableException(walletId);
         }
         return walletAccount;
