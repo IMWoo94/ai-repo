@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
+import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -44,7 +45,10 @@ import org.springframework.transaction.support.TransactionTemplate;
 
 @Repository
 @Profile("postgres")
-public class JdbcWalletRepository implements WalletCommandRepository, WalletLedgerQueryRepository {
+public class JdbcWalletRepository implements
+        WalletCommandRepository,
+        WalletLedgerQueryRepository,
+        OperationOutboxRelayRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
     private static final String BUSY_BALANCE_MESSAGE = "Wallet balance is busy. Please retry.";
@@ -137,12 +141,59 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
         return jdbcTemplate.query(
                 """
                         select outbox_event_id, operation_id, event_type, aggregate_type,
-                               aggregate_id, payload, status, occurred_at
+                               aggregate_id, payload, status, occurred_at,
+                               attempt_count, published_at, last_error
                         from operation_outbox_events
                         where operation_id = ?
                         """,
                 operationOutboxEventMapper(),
                 operationId
+        );
+    }
+
+    @Override
+    public List<OperationOutboxEvent> findPendingOutboxEvents(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select outbox_event_id, operation_id, event_type, aggregate_type,
+                               aggregate_id, payload, status, occurred_at,
+                               attempt_count, published_at, last_error
+                        from operation_outbox_events
+                        where status = ?
+                        order by occurred_at, outbox_event_id
+                        limit ?
+                        """,
+                operationOutboxEventMapper(),
+                OperationOutboxStatus.PENDING.name(),
+                limit
+        );
+    }
+
+    @Override
+    public void markOutboxEventPublished(String outboxEventId, Instant publishedAt) {
+        jdbcTemplate.update(
+                """
+                        update operation_outbox_events
+                        set status = ?, published_at = ?, last_error = null
+                        where outbox_event_id = ?
+                        """,
+                OperationOutboxStatus.PUBLISHED.name(),
+                timestamp(publishedAt),
+                outboxEventId
+        );
+    }
+
+    @Override
+    public void markOutboxEventFailed(String outboxEventId, String lastError) {
+        jdbcTemplate.update(
+                """
+                        update operation_outbox_events
+                        set status = ?, attempt_count = attempt_count + 1, last_error = ?
+                        where outbox_event_id = ?
+                        """,
+                OperationOutboxStatus.FAILED.name(),
+                lastError,
+                outboxEventId
         );
     }
 
@@ -618,9 +669,10 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 """
                         insert into operation_outbox_events (
                             outbox_event_id, operation_id, event_type, aggregate_type,
-                            aggregate_id, payload, status, occurred_at
+                            aggregate_id, payload, status, occurred_at,
+                            attempt_count, published_at, last_error
                         )
-                        values (?, ?, ?, ?, ?, ?, ?, ?)
+                        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                 nextId("outbox", "outbox_event_id_seq"),
                 result.operationId(),
@@ -629,7 +681,10 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 result.operationId(),
                 outboxPayload(result),
                 OperationOutboxStatus.PENDING.name(),
-                timestamp(result.occurredAt())
+                timestamp(result.occurredAt()),
+                0,
+                null,
+                null
         );
     }
 
@@ -748,7 +803,10 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 resultSet.getString("aggregate_id"),
                 resultSet.getString("payload"),
                 OperationOutboxStatus.valueOf(resultSet.getString("status")),
-                instant(resultSet, "occurred_at")
+                instant(resultSet, "occurred_at"),
+                resultSet.getInt("attempt_count"),
+                nullableInstant(resultSet, "published_at"),
+                resultSet.getString("last_error")
         );
     }
 
@@ -788,5 +846,13 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
 
     private Instant instant(ResultSet resultSet, String columnName) throws SQLException {
         return resultSet.getTimestamp(columnName).toInstant();
+    }
+
+    private Instant nullableInstant(ResultSet resultSet, String columnName) throws SQLException {
+        Timestamp timestamp = resultSet.getTimestamp(columnName);
+        if (timestamp == null) {
+            return null;
+        }
+        return timestamp.toInstant();
     }
 }

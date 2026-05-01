@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.infra;
 
+import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
@@ -33,7 +34,10 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 @Profile("!postgres")
-public class InMemoryWalletRepository implements WalletCommandRepository, WalletLedgerQueryRepository {
+public class InMemoryWalletRepository implements
+        WalletCommandRepository,
+        WalletLedgerQueryRepository,
+        OperationOutboxRelayRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
 
@@ -164,6 +168,56 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     @Override
     public synchronized List<OperationOutboxEvent> findOperationOutboxEvents(String operationId) {
         return List.copyOf(operationOutboxEvents.getOrDefault(operationId, List.of()));
+    }
+
+    @Override
+    public synchronized List<OperationOutboxEvent> findPendingOutboxEvents(int limit) {
+        return operationOutboxEvents.values().stream()
+                .flatMap(List::stream)
+                .filter(outboxEvent -> outboxEvent.status() == OperationOutboxStatus.PENDING)
+                .sorted((left, right) -> {
+                    int occurredComparison = left.occurredAt().compareTo(right.occurredAt());
+                    if (occurredComparison != 0) {
+                        return occurredComparison;
+                    }
+                    return left.outboxEventId().compareTo(right.outboxEventId());
+                })
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized void markOutboxEventPublished(String outboxEventId, Instant publishedAt) {
+        replaceOutboxEvent(outboxEventId, event -> new OperationOutboxEvent(
+                event.outboxEventId(),
+                event.operationId(),
+                event.eventType(),
+                event.aggregateType(),
+                event.aggregateId(),
+                event.payload(),
+                OperationOutboxStatus.PUBLISHED,
+                event.occurredAt(),
+                event.attemptCount(),
+                publishedAt,
+                event.lastError()
+        ));
+    }
+
+    @Override
+    public synchronized void markOutboxEventFailed(String outboxEventId, String lastError) {
+        replaceOutboxEvent(outboxEventId, event -> new OperationOutboxEvent(
+                event.outboxEventId(),
+                event.operationId(),
+                event.eventType(),
+                event.aggregateType(),
+                event.aggregateId(),
+                event.payload(),
+                OperationOutboxStatus.FAILED,
+                event.occurredAt(),
+                event.attemptCount() + 1,
+                event.publishedAt(),
+                lastError
+        ));
     }
 
     @Override
@@ -349,8 +403,28 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
                         result.operationId(),
                         outboxPayload(result),
                         OperationOutboxStatus.PENDING,
-                        result.occurredAt()
+                        result.occurredAt(),
+                        0,
+                        null,
+                        null
                 ));
+    }
+
+    private void replaceOutboxEvent(
+            String outboxEventId,
+            java.util.function.Function<OperationOutboxEvent, OperationOutboxEvent> replacer
+    ) {
+        operationOutboxEvents.replaceAll((operationId, events) -> {
+            List<OperationOutboxEvent> replacedEvents = new ArrayList<>();
+            for (OperationOutboxEvent event : events) {
+                if (event.outboxEventId().equals(outboxEventId)) {
+                    replacedEvents.add(replacer.apply(event));
+                } else {
+                    replacedEvents.add(event);
+                }
+            }
+            return replacedEvents;
+        });
     }
 
     private String outboxPayload(WalletOperationResult result) {

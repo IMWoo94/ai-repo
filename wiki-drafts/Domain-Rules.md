@@ -322,3 +322,22 @@
 - H2 빠른 저장소 테스트용 `schema.sql`에도 같은 테이블을 반영한다.
 - relay/publisher와 메시지 브로커는 후속 작업으로 남긴다.
 - 기준 결정은 ADR-0014를 따른다.
+
+## Outbox Relay 상태 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| 신규 outbox event는 `PENDING`이다 | 아직 외부 브로커로 발행되지 않은 상태이다 | ADR-0015 |
+| 발행 성공 event는 `PUBLISHED`가 된다 | relay가 발행 완료 시간을 기록한다 | ADR-0015 |
+| 발행 실패 event는 `FAILED`가 된다 | 실패 횟수와 마지막 오류를 기록한다 | ADR-0015 |
+| relay 상태 전이는 돈 이동 결과를 바꾸지 않는다 | 지갑 잔액, 원장, 감사 기록과 outbox 발행 상태를 분리한다 | ADR-0015 |
+| 병렬 claiming은 아직 범위 밖이다 | `SKIP LOCKED`와 다중 relay 처리는 후속 정책으로 남긴다 | ADR-0015 |
+
+### Issue #23 구현 기준
+
+- pending outbox event를 제한 개수만큼 조회한다.
+- 발행 성공 시 `PUBLISHED`, `publishedAt`을 기록한다.
+- 발행 실패 시 `FAILED`, `attemptCount + 1`, `lastError`를 기록한다.
+- PostgreSQL은 Flyway `V5__add_outbox_relay_state.sql`로 컬럼을 추가한다.
+- H2 빠른 저장소 테스트용 `schema.sql`에도 같은 컬럼을 반영한다.
+- 기준 결정은 ADR-0015를 따른다.

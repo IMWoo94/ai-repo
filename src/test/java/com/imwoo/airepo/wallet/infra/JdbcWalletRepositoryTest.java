@@ -104,6 +104,9 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.aggregateType()).isEqualTo("WALLET_OPERATION");
                     assertThat(outboxEvent.aggregateId()).isEqualTo("op-001");
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
+                    assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isNull();
                     assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
                 });
         assertThat(repository.findOperation("charge-db-001")).isPresent();
@@ -124,6 +127,43 @@ class JdbcWalletRepositoryTest {
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
         assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
+    }
+
+    @Test
+    void outboxRelayStateTransitions() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+
+        assertThat(repository.findPendingOutboxEvents(10))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-001"));
+
+        repository.markOutboxEventPublished("outbox-001", Instant.parse("2026-05-01T00:01:00Z"));
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
+                    assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
+    }
+
+    @Test
+    void outboxRelayFailureIncrementsAttemptCount() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.FAILED);
+                    assertThat(outboxEvent.attemptCount()).isEqualTo(1);
+                    assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+        assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
     }
 
     @Test
