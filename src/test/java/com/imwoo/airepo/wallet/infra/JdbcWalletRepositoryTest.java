@@ -10,6 +10,7 @@ import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
 import java.math.BigDecimal;
@@ -85,6 +86,16 @@ class JdbcWalletRepositoryTest {
                 });
         assertThat(ledgerQueryService.getAuditEvents()).singleElement()
                 .satisfies(auditEvent -> assertThat(auditEvent.operationId()).isEqualTo("op-001"));
+        assertThat(repository.findOperationStepLogs("op-001"))
+                .extracting(stepLog -> stepLog.step())
+                .containsExactly(
+                        OperationStep.BALANCE_LOCKED,
+                        OperationStep.BALANCE_UPDATED,
+                        OperationStep.TRANSACTION_RECORDED,
+                        OperationStep.LEDGER_RECORDED,
+                        OperationStep.AUDIT_RECORDED,
+                        OperationStep.IDEMPOTENCY_RECORDED
+                );
         assertThat(repository.findOperation("charge-db-001")).isPresent();
     }
 
@@ -101,6 +112,7 @@ class JdbcWalletRepositoryTest {
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
+        assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
     }
 
     @Test
@@ -137,6 +149,16 @@ class JdbcWalletRepositoryTest {
                     assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.CREDIT);
                     assertThat(ledgerEntry.balanceAfter()).isEqualTo(money("55000"));
                 });
+        assertThat(repository.findOperationStepLogs(result.operation().operationId()))
+                .extracting(stepLog -> stepLog.step())
+                .containsExactly(
+                        OperationStep.BALANCE_LOCKED,
+                        OperationStep.BALANCE_UPDATED,
+                        OperationStep.TRANSACTION_RECORDED,
+                        OperationStep.LEDGER_RECORDED,
+                        OperationStep.AUDIT_RECORDED,
+                        OperationStep.IDEMPOTENCY_RECORDED
+                );
     }
 
     private Money money(String amount) {

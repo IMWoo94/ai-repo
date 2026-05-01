@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
+import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -41,9 +42,24 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
                 .toList();
     }
 
+    @Override
+    public List<OperationStepLog> getOperationStepLogs(String operationId) {
+        validateOperationId(operationId);
+        return walletLedgerQueryRepository.findOperationStepLogs(operationId).stream()
+                .sorted(Comparator.comparing(OperationStepLog::occurredAt)
+                        .thenComparing(OperationStepLog::operationStepLogId))
+                .toList();
+    }
+
     private void validateWalletId(String walletId) {
         if (walletId == null || walletId.isBlank()) {
             throw new InvalidWalletIdException("walletId must not be blank");
+        }
+    }
+
+    private void validateOperationId(String operationId) {
+        if (operationId == null || operationId.isBlank()) {
+            throw new InvalidWalletOperationException("operationId must not be blank");
         }
     }
 }

@@ -13,6 +13,8 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationStep;
+import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -116,6 +118,19 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
     }
 
     @Override
+    public List<OperationStepLog> findOperationStepLogs(String operationId) {
+        return jdbcTemplate.query(
+                """
+                        select operation_step_log_id, operation_id, step, status, occurred_at, detail
+                        from operation_step_logs
+                        where operation_id = ?
+                        """,
+                operationStepLogMapper(),
+                operationId
+        );
+    }
+
+    @Override
     public Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
         return queryOptional(
                 """
@@ -142,9 +157,21 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
         return executeWithLockTimeout(() -> {
             WalletBalance currentBalance = findBalanceForUpdate(walletId);
             WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
-            updateBalance(updatedBalance);
-
             String operationId = nextId("op", "operation_id_seq");
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.BALANCE_LOCKED,
+                    occurredAt,
+                    "Balance locked for wallet " + walletId
+            );
+            updateBalance(updatedBalance);
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.BALANCE_UPDATED,
+                    occurredAt,
+                    "Balance updated for wallet " + walletId
+            );
+
             String transactionId = nextId("txn", "transaction_id_seq");
             insertTransaction(
                     transactionId,
@@ -155,6 +182,12 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     TransactionDirection.CREDIT,
                     money,
                     description
+            );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.TRANSACTION_RECORDED,
+                    occurredAt,
+                    "Transaction history recorded for wallet " + walletId
             );
             insertLedgerEntry(
                     nextId("ledger", "ledger_entry_id_seq"),
@@ -167,12 +200,24 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     updatedBalance.money(),
                     description
             );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.LEDGER_RECORDED,
+                    occurredAt,
+                    "Ledger entry recorded for wallet " + walletId
+            );
             insertAuditEvent(
                     nextId("audit", "audit_event_id_seq"),
                     operationId,
                     AuditEventType.CHARGE_COMPLETED,
                     occurredAt,
                     "Charge completed for wallet " + walletId
+            );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.AUDIT_RECORDED,
+                    occurredAt,
+                    "Audit event recorded for operation " + operationId
             );
 
             WalletOperationResult result = new WalletOperationResult(
@@ -190,6 +235,12 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             );
             WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
             insertOperation(record);
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.IDEMPOTENCY_RECORDED,
+                    occurredAt,
+                    "Idempotency record stored for operation " + operationId
+            );
             return record;
         });
     }
@@ -212,6 +263,13 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 throw new InsufficientBalanceException(sourceWalletId);
             }
 
+            String operationId = nextId("op", "operation_id_seq");
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.BALANCE_LOCKED,
+                    occurredAt,
+                    "Balances locked for transfer " + sourceWalletId + " to " + targetWalletId
+            );
             WalletBalance updatedSourceBalance = new WalletBalance(
                     sourceWalletId,
                     sourceBalance.money().subtract(money),
@@ -224,8 +282,13 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             );
             updateBalance(updatedSourceBalance);
             updateBalance(updatedTargetBalance);
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.BALANCE_UPDATED,
+                    occurredAt,
+                    "Balances updated for transfer " + sourceWalletId + " to " + targetWalletId
+            );
 
-            String operationId = nextId("op", "operation_id_seq");
             String sourceTransactionId = nextId("txn", "transaction_id_seq");
             insertTransaction(
                     sourceTransactionId,
@@ -246,6 +309,12 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     TransactionDirection.CREDIT,
                     money,
                     description
+            );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.TRANSACTION_RECORDED,
+                    occurredAt,
+                    "Transaction history recorded for transfer " + sourceWalletId + " to " + targetWalletId
             );
             insertLedgerEntry(
                     nextId("ledger", "ledger_entry_id_seq"),
@@ -269,12 +338,24 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     updatedTargetBalance.money(),
                     description
             );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.LEDGER_RECORDED,
+                    occurredAt,
+                    "Ledger entries recorded for transfer " + sourceWalletId + " to " + targetWalletId
+            );
             insertAuditEvent(
                     nextId("audit", "audit_event_id_seq"),
                     operationId,
                     AuditEventType.TRANSFER_COMPLETED,
                     occurredAt,
                     "Transfer completed from " + sourceWalletId + " to " + targetWalletId
+            );
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.AUDIT_RECORDED,
+                    occurredAt,
+                    "Audit event recorded for operation " + operationId
             );
 
             WalletOperationResult result = new WalletOperationResult(
@@ -292,6 +373,12 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
             );
             WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
             insertOperation(record);
+            insertOperationStepLog(
+                    operationId,
+                    OperationStep.IDEMPOTENCY_RECORDED,
+                    occurredAt,
+                    "Idempotency record stored for operation " + operationId
+            );
             return record;
         });
     }
@@ -486,6 +573,28 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
         );
     }
 
+    private void insertOperationStepLog(
+            String operationId,
+            OperationStep step,
+            Instant occurredAt,
+            String detail
+    ) {
+        jdbcTemplate.update(
+                """
+                        insert into operation_step_logs (
+                            operation_step_log_id, operation_id, step, status, occurred_at, detail
+                        )
+                        values (?, ?, ?, ?, ?, ?)
+                        """,
+                nextId("step", "operation_step_log_id_seq"),
+                operationId,
+                step.name(),
+                TransactionStatus.COMPLETED.name(),
+                timestamp(occurredAt),
+                detail
+        );
+    }
+
     private String nextId(String prefix, String sequenceName) {
         Long nextValue = jdbcTemplate.queryForObject("select nextval('" + sequenceName + "')", Long.class);
         return "%s-%03d".formatted(prefix, nextValue);
@@ -556,6 +665,17 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 resultSet.getString("audit_event_id"),
                 resultSet.getString("operation_id"),
                 AuditEventType.valueOf(resultSet.getString("type")),
+                instant(resultSet, "occurred_at"),
+                resultSet.getString("detail")
+        );
+    }
+
+    private RowMapper<OperationStepLog> operationStepLogMapper() {
+        return (resultSet, rowNumber) -> new OperationStepLog(
+                resultSet.getString("operation_step_log_id"),
+                resultSet.getString("operation_id"),
+                OperationStep.valueOf(resultSet.getString("step")),
+                TransactionStatus.valueOf(resultSet.getString("status")),
                 instant(resultSet, "occurred_at"),
                 resultSet.getString("detail")
         );

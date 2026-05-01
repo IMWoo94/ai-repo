@@ -72,7 +72,17 @@ CREATE TABLE IF NOT EXISTS audit_events (
     detail VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operation_step_logs (
+    operation_step_log_id VARCHAR(64) PRIMARY KEY,
+    operation_id VARCHAR(64) NOT NULL,
+    step VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    detail VARCHAR(255) NOT NULL
+);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS audit_event_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS operation_step_log_id_seq START WITH 1;

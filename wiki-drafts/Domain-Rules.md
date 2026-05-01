@@ -285,3 +285,21 @@
 - API는 `WalletConcurrencyException`을 `409 Conflict`, `WALLET_BALANCE_BUSY`로 반환한다.
 - Testcontainers PostgreSQL 테스트는 row lock 보유 상황에서 timeout 변환과 기록 미생성을 검증한다.
 - 기준 결정은 ADR-0012를 따른다.
+
+## 논리적 트랜잭션 단계 로그 규칙
+
+| 규칙 | 설명 | 상태 |
+| --- | --- | --- |
+| step log는 처리 과정 관측 기록이다 | 사용자 거래내역, 원장, 감사 이벤트와 책임을 분리한다 | ADR-0013 |
+| 성공한 명령은 단계별 완료 기록을 남긴다 | 모놀리스 내부에서도 논리적 트랜잭션 진행 순서를 확인한다 | ADR-0013 |
+| 멱등 재시도는 step log를 중복 생성하지 않는다 | 재시도는 기존 operation 결과로 수렴한다 | ADR-0013 |
+| 실패 요청은 step log를 남기지 않는다 | 1차 범위에서는 성공 단계의 완료 증거만 기록한다 | ADR-0013 |
+| 단계 경계는 MSA 전환 후보가 된다 | 추후 Saga step 또는 Outbox event 후보를 식별한다 | ADR-0013 |
+
+### Issue #19 구현 기준
+
+- 충전/송금 성공 시 `BALANCE_LOCKED`, `BALANCE_UPDATED`, `TRANSACTION_RECORDED`, `LEDGER_RECORDED`, `AUDIT_RECORDED`, `IDEMPOTENCY_RECORDED` 순서로 기록한다.
+- `GET /api/v1/operations/{operationId}/step-logs`로 단계 로그를 조회한다.
+- PostgreSQL은 Flyway `V3__create_operation_step_logs.sql`로 테이블을 추가한다.
+- H2 빠른 저장소 테스트용 `schema.sql`에도 같은 테이블을 반영한다.
+- 기준 결정은 ADR-0013을 따른다.

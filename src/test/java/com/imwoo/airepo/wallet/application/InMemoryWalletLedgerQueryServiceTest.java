@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
 import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
@@ -49,11 +50,12 @@ class InMemoryWalletLedgerQueryServiceTest {
     void idempotentRetryDoesNotCreateDuplicatedLedgerEntry() {
         WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전");
 
-        commandService.charge("wallet-001", command);
+        WalletCommandResult first = commandService.charge("wallet-001", command);
         commandService.charge("wallet-001", command);
 
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
+        assertThat(ledgerQueryService.getOperationStepLogs(first.operation().operationId())).hasSize(6);
     }
 
     @Test
@@ -70,6 +72,25 @@ class InMemoryWalletLedgerQueryServiceTest {
                     assertThat(events.get(0).type().name()).isEqualTo("TRANSFER_COMPLETED");
                     assertThat(events.get(1).type().name()).isEqualTo("CHARGE_COMPLETED");
                 });
+    }
+
+    @Test
+    void returnsOperationStepLogsByProcessOrder() {
+        WalletCommandResult result = commandService.charge(
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
+        );
+
+        assertThat(ledgerQueryService.getOperationStepLogs(result.operation().operationId()))
+                .extracting(stepLog -> stepLog.step())
+                .containsExactly(
+                        OperationStep.BALANCE_LOCKED,
+                        OperationStep.BALANCE_UPDATED,
+                        OperationStep.TRANSACTION_RECORDED,
+                        OperationStep.LEDGER_RECORDED,
+                        OperationStep.AUDIT_RECORDED,
+                        OperationStep.IDEMPOTENCY_RECORDED
+                );
     }
 
     @Test
