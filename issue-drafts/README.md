@@ -24,6 +24,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/15
 - `0009-postgresql-lock-timeout-policy.md`: PostgreSQL lock timeout과 busy wallet 오류 정책 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/17
+- `0010-operation-step-log.md`: 논리적 트랜잭션 단계 로그 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/19
 
 ## GitHub CLI로 생성
 

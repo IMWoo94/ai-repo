@@ -61,6 +61,7 @@ SPRING_PROFILES_ACTIVE=postgres \
 
 - `V1__create_wallet_schema.sql`: 회원, 지갑, 잔액, 거래내역, 멱등키, 원장, 감사 로그 스키마
 - `V2__seed_wallet_fixture.sql`: 학습용 회원, 지갑, 잔액, 거래내역 샘플 데이터
+- `V3__create_operation_step_logs.sql`: 충전/송금 논리적 트랜잭션 단계 로그 스키마
 
 `src/main/resources/db/postgresql/schema.sql`과 `src/main/resources/db/postgresql/fixtures.sql`은 H2 기반 빠른 저장소 테스트와 수동 비교를 위해 일시적으로 유지합니다. PostgreSQL 프로필의 기준은 Flyway migration입니다.
 

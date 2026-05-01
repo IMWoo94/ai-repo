@@ -10,6 +10,8 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationStep;
+import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -39,11 +41,13 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     private final Map<String, List<TransactionHistoryItem>> transactions = new HashMap<>();
     private final Map<String, List<LedgerEntry>> ledgerEntries = new HashMap<>();
     private final List<AuditEvent> auditEvents = new ArrayList<>();
+    private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
     private int ledgerEntrySequence = 0;
     private int auditEventSequence = 0;
+    private int operationStepLogSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -149,6 +153,11 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     }
 
     @Override
+    public synchronized List<OperationStepLog> findOperationStepLogs(String operationId) {
+        return List.copyOf(operationStepLogs.getOrDefault(operationId, List.of()));
+    }
+
+    @Override
     public synchronized Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
         return Optional.ofNullable(operations.get(idempotencyKey));
     }
@@ -166,6 +175,10 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
         balances.put(walletId, updatedBalance);
 
+        String operationId = nextOperationId();
+        addStepLog(operationId, OperationStep.BALANCE_LOCKED, occurredAt, "Balance locked for wallet " + walletId);
+        addStepLog(operationId, OperationStep.BALANCE_UPDATED, occurredAt, "Balance updated for wallet " + walletId);
+
         TransactionHistoryItem transaction = transaction(
                 walletId,
                 occurredAt,
@@ -175,7 +188,8 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
                 description
         );
         transactions.computeIfAbsent(walletId, ignored -> new ArrayList<>()).add(transaction);
-        String operationId = nextOperationId();
+        addStepLog(operationId, OperationStep.TRANSACTION_RECORDED, occurredAt, "Transaction history recorded for wallet " + walletId);
+
         LedgerEntry ledgerEntry = ledgerEntry(
                 operationId,
                 walletId,
@@ -187,12 +201,14 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
                 description
         );
         ledgerEntries.computeIfAbsent(walletId, ignored -> new ArrayList<>()).add(ledgerEntry);
+        addStepLog(operationId, OperationStep.LEDGER_RECORDED, occurredAt, "Ledger entry recorded for wallet " + walletId);
         auditEvents.add(auditEvent(
                 operationId,
                 AuditEventType.CHARGE_COMPLETED,
                 occurredAt,
                 "Charge completed for wallet " + walletId
         ));
+        addStepLog(operationId, OperationStep.AUDIT_RECORDED, occurredAt, "Audit event recorded for operation " + operationId);
 
         WalletOperationResult result = new WalletOperationResult(
                 operationId,
@@ -209,6 +225,7 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         );
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
         operations.put(idempotencyKey, record);
+        addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         return record;
     }
 
@@ -224,6 +241,9 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     ) {
         WalletBalance sourceBalance = balances.get(sourceWalletId);
         WalletBalance targetBalance = balances.get(targetWalletId);
+        String operationId = nextOperationId();
+        addStepLog(operationId, OperationStep.BALANCE_LOCKED, occurredAt, "Balances locked for transfer " + sourceWalletId + " to " + targetWalletId);
+
         WalletBalance updatedSourceBalance = new WalletBalance(
                 sourceWalletId,
                 sourceBalance.money().subtract(money),
@@ -236,6 +256,7 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         );
         balances.put(sourceWalletId, updatedSourceBalance);
         balances.put(targetWalletId, updatedTargetBalance);
+        addStepLog(operationId, OperationStep.BALANCE_UPDATED, occurredAt, "Balances updated for transfer " + sourceWalletId + " to " + targetWalletId);
 
         TransactionHistoryItem sourceTransaction = transaction(
                 sourceWalletId,
@@ -255,7 +276,8 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         );
         transactions.computeIfAbsent(sourceWalletId, ignored -> new ArrayList<>()).add(sourceTransaction);
         transactions.computeIfAbsent(targetWalletId, ignored -> new ArrayList<>()).add(targetTransaction);
-        String operationId = nextOperationId();
+        addStepLog(operationId, OperationStep.TRANSACTION_RECORDED, occurredAt, "Transaction history recorded for transfer " + sourceWalletId + " to " + targetWalletId);
+
         LedgerEntry sourceLedgerEntry = ledgerEntry(
                 operationId,
                 sourceWalletId,
@@ -278,12 +300,14 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         );
         ledgerEntries.computeIfAbsent(sourceWalletId, ignored -> new ArrayList<>()).add(sourceLedgerEntry);
         ledgerEntries.computeIfAbsent(targetWalletId, ignored -> new ArrayList<>()).add(targetLedgerEntry);
+        addStepLog(operationId, OperationStep.LEDGER_RECORDED, occurredAt, "Ledger entries recorded for transfer " + sourceWalletId + " to " + targetWalletId);
         auditEvents.add(auditEvent(
                 operationId,
                 AuditEventType.TRANSFER_COMPLETED,
                 occurredAt,
                 "Transfer completed from " + sourceWalletId + " to " + targetWalletId
         ));
+        addStepLog(operationId, OperationStep.AUDIT_RECORDED, occurredAt, "Audit event recorded for operation " + operationId);
 
         WalletOperationResult result = new WalletOperationResult(
                 operationId,
@@ -300,7 +324,20 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
         );
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
         operations.put(idempotencyKey, record);
+        addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         return record;
+    }
+
+    private void addStepLog(String operationId, OperationStep step, Instant occurredAt, String detail) {
+        operationStepLogs.computeIfAbsent(operationId, ignored -> new ArrayList<>())
+                .add(new OperationStepLog(
+                        nextOperationStepLogId(),
+                        operationId,
+                        step,
+                        TransactionStatus.COMPLETED,
+                        occurredAt,
+                        detail
+                ));
     }
 
     private LedgerEntry ledgerEntry(
@@ -379,5 +416,10 @@ public class InMemoryWalletRepository implements WalletCommandRepository, Wallet
     private String nextAuditEventId() {
         auditEventSequence += 1;
         return "audit-%03d".formatted(auditEventSequence);
+    }
+
+    private String nextOperationStepLogId() {
+        operationStepLogSequence += 1;
+        return "step-%03d".formatted(operationStepLogSequence);
     }
 }
