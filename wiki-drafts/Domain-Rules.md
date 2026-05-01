@@ -335,6 +335,7 @@
 | 실패 event는 재시도 예정 시각을 가진다 | `nextRetryAt` 이전에는 retry claim 대상이 아니다 | ADR-0016 |
 | 처리 중 event는 lease를 가진다 | `PROCESSING` event는 `claimedAt`, `leaseExpiresAt`으로 회수 가능 시각을 가진다 | ADR-0017 |
 | lease 만료 event는 재claim 가능하다 | worker crash로 고착된 event를 다시 처리 대상으로 가져올 수 있다 | ADR-0017 |
+| 반복 실패 event는 수동 확인 상태로 격리한다 | 3회 실패한 event는 `MANUAL_REVIEW`가 되고 자동 claim 대상에서 제외된다 | ADR-0018 |
 
 ### Issue #23 구현 기준
 
@@ -364,3 +365,12 @@
 - 발행 성공/실패 시 lease 필드는 초기화한다.
 - PostgreSQL은 Flyway `V7__add_outbox_processing_lease.sql`로 lease 컬럼을 추가한다.
 - 기준 결정은 ADR-0017을 따른다.
+
+### Issue #31 구현 기준
+
+- outbox event 자동 발행 시도는 최대 3회로 제한한다.
+- 1~2회 실패 event는 `FAILED` 상태로 남고 `nextRetryAt` 이후 다시 claim할 수 있다.
+- 3회 실패 event는 `MANUAL_REVIEW` 상태로 전이한다.
+- `MANUAL_REVIEW` event는 자동 claim 대상이 아니다.
+- `MANUAL_REVIEW` event는 `lastError`와 `attemptCount`를 유지한다.
+- 기준 결정은 ADR-0018을 따른다.

@@ -225,15 +225,26 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt) {
+    public void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt, int maxAttempts) {
         jdbcTemplate.update(
                 """
                         update operation_outbox_events
-                        set status = ?, attempt_count = attempt_count + 1, next_retry_at = ?,
+                        set status = case
+                                when attempt_count + 1 >= ? then ?
+                                else ?
+                            end,
+                            attempt_count = attempt_count + 1,
+                            next_retry_at = case
+                                when attempt_count + 1 >= ? then null
+                                else ?
+                            end,
                             claimed_at = null, lease_expires_at = null, published_at = null, last_error = ?
                         where outbox_event_id = ?
                         """,
+                maxAttempts,
+                OperationOutboxStatus.MANUAL_REVIEW.name(),
                 OperationOutboxStatus.FAILED.name(),
+                maxAttempts,
                 timestamp(nextRetryAt),
                 lastError,
                 outboxEventId

@@ -153,6 +153,43 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void movesEventToManualReviewAfterMaxAttempts() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+
+        OperationOutboxRelayService secondAttemptRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:01:31Z"), ZoneOffset.UTC),
+                repository
+        );
+        secondAttemptRelayService.claimReadyEvents(10);
+        secondAttemptRelayService.markFailed("outbox-001", "broker unavailable");
+
+        OperationOutboxRelayService thirdAttemptRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:02:02Z"), ZoneOffset.UTC),
+                repository
+        );
+        thirdAttemptRelayService.claimReadyEvents(10);
+        thirdAttemptRelayService.markFailed("outbox-001", "broker unavailable");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW);
+                    assertThat(outboxEvent.attemptCount()).isEqualTo(3);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isNull();
+                    assertThat(outboxEvent.leaseExpiresAt()).isNull();
+                    assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
+                });
+
+        OperationOutboxRelayService laterRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:10:00Z"), ZoneOffset.UTC),
+                repository
+        );
+        assertThat(laterRelayService.claimReadyEvents(10)).isEmpty();
+    }
+
+    @Test
     void rejectsInvalidRelayInputs() {
         assertThatThrownBy(() -> relayService.getPendingEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)

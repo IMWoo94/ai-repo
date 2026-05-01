@@ -228,7 +228,12 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
-    public synchronized void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt) {
+    public synchronized void markOutboxEventFailed(
+            String outboxEventId,
+            String lastError,
+            Instant nextRetryAt,
+            int maxAttempts
+    ) {
         replaceOutboxEvent(outboxEventId, event -> new OperationOutboxEvent(
                 event.outboxEventId(),
                 event.operationId(),
@@ -236,10 +241,10 @@ public class InMemoryWalletRepository implements
                 event.aggregateType(),
                 event.aggregateId(),
                 event.payload(),
-                OperationOutboxStatus.FAILED,
+                failedStatus(event, maxAttempts),
                 event.occurredAt(),
                 event.attemptCount() + 1,
-                nextRetryAt,
+                failedNextRetryAt(event, nextRetryAt, maxAttempts),
                 null,
                 null,
                 null,
@@ -450,6 +455,20 @@ public class InMemoryWalletRepository implements
         return outboxEvent.status() == OperationOutboxStatus.PROCESSING
                 && outboxEvent.leaseExpiresAt() != null
                 && !outboxEvent.leaseExpiresAt().isAfter(now);
+    }
+
+    private OperationOutboxStatus failedStatus(OperationOutboxEvent event, int maxAttempts) {
+        if (event.attemptCount() + 1 >= maxAttempts) {
+            return OperationOutboxStatus.MANUAL_REVIEW;
+        }
+        return OperationOutboxStatus.FAILED;
+    }
+
+    private Instant failedNextRetryAt(OperationOutboxEvent event, Instant nextRetryAt, int maxAttempts) {
+        if (event.attemptCount() + 1 >= maxAttempts) {
+            return null;
+        }
+        return nextRetryAt;
     }
 
     private OperationOutboxEvent processingOutboxEvent(

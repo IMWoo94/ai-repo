@@ -71,5 +71,11 @@ public record OperationOutboxEvent(
         if (status == OperationOutboxStatus.FAILED && (lastError == null || lastError.isBlank())) {
             throw new IllegalArgumentException("lastError must not be blank when status is FAILED");
         }
+        if (status == OperationOutboxStatus.MANUAL_REVIEW && (lastError == null || lastError.isBlank())) {
+            throw new IllegalArgumentException("lastError must not be blank when status is MANUAL_REVIEW");
+        }
+        if (status == OperationOutboxStatus.MANUAL_REVIEW && nextRetryAt != null) {
+            throw new IllegalArgumentException("nextRetryAt must be null when status is MANUAL_REVIEW");
+        }
     }
 }
