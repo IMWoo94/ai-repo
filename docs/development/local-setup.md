@@ -38,6 +38,15 @@ ADR-0003 기준:
 
 PostgreSQL 저장소는 `postgres` 프로필에서 활성화합니다.
 
+로컬 PostgreSQL 실행:
+
+```bash
+docker compose up -d postgres
+docker compose ps postgres
+```
+
+애플리케이션 실행:
+
 ```bash
 AI_REPO_POSTGRES_URL=jdbc:postgresql://localhost:5432/ai_repo \
 AI_REPO_POSTGRES_USERNAME=ai_repo \
@@ -48,11 +57,17 @@ SPRING_PROFILES_ACTIVE=postgres \
 
 `postgres` 프로필은 `src/main/resources/db/postgresql/schema.sql`과 `src/main/resources/db/postgresql/fixtures.sql`을 실행합니다. 이번 단계에서는 Flyway/Liquibase를 도입하지 않았으므로 스키마 변경 이력 관리는 후속 작업으로 남깁니다.
 
+로컬 PostgreSQL 정리:
+
+```bash
+docker compose down
+```
+
 ## 현재 제약
 
 Gradle Wrapper는 `9.3.0`을 사용합니다. Java 25 SDK가 설치되어 있지 않으면 toolchain 해석 또는 컴파일 단계에서 실패할 수 있습니다.
 
-PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트로 SQL 매핑을 검증합니다. 실제 PostgreSQL 컨테이너 기반 검증은 Testcontainers 또는 Docker Compose 도입 후 강화합니다.
+PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있습니다.
 
 ## 의존성 관리
 
