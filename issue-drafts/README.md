@@ -40,6 +40,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/33
 - `0017-outbox-requeue-audit-trail.md`: Outbox requeue 감사 이력 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/35
+- `0018-release-version-baseline.md`: v0.6.0 첫 검증 기준선 발행 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/37
 
 ## GitHub CLI로 생성
 

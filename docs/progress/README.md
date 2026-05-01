@@ -33,9 +33,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0015 | [Outbox Max Attempt와 Manual Review](0015-outbox-max-attempt-manual-review.md) | 완료 |
 | 0016 | [Outbox Manual Review API](0016-outbox-manual-review-api.md) | 완료 |
 | 0017 | [Outbox Requeue Audit Trail](0017-outbox-requeue-audit-trail.md) | 완료 |
+| 0018 | [Release Version Baseline](0018-release-version-baseline.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
 - 최신 완료 기능: Outbox requeue 감사 이력
-- 아직 미완료: GitHub Release/tag 발행, 실제 broker 발행, 승인 워크플로우, GitHub Wiki 동기화
+- 현재 릴리스 후보: `v0.6.0`
+- 아직 미완료: 실제 broker 발행, 승인 워크플로우, GitHub Wiki 동기화

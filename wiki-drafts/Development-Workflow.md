@@ -194,6 +194,8 @@ QA는 다음을 확인한다.
 
 초기에는 로컬 실행 검증을 최소 기준으로 둔다. Fly.io 등 외부 배포는 별도 ADR 또는 릴리스 기준 변경 후 도입한다.
 
+`v0.6.0`부터는 Git tag와 GitHub Release를 검증 기준선으로 사용한다. 릴리스 노트는 `docs/releases`에 먼저 작성하고, PR merge와 GitHub Actions 통과 뒤 동일 내용을 GitHub Release에 반영한다.
+
 ## 11. 회고와 Wiki 갱신
 
 작업이 끝나면 Wiki에 사고 과정과 검증 결과를 남긴다.
