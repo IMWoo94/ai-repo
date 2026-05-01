@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 public class OperationOutboxRelayService {
 
     private static final Duration RETRY_BACKOFF = Duration.ofSeconds(30);
+    private static final Duration PROCESSING_LEASE = Duration.ofSeconds(60);
 
     private final Clock clock;
     private final OperationOutboxRelayRepository operationOutboxRelayRepository;
@@ -34,7 +35,8 @@ public class OperationOutboxRelayService {
         if (limit <= 0) {
             throw new InvalidWalletOperationException("limit must be positive");
         }
-        return operationOutboxRelayRepository.claimReadyOutboxEvents(limit, Instant.now(clock));
+        Instant now = Instant.now(clock);
+        return operationOutboxRelayRepository.claimReadyOutboxEvents(limit, now, now.plus(PROCESSING_LEASE));
     }
 
     public void markPublished(String outboxEventId) {

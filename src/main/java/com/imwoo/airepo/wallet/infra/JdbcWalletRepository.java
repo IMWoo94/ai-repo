@@ -143,7 +143,8 @@ public class JdbcWalletRepository implements
                 """
                         select outbox_event_id, operation_id, event_type, aggregate_type,
                                aggregate_id, payload, status, occurred_at,
-                               attempt_count, next_retry_at, published_at, last_error
+                               attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                               published_at, last_error
                         from operation_outbox_events
                         where operation_id = ?
                         """,
@@ -158,7 +159,8 @@ public class JdbcWalletRepository implements
                 """
                         select outbox_event_id, operation_id, event_type, aggregate_type,
                                aggregate_id, payload, status, occurred_at,
-                               attempt_count, next_retry_at, published_at, last_error
+                               attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                               published_at, last_error
                         from operation_outbox_events
                         where status = ?
                         order by occurred_at, outbox_event_id
@@ -171,7 +173,7 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now) {
+    public List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         return transactionTemplate.execute(status -> {
             List<String> outboxEventIds = claimReadyOutboxEventIds(limit, now);
             if (outboxEventIds.isEmpty()) {
@@ -181,10 +183,13 @@ public class JdbcWalletRepository implements
                 jdbcTemplate.update(
                         """
                                 update operation_outbox_events
-                                set status = ?, next_retry_at = null, published_at = null, last_error = null
+                                set status = ?, next_retry_at = null, claimed_at = ?,
+                                    lease_expires_at = ?, published_at = null, last_error = null
                                 where outbox_event_id = ?
                                 """,
                         OperationOutboxStatus.PROCESSING.name(),
+                        timestamp(now),
+                        timestamp(leaseExpiresAt),
                         outboxEventId
                 );
             }
@@ -192,7 +197,8 @@ public class JdbcWalletRepository implements
                     """
                             select outbox_event_id, operation_id, event_type, aggregate_type,
                                    aggregate_id, payload, status, occurred_at,
-                                   attempt_count, next_retry_at, published_at, last_error
+                                   attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                                   published_at, last_error
                             from operation_outbox_events
                             where outbox_event_id in (%s)
                             order by occurred_at, outbox_event_id
@@ -208,7 +214,8 @@ public class JdbcWalletRepository implements
         jdbcTemplate.update(
                 """
                         update operation_outbox_events
-                        set status = ?, next_retry_at = null, published_at = ?, last_error = null
+                        set status = ?, next_retry_at = null, claimed_at = null,
+                            lease_expires_at = null, published_at = ?, last_error = null
                         where outbox_event_id = ?
                         """,
                 OperationOutboxStatus.PUBLISHED.name(),
@@ -222,7 +229,8 @@ public class JdbcWalletRepository implements
         jdbcTemplate.update(
                 """
                         update operation_outbox_events
-                        set status = ?, attempt_count = attempt_count + 1, next_retry_at = ?, published_at = null, last_error = ?
+                        set status = ?, attempt_count = attempt_count + 1, next_retry_at = ?,
+                            claimed_at = null, lease_expires_at = null, published_at = null, last_error = ?
                         where outbox_event_id = ?
                         """,
                 OperationOutboxStatus.FAILED.name(),
@@ -240,6 +248,7 @@ public class JdbcWalletRepository implements
                             from operation_outbox_events
                             where status = ?
                                or (status = ? and (next_retry_at is null or next_retry_at <= ?))
+                               or (status = ? and lease_expires_at <= ?)
                             order by occurred_at, outbox_event_id
                             limit ?
                             for update skip locked
@@ -247,6 +256,8 @@ public class JdbcWalletRepository implements
                     String.class,
                     OperationOutboxStatus.PENDING.name(),
                     OperationOutboxStatus.FAILED.name(),
+                    timestamp(now),
+                    OperationOutboxStatus.PROCESSING.name(),
                     timestamp(now),
                     limit
             );
@@ -257,6 +268,7 @@ public class JdbcWalletRepository implements
                             from operation_outbox_events
                             where status = ?
                                or (status = ? and (next_retry_at is null or next_retry_at <= ?))
+                               or (status = ? and lease_expires_at <= ?)
                             order by occurred_at, outbox_event_id
                             limit ?
                             for update
@@ -264,6 +276,8 @@ public class JdbcWalletRepository implements
                     String.class,
                     OperationOutboxStatus.PENDING.name(),
                     OperationOutboxStatus.FAILED.name(),
+                    timestamp(now),
+                    OperationOutboxStatus.PROCESSING.name(),
                     timestamp(now),
                     limit
             );
@@ -743,9 +757,10 @@ public class JdbcWalletRepository implements
                         insert into operation_outbox_events (
                             outbox_event_id, operation_id, event_type, aggregate_type,
                             aggregate_id, payload, status, occurred_at,
-                            attempt_count, next_retry_at, published_at, last_error
+                            attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                            published_at, last_error
                         )
-                        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                         """,
                 nextId("outbox", "outbox_event_id_seq"),
                 result.operationId(),
@@ -756,6 +771,8 @@ public class JdbcWalletRepository implements
                 OperationOutboxStatus.PENDING.name(),
                 timestamp(result.occurredAt()),
                 0,
+                null,
+                null,
                 null,
                 null,
                 null
@@ -884,6 +901,8 @@ public class JdbcWalletRepository implements
                 instant(resultSet, "occurred_at"),
                 resultSet.getInt("attempt_count"),
                 nullableInstant(resultSet, "next_retry_at"),
+                nullableInstant(resultSet, "claimed_at"),
+                nullableInstant(resultSet, "lease_expires_at"),
                 nullableInstant(resultSet, "published_at"),
                 resultSet.getString("last_error")
         );

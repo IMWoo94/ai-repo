@@ -32,6 +32,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/23
 - `0013-outbox-claiming-retry.md`: Outbox claiming과 retry schedule 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/27
+- `0014-outbox-processing-lease-recovery.md`: Outbox processing lease recovery 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/29
 
 ## GitHub CLI로 생성
 

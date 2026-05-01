@@ -21,6 +21,8 @@ class OperationOutboxEventTest {
                 0,
                 null,
                 null,
+                null,
+                null,
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -39,6 +41,8 @@ class OperationOutboxEventTest {
                 OperationOutboxStatus.PENDING,
                 Instant.parse("2026-05-01T00:00:00Z"),
                 0,
+                null,
+                null,
                 null,
                 null,
                 null
@@ -61,6 +65,8 @@ class OperationOutboxEventTest {
                 -1,
                 null,
                 null,
+                null,
+                null,
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -79,6 +85,8 @@ class OperationOutboxEventTest {
                 OperationOutboxStatus.PUBLISHED,
                 Instant.parse("2026-05-01T00:00:00Z"),
                 0,
+                null,
+                null,
                 null,
                 null,
                 null
@@ -101,6 +109,8 @@ class OperationOutboxEventTest {
                 1,
                 null,
                 null,
+                null,
+                null,
                 " "
         ))
                 .isInstanceOf(IllegalArgumentException.class)
@@ -121,9 +131,55 @@ class OperationOutboxEventTest {
                 0,
                 null,
                 Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z"),
                 null
         ))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("publishedAt must be null when status is PROCESSING");
+    }
+
+    @Test
+    void requiresClaimedAtWhenProcessing() {
+        assertThatThrownBy(() -> new OperationOutboxEvent(
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                "{}",
+                OperationOutboxStatus.PROCESSING,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                0,
+                null,
+                null,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                null,
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("claimedAt must not be null when status is PROCESSING");
+    }
+
+    @Test
+    void rejectsLeaseExpiresAtBeforeClaimedAt() {
+        assertThatThrownBy(() -> new OperationOutboxEvent(
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                "{}",
+                OperationOutboxStatus.PROCESSING,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                0,
+                null,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:01:00Z"),
+                null,
+                null
+        ))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessage("leaseExpiresAt must not be before claimedAt");
     }
 }

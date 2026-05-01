@@ -106,6 +106,8 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
                     assertThat(outboxEvent.attemptCount()).isZero();
                     assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isNull();
+                    assertThat(outboxEvent.leaseExpiresAt()).isNull();
                     assertThat(outboxEvent.publishedAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                     assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
@@ -146,6 +148,8 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
                     assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
                     assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isNull();
+                    assertThat(outboxEvent.leaseExpiresAt()).isNull();
                     assertThat(outboxEvent.lastError()).isNull();
                 });
         assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
@@ -167,6 +171,8 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.FAILED);
                     assertThat(outboxEvent.attemptCount()).isEqualTo(1);
                     assertThat(outboxEvent.nextRetryAt()).isEqualTo(Instant.parse("2026-05-01T00:01:30Z"));
+                    assertThat(outboxEvent.claimedAt()).isNull();
+                    assertThat(outboxEvent.leaseExpiresAt()).isNull();
                     assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
                     assertThat(outboxEvent.publishedAt()).isNull();
                 });
@@ -178,12 +184,18 @@ class JdbcWalletRepositoryTest {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         commandService.transfer("wallet-001", new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금"));
 
-        assertThat(repository.claimReadyOutboxEvents(1, Instant.parse("2026-05-01T00:01:00Z")))
+        assertThat(repository.claimReadyOutboxEvents(
+                1,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ))
                 .singleElement()
                 .satisfies(outboxEvent -> {
                     assertThat(outboxEvent.outboxEventId()).isEqualTo("outbox-001");
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
                     assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
                     assertThat(outboxEvent.lastError()).isNull();
                 });
         assertThat(repository.findPendingOutboxEvents(10))
@@ -200,13 +212,50 @@ class JdbcWalletRepositoryTest {
                 Instant.parse("2026-05-01T00:01:30Z")
         );
 
-        assertThat(repository.claimReadyOutboxEvents(10, Instant.parse("2026-05-01T00:01:00Z"))).isEmpty();
-        assertThat(repository.claimReadyOutboxEvents(10, Instant.parse("2026-05-01T00:01:30Z")))
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        )).isEmpty();
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:30Z"),
+                Instant.parse("2026-05-01T00:02:30Z")
+        ))
                 .singleElement()
                 .satisfies(outboxEvent -> {
                     assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
                     assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:30Z"));
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(Instant.parse("2026-05-01T00:02:30Z"));
                     assertThat(outboxEvent.lastError()).isNull();
+                });
+    }
+
+    @Test
+    void outboxClaimRecoversExpiredProcessingEvent() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        );
+
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:59Z"),
+                Instant.parse("2026-05-01T00:02:59Z")
+        )).isEmpty();
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(Instant.parse("2026-05-01T00:03:00Z"));
                 });
     }
 

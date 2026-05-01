@@ -187,7 +187,7 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
-    public synchronized List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now) {
+    public synchronized List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         List<OperationOutboxEvent> claimedEvents = operationOutboxEvents.values().stream()
                 .flatMap(List::stream)
                 .filter(outboxEvent -> isReadyToClaim(outboxEvent, now))
@@ -199,7 +199,7 @@ public class InMemoryWalletRepository implements
                     return left.outboxEventId().compareTo(right.outboxEventId());
                 })
                 .limit(limit)
-                .map(this::processingOutboxEvent)
+                .map(outboxEvent -> processingOutboxEvent(outboxEvent, now, leaseExpiresAt))
                 .toList();
         for (OperationOutboxEvent claimedEvent : claimedEvents) {
             replaceOutboxEvent(claimedEvent.outboxEventId(), ignored -> claimedEvent);
@@ -220,6 +220,8 @@ public class InMemoryWalletRepository implements
                 event.occurredAt(),
                 event.attemptCount(),
                 null,
+                null,
+                null,
                 publishedAt,
                 null
         ));
@@ -238,6 +240,8 @@ public class InMemoryWalletRepository implements
                 event.occurredAt(),
                 event.attemptCount() + 1,
                 nextRetryAt,
+                null,
+                null,
                 null,
                 lastError
         ));
@@ -430,6 +434,8 @@ public class InMemoryWalletRepository implements
                         0,
                         null,
                         null,
+                        null,
+                        null,
                         null
                 ));
     }
@@ -438,11 +444,19 @@ public class InMemoryWalletRepository implements
         if (outboxEvent.status() == OperationOutboxStatus.PENDING) {
             return true;
         }
-        return outboxEvent.status() == OperationOutboxStatus.FAILED
-                && (outboxEvent.nextRetryAt() == null || !outboxEvent.nextRetryAt().isAfter(now));
+        if (outboxEvent.status() == OperationOutboxStatus.FAILED) {
+            return outboxEvent.nextRetryAt() == null || !outboxEvent.nextRetryAt().isAfter(now);
+        }
+        return outboxEvent.status() == OperationOutboxStatus.PROCESSING
+                && outboxEvent.leaseExpiresAt() != null
+                && !outboxEvent.leaseExpiresAt().isAfter(now);
     }
 
-    private OperationOutboxEvent processingOutboxEvent(OperationOutboxEvent event) {
+    private OperationOutboxEvent processingOutboxEvent(
+            OperationOutboxEvent event,
+            Instant claimedAt,
+            Instant leaseExpiresAt
+    ) {
         return new OperationOutboxEvent(
                 event.outboxEventId(),
                 event.operationId(),
@@ -454,6 +468,8 @@ public class InMemoryWalletRepository implements
                 event.occurredAt(),
                 event.attemptCount(),
                 null,
+                claimedAt,
+                leaseExpiresAt,
                 null,
                 null
         );

@@ -14,6 +14,8 @@ public record OperationOutboxEvent(
         Instant occurredAt,
         int attemptCount,
         Instant nextRetryAt,
+        Instant claimedAt,
+        Instant leaseExpiresAt,
         Instant publishedAt,
         String lastError
 ) {
@@ -48,8 +50,20 @@ public record OperationOutboxEvent(
         if (attemptCount < 0) {
             throw new IllegalArgumentException("attemptCount must not be negative");
         }
+        if (status == OperationOutboxStatus.PROCESSING && claimedAt == null) {
+            throw new IllegalArgumentException("claimedAt must not be null when status is PROCESSING");
+        }
+        if (status == OperationOutboxStatus.PROCESSING && leaseExpiresAt == null) {
+            throw new IllegalArgumentException("leaseExpiresAt must not be null when status is PROCESSING");
+        }
+        if (status == OperationOutboxStatus.PROCESSING && leaseExpiresAt.isBefore(claimedAt)) {
+            throw new IllegalArgumentException("leaseExpiresAt must not be before claimedAt");
+        }
         if (status == OperationOutboxStatus.PROCESSING && publishedAt != null) {
             throw new IllegalArgumentException("publishedAt must be null when status is PROCESSING");
+        }
+        if (status != OperationOutboxStatus.PROCESSING && (claimedAt != null || leaseExpiresAt != null)) {
+            throw new IllegalArgumentException("claim lease fields must be null unless status is PROCESSING");
         }
         if (status == OperationOutboxStatus.PUBLISHED && publishedAt == null) {
             throw new IllegalArgumentException("publishedAt must not be null when status is PUBLISHED");
