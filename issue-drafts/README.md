@@ -26,6 +26,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/17
 - `0010-operation-step-log.md`: 논리적 트랜잭션 단계 로그 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/19
+- `0011-transactional-outbox-boundary.md`: Transactional Outbox 경계 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/21
 
 ## GitHub CLI로 생성
 

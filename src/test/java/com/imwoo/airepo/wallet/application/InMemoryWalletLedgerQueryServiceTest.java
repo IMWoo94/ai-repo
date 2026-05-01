@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
@@ -56,6 +57,7 @@ class InMemoryWalletLedgerQueryServiceTest {
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(ledgerQueryService.getOperationStepLogs(first.operation().operationId())).hasSize(6);
+        assertThat(ledgerQueryService.getOperationOutboxEvents(first.operation().operationId())).hasSize(1);
     }
 
     @Test
@@ -91,6 +93,24 @@ class InMemoryWalletLedgerQueryServiceTest {
                         OperationStep.AUDIT_RECORDED,
                         OperationStep.IDEMPOTENCY_RECORDED
                 );
+    }
+
+    @Test
+    void returnsPendingOutboxEventAfterCharge() {
+        WalletCommandResult result = commandService.charge(
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
+        );
+
+        assertThat(ledgerQueryService.getOperationOutboxEvents(result.operation().operationId()))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(outboxEvent.aggregateType()).isEqualTo("WALLET_OPERATION");
+                    assertThat(outboxEvent.aggregateId()).isEqualTo(result.operation().operationId());
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
+                    assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
+                });
     }
 
     @Test

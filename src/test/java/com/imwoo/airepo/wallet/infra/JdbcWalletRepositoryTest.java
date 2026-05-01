@@ -10,6 +10,7 @@ import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
@@ -96,6 +97,15 @@ class JdbcWalletRepositoryTest {
                         OperationStep.AUDIT_RECORDED,
                         OperationStep.IDEMPOTENCY_RECORDED
                 );
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(outboxEvent.aggregateType()).isEqualTo("WALLET_OPERATION");
+                    assertThat(outboxEvent.aggregateId()).isEqualTo("op-001");
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING);
+                    assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
+                });
         assertThat(repository.findOperation("charge-db-001")).isPresent();
     }
 
@@ -113,6 +123,7 @@ class JdbcWalletRepositoryTest {
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
     }
 
     @Test
@@ -159,6 +170,12 @@ class JdbcWalletRepositoryTest {
                         OperationStep.AUDIT_RECORDED,
                         OperationStep.IDEMPOTENCY_RECORDED
                 );
+        assertThat(repository.findOperationOutboxEvents(result.operation().operationId()))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.eventType()).isEqualTo("TRANSFER_COMPLETED");
+                    assertThat(outboxEvent.payload()).contains("\"counterpartyWalletId\":\"wallet-002\"");
+                });
     }
 
     private Money money(String amount) {

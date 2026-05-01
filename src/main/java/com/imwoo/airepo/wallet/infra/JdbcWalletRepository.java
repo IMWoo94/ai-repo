@@ -13,6 +13,8 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
@@ -131,6 +133,20 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
     }
 
     @Override
+    public List<OperationOutboxEvent> findOperationOutboxEvents(String operationId) {
+        return jdbcTemplate.query(
+                """
+                        select outbox_event_id, operation_id, event_type, aggregate_type,
+                               aggregate_id, payload, status, occurred_at
+                        from operation_outbox_events
+                        where operation_id = ?
+                        """,
+                operationOutboxEventMapper(),
+                operationId
+        );
+    }
+
+    @Override
     public Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
         return queryOptional(
                 """
@@ -241,6 +257,7 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     occurredAt,
                     "Idempotency record stored for operation " + operationId
             );
+            insertOutboxEvent(result);
             return record;
         });
     }
@@ -379,6 +396,7 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                     occurredAt,
                     "Idempotency record stored for operation " + operationId
             );
+            insertOutboxEvent(result);
             return record;
         });
     }
@@ -595,6 +613,46 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
         );
     }
 
+    private void insertOutboxEvent(WalletOperationResult result) {
+        jdbcTemplate.update(
+                """
+                        insert into operation_outbox_events (
+                            outbox_event_id, operation_id, event_type, aggregate_type,
+                            aggregate_id, payload, status, occurred_at
+                        )
+                        values (?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                nextId("outbox", "outbox_event_id_seq"),
+                result.operationId(),
+                result.type().name() + "_COMPLETED",
+                "WALLET_OPERATION",
+                result.operationId(),
+                outboxPayload(result),
+                OperationOutboxStatus.PENDING.name(),
+                timestamp(result.occurredAt())
+        );
+    }
+
+    private String outboxPayload(WalletOperationResult result) {
+        return """
+                {"operationId":"%s","walletId":"%s","counterpartyWalletId":%s,"type":"%s","amount":"%s","currency":"%s"}
+                """.formatted(
+                result.operationId(),
+                result.walletId(),
+                nullableJsonString(result.counterpartyWalletId()),
+                result.type().name(),
+                result.money().amount().stripTrailingZeros().toPlainString(),
+                result.money().currency()
+        ).trim();
+    }
+
+    private String nullableJsonString(String value) {
+        if (value == null) {
+            return "null";
+        }
+        return "\"" + value + "\"";
+    }
+
     private String nextId(String prefix, String sequenceName) {
         Long nextValue = jdbcTemplate.queryForObject("select nextval('" + sequenceName + "')", Long.class);
         return "%s-%03d".formatted(prefix, nextValue);
@@ -678,6 +736,19 @@ public class JdbcWalletRepository implements WalletCommandRepository, WalletLedg
                 TransactionStatus.valueOf(resultSet.getString("status")),
                 instant(resultSet, "occurred_at"),
                 resultSet.getString("detail")
+        );
+    }
+
+    private RowMapper<OperationOutboxEvent> operationOutboxEventMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxEvent(
+                resultSet.getString("outbox_event_id"),
+                resultSet.getString("operation_id"),
+                resultSet.getString("event_type"),
+                resultSet.getString("aggregate_type"),
+                resultSet.getString("aggregate_id"),
+                resultSet.getString("payload"),
+                OperationOutboxStatus.valueOf(resultSet.getString("status")),
+                instant(resultSet, "occurred_at")
         );
     }
 

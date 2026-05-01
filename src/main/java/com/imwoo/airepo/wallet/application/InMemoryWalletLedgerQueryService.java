@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
+import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import java.util.Comparator;
 import java.util.List;
@@ -48,6 +49,15 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
         return walletLedgerQueryRepository.findOperationStepLogs(operationId).stream()
                 .sorted(Comparator.comparing(OperationStepLog::occurredAt)
                         .thenComparing(OperationStepLog::operationStepLogId))
+                .toList();
+    }
+
+    @Override
+    public List<OperationOutboxEvent> getOperationOutboxEvents(String operationId) {
+        validateOperationId(operationId);
+        return walletLedgerQueryRepository.findOperationOutboxEvents(operationId).stream()
+                .sorted(Comparator.comparing(OperationOutboxEvent::occurredAt)
+                        .thenComparing(OperationOutboxEvent::outboxEventId))
                 .toList();
     }
 

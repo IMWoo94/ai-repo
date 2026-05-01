@@ -88,6 +88,7 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(ledgerQueryService.getAuditEvents()).singleElement()
                 .satisfies(auditEvent -> assertThat(auditEvent.operationId()).isEqualTo("op-001"));
         assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
     }
 
     @Test
@@ -107,6 +108,7 @@ class PostgresContainerWalletRepositoryTest {
                 .singleElement()
                 .satisfies(ledgerEntry -> assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.CREDIT));
         assertThat(repository.findOperationStepLogs(result.operation().operationId())).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents(result.operation().operationId())).hasSize(1);
     }
 
     @Test
@@ -126,6 +128,7 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs(first.operation().operationId())).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents(first.operation().operationId())).hasSize(1);
     }
 
     @Test
@@ -197,6 +200,7 @@ class PostgresContainerWalletRepositoryTest {
             assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).isEmpty();
             assertThat(ledgerQueryService.getAuditEvents()).isEmpty();
             assertThat(repository.findOperationStepLogs("op-001")).isEmpty();
+            assertThat(repository.findOperationOutboxEvents("op-001")).isEmpty();
             assertThat(repository.findOperation("postgres-lock-timeout-001")).isEmpty();
         } finally {
             releaseLatch.countDown();

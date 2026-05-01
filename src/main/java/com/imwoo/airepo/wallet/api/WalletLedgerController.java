@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.api;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryService;
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
+import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -33,5 +34,10 @@ public class WalletLedgerController {
     @GetMapping("/operations/{operationId}/step-logs")
     public List<OperationStepLog> operationStepLogs(@PathVariable String operationId) {
         return walletLedgerQueryService.getOperationStepLogs(operationId);
+    }
+
+    @GetMapping("/operations/{operationId}/outbox-events")
+    public List<OperationOutboxEvent> operationOutboxEvents(@PathVariable String operationId) {
+        return walletLedgerQueryService.getOperationOutboxEvents(operationId);
     }
 }
