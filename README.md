@@ -146,8 +146,9 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 - `POST /api/v1/outbox-events/outbox-001/requeue`
 - `GET /api/v1/outbox-events/outbox-001/requeue-audits`
 - `GET /api/v1/outbox-relay-runs`
+- `GET /api/v1/admin-api-access-audits`
 
-Outbox 운영 API는 `X-Admin-Token`과 `X-Operator-Id` header를 요구합니다. 로컬 기본 token은 `local-ops-token`이며, 실제 실행에서는 `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override합니다. Requeue audit의 operator는 request body가 아니라 `X-Operator-Id`에서 기록합니다. Relay scheduler 실행 결과는 `/api/v1/outbox-relay-runs`에서 최근 이력으로 조회합니다.
+Outbox 운영 API는 `X-Admin-Token`과 `X-Operator-Id` header를 요구합니다. 로컬 기본 token은 `local-ops-token`이며, 실제 실행에서는 `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override합니다. Requeue audit의 operator는 request body가 아니라 `X-Operator-Id`에서 기록합니다. Relay scheduler 실행 결과는 `/api/v1/outbox-relay-runs`에서 최근 이력으로 조회합니다. 운영 API 접근 성공/실패 이력은 `/api/v1/admin-api-access-audits`에서 조회합니다.
 
 Outbox relay scheduler는 기본 비활성화입니다. 자동 발행을 로컬에서 확인하려면 `AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED=true`를 설정합니다. Batch size와 실행 주기는 `AI_REPO_OUTBOX_RELAY_BATCH_SIZE`, `AI_REPO_OUTBOX_RELAY_INITIAL_DELAY_MS`, `AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS`로 조정합니다.
 

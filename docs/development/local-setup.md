@@ -109,6 +109,14 @@ curl -H "X-Admin-Token: local-ops-token" \
   "http://localhost:8080/api/v1/outbox-relay-runs?limit=10"
 ```
 
+운영 API 접근 감사 로그도 같은 header로 조회합니다. Admin token 값은 감사 로그에 저장하지 않습니다.
+
+```bash
+curl -H "X-Admin-Token: local-ops-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/admin-api-access-audits?limit=10"
+```
+
 ## 의존성 관리
 
 Spring Boot Gradle plugin만 적용하면 버전 없는 starter 의존성의 버전 관리가 자동으로 적용되지 않을 수 있습니다. 이 프로젝트는 Spring Boot 공식 Gradle 문서의 dependency management plugin 방식을 사용합니다.

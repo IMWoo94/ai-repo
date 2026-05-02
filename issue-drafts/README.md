@@ -64,6 +64,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/59
 - `0029-outbox-relay-run-monitoring.md`: Outbox relay 실행 기록/모니터링 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/61
+- `0030-admin-api-access-audit.md`: 운영 API 접근 감사 로그 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/63
 
 ## GitHub CLI로 생성
 

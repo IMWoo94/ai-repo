@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.infra;
 
+import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
@@ -7,6 +8,7 @@ import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletOperationResult;
+import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.AuditEventType;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
@@ -42,7 +44,8 @@ public class InMemoryWalletRepository implements
         WalletCommandRepository,
         WalletLedgerQueryRepository,
         OperationOutboxRelayRepository,
-        OperationOutboxRelayRunRepository {
+        OperationOutboxRelayRunRepository,
+        AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
 
@@ -56,6 +59,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
+    private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -65,6 +69,7 @@ public class InMemoryWalletRepository implements
     private int outboxEventSequence = 0;
     private int outboxRequeueAuditSequence = 0;
     private int outboxRelayRunSequence = 0;
+    private int adminApiAccessAuditSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -230,6 +235,31 @@ public class InMemoryWalletRepository implements
                         return completedAtCompare;
                     }
                     return right.relayRunId().compareTo(left.relayRunId());
+                })
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized String nextAdminApiAccessAuditId() {
+        adminApiAccessAuditSequence++;
+        return "admin-api-access-audit-%03d".formatted(adminApiAccessAuditSequence);
+    }
+
+    @Override
+    public synchronized void saveAdminApiAccessAudit(AdminApiAccessAudit accessAudit) {
+        adminApiAccessAudits.add(accessAudit);
+    }
+
+    @Override
+    public synchronized List<AdminApiAccessAudit> findRecentAdminApiAccessAudits(int limit) {
+        return adminApiAccessAudits.stream()
+                .sorted((left, right) -> {
+                    int occurredAtCompare = right.occurredAt().compareTo(left.occurredAt());
+                    if (occurredAtCompare != 0) {
+                        return occurredAtCompare;
+                    }
+                    return right.auditId().compareTo(left.auditId());
                 })
                 .limit(limit)
                 .toList();
