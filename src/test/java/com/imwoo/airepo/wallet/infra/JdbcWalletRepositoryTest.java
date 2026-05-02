@@ -9,6 +9,8 @@ import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
+import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
+import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
@@ -365,6 +367,37 @@ class JdbcWalletRepositoryTest {
                     assertThat(relayRun.relayRunId()).isEqualTo("outbox-relay-run-002");
                     assertThat(relayRun.status()).isEqualTo(OperationOutboxRelayRunStatus.FAILED);
                     assertThat(relayRun.errorMessage()).isEqualTo("publisher down");
+                });
+    }
+
+    @Test
+    void recordsAndReturnsRecentAdminApiAccessAudits() {
+        repository.saveAdminApiAccessAudit(new AdminApiAccessAudit(
+                repository.nextAdminApiAccessAuditId(),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                "GET",
+                "/api/v1/outbox-relay-runs",
+                "ops-user",
+                200,
+                AdminApiAccessOutcome.SUCCESS
+        ));
+        repository.saveAdminApiAccessAudit(new AdminApiAccessAudit(
+                repository.nextAdminApiAccessAuditId(),
+                Instant.parse("2026-05-01T00:00:01Z"),
+                "GET",
+                "/api/v1/outbox-relay-runs",
+                null,
+                401,
+                AdminApiAccessOutcome.FAILURE
+        ));
+
+        assertThat(repository.findRecentAdminApiAccessAudits(1))
+                .singleElement()
+                .satisfies(accessAudit -> {
+                    assertThat(accessAudit.auditId()).isEqualTo("admin-api-access-audit-002");
+                    assertThat(accessAudit.operatorId()).isNull();
+                    assertThat(accessAudit.statusCode()).isEqualTo(401);
+                    assertThat(accessAudit.outcome()).isEqualTo(AdminApiAccessOutcome.FAILURE);
                 });
     }
 

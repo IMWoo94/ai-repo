@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.infra;
 
+import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
@@ -10,6 +11,8 @@ import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletOperationResult;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
+import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
+import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.AuditEventType;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
@@ -55,7 +58,8 @@ public class JdbcWalletRepository implements
         WalletCommandRepository,
         WalletLedgerQueryRepository,
         OperationOutboxRelayRepository,
-        OperationOutboxRelayRunRepository {
+        OperationOutboxRelayRunRepository,
+        AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
     private static final String BUSY_BALANCE_MESSAGE = "Wallet balance is busy. Please retry.";
@@ -391,6 +395,44 @@ public class JdbcWalletRepository implements
                         limit ?
                         """,
                 operationOutboxRelayRunMapper(),
+                limit
+        );
+    }
+
+    @Override
+    public String nextAdminApiAccessAuditId() {
+        return nextId("admin-api-access-audit", "admin_api_access_audit_id_seq");
+    }
+
+    @Override
+    public void saveAdminApiAccessAudit(AdminApiAccessAudit accessAudit) {
+        jdbcTemplate.update(
+                """
+                        insert into admin_api_access_audits (
+                            audit_id, occurred_at, method, path, operator_id, status_code, outcome
+                        )
+                        values (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                accessAudit.auditId(),
+                timestamp(accessAudit.occurredAt()),
+                accessAudit.method(),
+                accessAudit.path(),
+                accessAudit.operatorId(),
+                accessAudit.statusCode(),
+                accessAudit.outcome().name()
+        );
+    }
+
+    @Override
+    public List<AdminApiAccessAudit> findRecentAdminApiAccessAudits(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select audit_id, occurred_at, method, path, operator_id, status_code, outcome
+                        from admin_api_access_audits
+                        order by occurred_at desc, audit_id desc
+                        limit ?
+                        """,
+                adminApiAccessAuditMapper(),
                 limit
         );
     }
@@ -1085,6 +1127,18 @@ public class JdbcWalletRepository implements
                 resultSet.getInt("published_count"),
                 resultSet.getInt("failed_count"),
                 resultSet.getString("error_message")
+        );
+    }
+
+    private RowMapper<AdminApiAccessAudit> adminApiAccessAuditMapper() {
+        return (resultSet, rowNumber) -> new AdminApiAccessAudit(
+                resultSet.getString("audit_id"),
+                instant(resultSet, "occurred_at"),
+                resultSet.getString("method"),
+                resultSet.getString("path"),
+                resultSet.getString("operator_id"),
+                resultSet.getInt("status_code"),
+                AdminApiAccessOutcome.valueOf(resultSet.getString("outcome"))
         );
     }
 
