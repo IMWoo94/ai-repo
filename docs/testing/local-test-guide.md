@@ -11,6 +11,7 @@
 | 백엔드 빠른 회귀 | `./gradlew test` | 도메인, application, API, repository 단위 테스트 |
 | 대표 업무 흐름 | `./gradlew scenarioTest` | 충전/송금/원장/감사/outbox 시나리오 |
 | 백엔드 전체 게이트 | `./gradlew check` | Gradle 표준 검증 |
+| 프론트 컴포넌트 테스트 | `cd frontend && npm run test` | React 상태, API payload, 오류 메시지 |
 | 프론트 타입/번들 검증 | `cd frontend && npm run build` | TypeScript, Vite build |
 | 브라우저 E2E | `cd frontend && npm run e2e` | Spring Boot API, Vite proxy, React 화면 흐름 |
 
@@ -23,14 +24,16 @@
 ./gradlew scenarioTest
 ./gradlew check
 cd frontend
+npm run test
 npm run build
 npm run e2e
 ```
 
-프론트만 수정했다면 다음 두 명령을 우선 실행한다.
+프론트만 수정했다면 다음 세 명령을 우선 실행한다.
 
 ```bash
 cd frontend
+npm run test
 npm run build
 npm run e2e
 ```
@@ -93,6 +96,17 @@ CI와 같은 clean install을 검증하려면 다음 명령을 사용한다.
 npm ci
 ```
 
+### `npm run test`
+
+Vitest와 Testing Library로 React 컴포넌트 테스트를 실행한다.
+
+검증 대상:
+
+- 초기 지갑 잔액 렌더링
+- 충전/송금 금액 입력 상태 독립성
+- 충전 요청 payload
+- 잔액 부족 송금 오류 메시지
+
 ### `npm run build`
 
 TypeScript type check와 Vite production build를 실행한다.
@@ -153,6 +167,7 @@ Running 1 test using 1 worker
 | --- | --- |
 | `Gradle Check` | `./gradlew check` |
 | `Scenario Test` | `./gradlew scenarioTest` |
+| `Frontend Unit Test` | `cd frontend && npm ci && npm run test` |
 | `Frontend Build` | `cd frontend && npm ci && npm run build` |
 | `Frontend E2E` | `cd frontend && npm ci && npx playwright install --with-deps chromium && npm run e2e` |
 
