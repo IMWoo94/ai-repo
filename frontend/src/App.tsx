@@ -123,7 +123,8 @@ function uniqueKey(): string {
 export function App() {
   const [walletId, setWalletId] = useState('wallet-001');
   const [targetWalletId, setTargetWalletId] = useState('wallet-002');
-  const [amount, setAmount] = useState('5000');
+  const [chargeAmount, setChargeAmount] = useState('5000');
+  const [transferAmount, setTransferAmount] = useState('5000');
   const [description, setDescription] = useState('프론트 테스트');
   const [operationId, setOperationId] = useState('');
   const [apiState, setApiState] = useState<ApiState>(initialApiState);
@@ -171,7 +172,7 @@ export function App() {
       const result = await requestJson<WalletOperationResult>(`/api/v1/wallets/${walletId}/charges`, {
         method: 'POST',
         body: JSON.stringify({
-          amount: Number(amount),
+          amount: Number(chargeAmount),
           currency: 'KRW',
           idempotencyKey: uniqueKey(),
           description,
@@ -190,7 +191,7 @@ export function App() {
         method: 'POST',
         body: JSON.stringify({
           targetWalletId,
-          amount: Number(amount),
+          amount: Number(transferAmount),
           currency: 'KRW',
           idempotencyKey: uniqueKey(),
           description,
@@ -245,7 +246,7 @@ export function App() {
           </label>
           <label>
             금액
-            <input value={amount} type="number" min="1" onChange={(event) => setAmount(event.target.value)} />
+            <input value={chargeAmount} type="number" min="1" onChange={(event) => setChargeAmount(event.target.value)} />
           </label>
           <label>
             설명
@@ -267,7 +268,7 @@ export function App() {
           </label>
           <label>
             금액
-            <input value={amount} type="number" min="1" onChange={(event) => setAmount(event.target.value)} />
+            <input value={transferAmount} type="number" min="1" onChange={(event) => setTransferAmount(event.target.value)} />
           </label>
           <button type="submit" disabled={isLoading}>송금하기</button>
         </form>
