@@ -36,6 +36,7 @@ npm run dev
 
 ```bash
 cd frontend
+npm run test
 npm run build
 ```
 
@@ -53,6 +54,7 @@ npm run e2e
 ./gradlew test
 ./gradlew scenarioTest
 ./gradlew check
+cd frontend && npm run test
 cd frontend && npm run build
 cd frontend && npm run e2e
 ```
