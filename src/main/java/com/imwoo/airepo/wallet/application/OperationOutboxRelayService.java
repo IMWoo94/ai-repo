@@ -17,13 +17,16 @@ public class OperationOutboxRelayService {
 
     private final Clock clock;
     private final OperationOutboxRelayRepository operationOutboxRelayRepository;
+    private final OperationOutboxPublisher operationOutboxPublisher;
 
     public OperationOutboxRelayService(
             Clock clock,
-            OperationOutboxRelayRepository operationOutboxRelayRepository
+            OperationOutboxRelayRepository operationOutboxRelayRepository,
+            OperationOutboxPublisher operationOutboxPublisher
     ) {
         this.clock = clock;
         this.operationOutboxRelayRepository = operationOutboxRelayRepository;
+        this.operationOutboxPublisher = operationOutboxPublisher;
     }
 
     public List<OperationOutboxEvent> getPendingEvents(int limit) {
@@ -51,6 +54,24 @@ public class OperationOutboxRelayService {
         }
         Instant now = Instant.now(clock);
         return operationOutboxRelayRepository.claimReadyOutboxEvents(limit, now, now.plus(PROCESSING_LEASE));
+    }
+
+    public OperationOutboxPublishBatchResult publishReadyEvents(int limit) {
+        List<OperationOutboxEvent> claimedEvents = claimReadyEvents(limit);
+        int publishedCount = 0;
+        int failedCount = 0;
+        for (OperationOutboxEvent claimedEvent : claimedEvents) {
+            try {
+                operationOutboxPublisher.publish(claimedEvent);
+            } catch (RuntimeException exception) {
+                markFailed(claimedEvent.outboxEventId(), publisherFailureMessage(exception));
+                failedCount++;
+                continue;
+            }
+            markPublished(claimedEvent.outboxEventId());
+            publishedCount++;
+        }
+        return new OperationOutboxPublishBatchResult(claimedEvents.size(), publishedCount, failedCount);
     }
 
     public void markPublished(String outboxEventId) {
@@ -93,5 +114,13 @@ public class OperationOutboxRelayService {
         if (value == null || value.isBlank()) {
             throw new InvalidWalletOperationException(fieldName + " must not be blank");
         }
+    }
+
+    private String publisherFailureMessage(RuntimeException exception) {
+        String message = exception.getMessage();
+        if (message == null || message.isBlank()) {
+            return exception.getClass().getSimpleName();
+        }
+        return message;
     }
 }

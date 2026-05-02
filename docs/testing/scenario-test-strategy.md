@@ -37,6 +37,7 @@
 | --- | --- | --- |
 | 돈 이동 증거 흐름 | `WalletScenarioFlowTest` | 잔액 조회 → 충전 → 멱등 재시도 → 송금 → 잔액/원장/감사/step/outbox 조회 |
 | Outbox 운영 흐름 | `WalletScenarioFlowTest` | outbox 실패 누적 → manual review 조회 → requeue → requeue audit 조회 |
+| Outbox 발행 흐름 | `WalletScenarioFlowTest` | outbox event 생성 → fake publisher 발행 → `PUBLISHED` 상태 조회 |
 
 ## 작성 규칙
 
@@ -50,6 +51,6 @@
 ## 확장 후보
 
 - PostgreSQL profile 기반 실제 DB scenario
-- broker adapter fake publish scenario
+- 실제 broker adapter publish scenario
 - 관리자 인증/인가 후 manual review 권한 scenario
 - release smoke scenario
