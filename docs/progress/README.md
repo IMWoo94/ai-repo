@@ -44,10 +44,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0026 | [Outbox Publisher Port](0026-outbox-publisher-port.md) | 완료 |
 | 0027 | [Admin API Authz](0027-admin-api-authz.md) | 완료 |
 | 0028 | [Outbox Relay Scheduler](0028-outbox-relay-scheduler.md) | 완료 |
+| 0029 | [Outbox Relay Run Monitoring](0029-outbox-relay-run-monitoring.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox Relay Scheduler
+- 최신 완료 기능: Outbox Relay Run Monitoring
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 운영자 manual review 화면, Spring Security role 모델, 실제 broker adapter, scheduler metric/alert, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책
+- 아직 미완료: 운영자 manual review 화면, Spring Security role 모델, 실제 broker adapter, relay run pruning, scheduler metric/alert, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책

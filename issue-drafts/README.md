@@ -62,6 +62,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/57
 - `0028-outbox-relay-scheduler.md`: Outbox relay scheduler 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/59
+- `0029-outbox-relay-run-monitoring.md`: Outbox relay 실행 기록/모니터링 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/61
 
 ## GitHub CLI로 생성
 

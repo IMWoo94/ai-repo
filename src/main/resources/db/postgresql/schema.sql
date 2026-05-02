@@ -107,6 +107,18 @@ CREATE TABLE IF NOT EXISTS operation_outbox_requeue_audits (
     reason VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_relay_runs (
+    relay_run_id VARCHAR(64) PRIMARY KEY,
+    started_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    completed_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    batch_size INTEGER NOT NULL,
+    claimed_count INTEGER NOT NULL,
+    published_count INTEGER NOT NULL,
+    failed_count INTEGER NOT NULL,
+    error_message VARCHAR(255)
+);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;
@@ -114,3 +126,4 @@ CREATE SEQUENCE IF NOT EXISTS audit_event_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS operation_step_log_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_event_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_requeue_audit_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS outbox_relay_run_id_seq START WITH 1;

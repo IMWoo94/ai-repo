@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.infra;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -17,6 +18,8 @@ import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
@@ -51,7 +54,8 @@ import org.springframework.transaction.support.TransactionTemplate;
 public class JdbcWalletRepository implements
         WalletCommandRepository,
         WalletLedgerQueryRepository,
-        OperationOutboxRelayRepository {
+        OperationOutboxRelayRepository,
+        OperationOutboxRelayRunRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
     private static final String BUSY_BALANCE_MESSAGE = "Wallet balance is busy. Please retry.";
@@ -347,6 +351,48 @@ public class JdbcWalletRepository implements
                     reason
             );
         });
+    }
+
+    @Override
+    public String nextRelayRunId() {
+        return nextId("outbox-relay-run", "outbox_relay_run_id_seq");
+    }
+
+    @Override
+    public void saveOutboxRelayRun(OperationOutboxRelayRun relayRun) {
+        jdbcTemplate.update(
+                """
+                        insert into operation_outbox_relay_runs (
+                            relay_run_id, started_at, completed_at, status, batch_size,
+                            claimed_count, published_count, failed_count, error_message
+                        )
+                        values (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                relayRun.relayRunId(),
+                timestamp(relayRun.startedAt()),
+                timestamp(relayRun.completedAt()),
+                relayRun.status().name(),
+                relayRun.batchSize(),
+                relayRun.claimedCount(),
+                relayRun.publishedCount(),
+                relayRun.failedCount(),
+                relayRun.errorMessage()
+        );
+    }
+
+    @Override
+    public List<OperationOutboxRelayRun> findRecentOutboxRelayRuns(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select relay_run_id, started_at, completed_at, status, batch_size,
+                               claimed_count, published_count, failed_count, error_message
+                        from operation_outbox_relay_runs
+                        order by completed_at desc, relay_run_id desc
+                        limit ?
+                        """,
+                operationOutboxRelayRunMapper(),
+                limit
+        );
     }
 
     private List<String> claimReadyOutboxEventIds(int limit, Instant now) {
@@ -1025,6 +1071,20 @@ public class JdbcWalletRepository implements
                 instant(resultSet, "requeued_at"),
                 resultSet.getString("operator_name"),
                 resultSet.getString("reason")
+        );
+    }
+
+    private RowMapper<OperationOutboxRelayRun> operationOutboxRelayRunMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxRelayRun(
+                resultSet.getString("relay_run_id"),
+                instant(resultSet, "started_at"),
+                instant(resultSet, "completed_at"),
+                OperationOutboxRelayRunStatus.valueOf(resultSet.getString("status")),
+                resultSet.getInt("batch_size"),
+                resultSet.getInt("claimed_count"),
+                resultSet.getInt("published_count"),
+                resultSet.getInt("failed_count"),
+                resultSet.getString("error_message")
         );
     }
 

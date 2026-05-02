@@ -175,7 +175,7 @@ Running 1 test using 1 worker
 
 ### Outbox 운영 API가 401 또는 403을 반환할 때
 
-Outbox manual review, requeue, requeue audit 조회는 운영 API다. 로컬 호출에는 다음 header가 필요하다.
+Outbox manual review, requeue, requeue audit, relay run 조회는 운영 API다. 로컬 호출에는 다음 header가 필요하다.
 
 ```bash
 X-Admin-Token: local-ops-token

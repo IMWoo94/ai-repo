@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -14,6 +15,7 @@ import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
@@ -39,7 +41,8 @@ import org.springframework.stereotype.Repository;
 public class InMemoryWalletRepository implements
         WalletCommandRepository,
         WalletLedgerQueryRepository,
-        OperationOutboxRelayRepository {
+        OperationOutboxRelayRepository,
+        OperationOutboxRelayRunRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
 
@@ -52,6 +55,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
+    private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -60,6 +64,7 @@ public class InMemoryWalletRepository implements
     private int operationStepLogSequence = 0;
     private int outboxEventSequence = 0;
     private int outboxRequeueAuditSequence = 0;
+    private int outboxRelayRunSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -203,6 +208,31 @@ public class InMemoryWalletRepository implements
     @Override
     public synchronized List<OperationOutboxRequeueAudit> findOutboxRequeueAudits(String outboxEventId) {
         return List.copyOf(outboxRequeueAudits.getOrDefault(outboxEventId, List.of()));
+    }
+
+    @Override
+    public synchronized String nextRelayRunId() {
+        outboxRelayRunSequence++;
+        return "outbox-relay-run-%03d".formatted(outboxRelayRunSequence);
+    }
+
+    @Override
+    public synchronized void saveOutboxRelayRun(OperationOutboxRelayRun relayRun) {
+        outboxRelayRuns.add(relayRun);
+    }
+
+    @Override
+    public synchronized List<OperationOutboxRelayRun> findRecentOutboxRelayRuns(int limit) {
+        return outboxRelayRuns.stream()
+                .sorted((left, right) -> {
+                    int completedAtCompare = right.completedAt().compareTo(left.completedAt());
+                    if (completedAtCompare != 0) {
+                        return completedAtCompare;
+                    }
+                    return right.relayRunId().compareTo(left.relayRunId());
+                })
+                .limit(limit)
+                .toList();
     }
 
     @Override
