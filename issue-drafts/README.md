@@ -56,6 +56,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/51
 - `0025-frontend-component-tests.md`: 프론트 컴포넌트 테스트 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/53
+- `0026-outbox-publisher-port.md`: Outbox publisher port 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/55
 
 ## GitHub CLI로 생성
 

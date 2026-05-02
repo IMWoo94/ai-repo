@@ -4,7 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
+import com.imwoo.airepo.wallet.infra.InMemoryOperationOutboxPublisher;
 import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -19,9 +21,11 @@ class OperationOutboxRelayServiceTest {
             Clock.fixed(Instant.parse("2026-05-01T00:00:00Z"), ZoneOffset.UTC),
             repository
     );
+    private final InMemoryOperationOutboxPublisher publisher = new InMemoryOperationOutboxPublisher();
     private final OperationOutboxRelayService relayService = new OperationOutboxRelayService(
             Clock.fixed(Instant.parse("2026-05-01T00:01:00Z"), ZoneOffset.UTC),
-            repository
+            repository,
+            publisher
     );
 
     @Test
@@ -119,7 +123,8 @@ class OperationOutboxRelayServiceTest {
 
         OperationOutboxRelayService retryReadyRelayService = new OperationOutboxRelayService(
                 Clock.fixed(Instant.parse("2026-05-01T00:01:31Z"), ZoneOffset.UTC),
-                repository
+                repository,
+                publisher
         );
         assertThat(retryReadyRelayService.claimReadyEvents(10))
                 .singleElement()
@@ -141,7 +146,8 @@ class OperationOutboxRelayServiceTest {
 
         OperationOutboxRelayService leaseExpiredRelayService = new OperationOutboxRelayService(
                 Clock.fixed(Instant.parse("2026-05-01T00:02:00Z"), ZoneOffset.UTC),
-                repository
+                repository,
+                publisher
         );
         assertThat(leaseExpiredRelayService.claimReadyEvents(10))
                 .singleElement()
@@ -159,14 +165,16 @@ class OperationOutboxRelayServiceTest {
 
         OperationOutboxRelayService secondAttemptRelayService = new OperationOutboxRelayService(
                 Clock.fixed(Instant.parse("2026-05-01T00:01:31Z"), ZoneOffset.UTC),
-                repository
+                repository,
+                publisher
         );
         secondAttemptRelayService.claimReadyEvents(10);
         secondAttemptRelayService.markFailed("outbox-001", "broker unavailable");
 
         OperationOutboxRelayService thirdAttemptRelayService = new OperationOutboxRelayService(
                 Clock.fixed(Instant.parse("2026-05-01T00:02:02Z"), ZoneOffset.UTC),
-                repository
+                repository,
+                publisher
         );
         thirdAttemptRelayService.claimReadyEvents(10);
         thirdAttemptRelayService.markFailed("outbox-001", "broker unavailable");
@@ -184,9 +192,79 @@ class OperationOutboxRelayServiceTest {
 
         OperationOutboxRelayService laterRelayService = new OperationOutboxRelayService(
                 Clock.fixed(Instant.parse("2026-05-01T00:10:00Z"), ZoneOffset.UTC),
-                repository
+                repository,
+                publisher
         );
         assertThat(laterRelayService.claimReadyEvents(10)).isEmpty();
+    }
+
+    @Test
+    void publishesReadyEventsAndMarksThemPublished() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.transfer(
+                "wallet-001",
+                new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
+        );
+
+        OperationOutboxPublishBatchResult result = relayService.publishReadyEvents(10);
+
+        assertThat(result.claimedCount()).isEqualTo(2);
+        assertThat(result.publishedCount()).isEqualTo(2);
+        assertThat(result.failedCount()).isZero();
+        assertThat(publisher.publishedEvents())
+                .extracting(OperationOutboxEvent::outboxEventId)
+                .containsExactly("outbox-001", "outbox-002");
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
+                    assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                });
+        assertThat(repository.findOperationOutboxEvents("op-002"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
+                    assertThat(outboxEvent.publishedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                });
+    }
+
+    @Test
+    void marksPublishFailureAsFailedAndKeepsSuccessfulEventsPublished() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.transfer(
+                "wallet-001",
+                new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
+        );
+        OperationOutboxPublisher partiallyFailingPublisher = outboxEvent -> {
+            if ("outbox-002".equals(outboxEvent.outboxEventId())) {
+                throw new IllegalStateException("broker unavailable");
+            }
+        };
+        OperationOutboxRelayService failingRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:01:00Z"), ZoneOffset.UTC),
+                repository,
+                partiallyFailingPublisher
+        );
+
+        OperationOutboxPublishBatchResult result = failingRelayService.publishReadyEvents(10);
+
+        assertThat(result.claimedCount()).isEqualTo(2);
+        assertThat(result.publishedCount()).isEqualTo(1);
+        assertThat(result.failedCount()).isEqualTo(1);
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PUBLISHED);
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+        assertThat(repository.findOperationOutboxEvents("op-002"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.FAILED);
+                    assertThat(outboxEvent.attemptCount()).isEqualTo(1);
+                    assertThat(outboxEvent.nextRetryAt()).isEqualTo(Instant.parse("2026-05-01T00:01:30Z"));
+                    assertThat(outboxEvent.lastError()).isEqualTo("broker unavailable");
+                });
     }
 
     @Test
@@ -237,6 +315,9 @@ class OperationOutboxRelayServiceTest {
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("limit must be positive");
         assertThatThrownBy(() -> relayService.claimReadyEvents(0))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("limit must be positive");
+        assertThatThrownBy(() -> relayService.publishReadyEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("limit must be positive");
         assertThatThrownBy(() -> relayService.markPublished(" "))

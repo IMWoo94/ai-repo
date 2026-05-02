@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.scenario;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -162,6 +163,36 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
                 .andExpect(jsonPath("$[0].attemptCount").value(0));
+    }
+
+    @Test
+    void outboxPublishScenarioMovesReadyEventToPublished() throws Exception {
+        mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": 5000,
+                                  "currency": "KRW",
+                                  "idempotencyKey": "scenario-outbox-publish-001",
+                                  "description": "시나리오 outbox 발행"
+                                }
+                                """))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.operationId").value("op-001"));
+
+        assertThat(operationOutboxRelayService.publishReadyEvents(10))
+                .satisfies(result -> {
+                    assertThat(result.claimedCount()).isEqualTo(1);
+                    assertThat(result.publishedCount()).isEqualTo(1);
+                    assertThat(result.failedCount()).isZero();
+                });
+
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$", hasSize(1)))
+                .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
+                .andExpect(jsonPath("$[0].status").value("PUBLISHED"))
+                .andExpect(jsonPath("$[0].publishedAt").value("2026-05-01T00:00:00Z"));
     }
 
     @TestConfiguration
