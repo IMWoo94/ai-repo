@@ -46,6 +46,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/39
 - `0020-validation-summary-hardening.md`: 검증 요약 기반 코드 하드닝 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/41
+- `0021-react-user-frontend-mvp.md`: React 사용자 화면 프론트 MVP 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/43
 
 ## GitHub CLI로 생성
 
