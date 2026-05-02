@@ -30,6 +30,8 @@ npm run dev
 
 ## 검증
 
+전체 백엔드/프론트 테스트 실행 순서는 `local-test-guide.md`를 우선 따른다.
+
 프론트 빌드:
 
 ```bash
