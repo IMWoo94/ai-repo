@@ -60,6 +60,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/55
 - `0027-admin-api-authz.md`: 운영 API 인증/인가 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/57
+- `0028-outbox-relay-scheduler.md`: Outbox relay scheduler 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/59
 
 ## GitHub CLI로 생성
 

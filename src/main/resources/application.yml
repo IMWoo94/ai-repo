@@ -13,3 +13,9 @@ server:
 ai-repo:
   ops:
     admin-token: ${AI_REPO_OPS_ADMIN_TOKEN:local-ops-token}
+  outbox-relay:
+    scheduler:
+      enabled: ${AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED:false}
+      batch-size: ${AI_REPO_OUTBOX_RELAY_BATCH_SIZE:10}
+      initial-delay-ms: ${AI_REPO_OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
+      fixed-delay-ms: ${AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS:5000}

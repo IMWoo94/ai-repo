@@ -89,6 +89,18 @@ Gradle Wrapper는 `9.3.0`을 사용합니다. Java 25 SDK가 설치되어 있지
 
 PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. Testcontainers 테스트는 Flyway migration 경로를 실행해 PostgreSQL 런타임 스키마를 준비합니다. Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있습니다.
 
+Outbox relay scheduler는 기본 비활성화입니다. 로컬에서 자동 relay 실행을 확인하려면 다음 환경 변수를 설정한 뒤 애플리케이션을 실행합니다.
+
+```bash
+AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED=true \
+AI_REPO_OUTBOX_RELAY_BATCH_SIZE=10 \
+AI_REPO_OUTBOX_RELAY_INITIAL_DELAY_MS=5000 \
+AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS=5000 \
+./gradlew bootRun
+```
+
+수동 검증 중 잔액/거래/outbox 상태가 자동으로 바뀌면 scheduler가 켜져 있는지 먼저 확인합니다.
+
 ## 의존성 관리
 
 Spring Boot Gradle plugin만 적용하면 버전 없는 starter 의존성의 버전 관리가 자동으로 적용되지 않을 수 있습니다. 이 프로젝트는 Spring Boot 공식 Gradle 문서의 dependency management plugin 방식을 사용합니다.
