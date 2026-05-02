@@ -37,10 +37,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0019 | [Scenario Test Pipeline](0019-scenario-test-pipeline.md) | 완료 |
 | 0020 | [Validation Summary Hardening](0020-validation-summary-hardening.md) | 완료 |
 | 0021 | [React User Frontend MVP](0021-react-user-frontend-mvp.md) | 완료 |
+| 0022 | [Frontend E2E Test Pipeline](0022-frontend-e2e-test-pipeline.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: React User Frontend MVP
+- 최신 완료 기능: Frontend E2E Test Pipeline
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 프론트 단위 테스트, 운영자 manual review 화면, 실제 broker 발행, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책
+- 아직 미완료: 송금/실패 E2E, 프론트 단위 테스트, 운영자 manual review 화면, 실제 broker 발행, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책

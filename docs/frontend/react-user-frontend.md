@@ -37,6 +37,14 @@ cd frontend
 npm run build
 ```
 
+브라우저 E2E:
+
+```bash
+cd frontend
+npx playwright install chromium
+npm run e2e
+```
+
 전체 품질 게이트:
 
 ```bash
@@ -44,6 +52,7 @@ npm run build
 ./gradlew scenarioTest
 ./gradlew check
 cd frontend && npm run build
+cd frontend && npm run e2e
 ```
 
 ## 현재 범위

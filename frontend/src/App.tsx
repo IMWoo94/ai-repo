@@ -242,15 +242,15 @@ export function App() {
           <h2>충전</h2>
           <label>
             지갑 ID
-            <input value={walletId} onChange={(event) => setWalletId(event.target.value)} />
+            <input aria-label="충전 지갑 ID" value={walletId} onChange={(event) => setWalletId(event.target.value)} />
           </label>
           <label>
             금액
-            <input value={chargeAmount} type="number" min="1" onChange={(event) => setChargeAmount(event.target.value)} />
+            <input aria-label="충전 금액" value={chargeAmount} type="number" min="1" onChange={(event) => setChargeAmount(event.target.value)} />
           </label>
           <label>
             설명
-            <input value={description} onChange={(event) => setDescription(event.target.value)} />
+            <input aria-label="거래 설명" value={description} onChange={(event) => setDescription(event.target.value)} />
           </label>
           <button type="submit" disabled={isLoading}>충전하기</button>
         </form>
@@ -260,15 +260,15 @@ export function App() {
           <h2>송금</h2>
           <label>
             출금 지갑
-            <input value={walletId} onChange={(event) => setWalletId(event.target.value)} />
+            <input aria-label="송금 출금 지갑 ID" value={walletId} onChange={(event) => setWalletId(event.target.value)} />
           </label>
           <label>
             입금 지갑
-            <input value={targetWalletId} onChange={(event) => setTargetWalletId(event.target.value)} />
+            <input aria-label="송금 입금 지갑 ID" value={targetWalletId} onChange={(event) => setTargetWalletId(event.target.value)} />
           </label>
           <label>
             금액
-            <input value={transferAmount} type="number" min="1" onChange={(event) => setTransferAmount(event.target.value)} />
+            <input aria-label="송금 금액" value={transferAmount} type="number" min="1" onChange={(event) => setTransferAmount(event.target.value)} />
           </label>
           <button type="submit" disabled={isLoading}>송금하기</button>
         </form>
@@ -279,7 +279,7 @@ export function App() {
         <p>{statusMessage}</p>
         <label>
           Operation ID
-          <input value={operationId} onChange={(event) => setOperationId(event.target.value)} placeholder="충전/송금 후 자동 입력" />
+          <input aria-label="Operation ID" value={operationId} onChange={(event) => setOperationId(event.target.value)} placeholder="충전/송금 후 자동 입력" />
         </label>
         {lastOperation && (
           <strong>
