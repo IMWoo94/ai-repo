@@ -19,6 +19,8 @@
 
 일반 `test` task는 `scenario` tag를 제외한다. 시나리오 테스트는 `@Tag("scenario")`를 붙이고 `scenarioTest` task에서만 실행한다.
 
+백엔드/프론트 전체 테스트 실행 순서와 CI 대응 관계는 `local-test-guide.md`를 따른다.
+
 ## 시나리오 선정 기준
 
 다음 중 하나 이상에 해당하면 시나리오 테스트 후보로 본다.

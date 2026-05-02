@@ -123,6 +123,7 @@ cd frontend && npm run e2e
 
 현재 브랜치에는 Gradle Wrapper와 React/Vite 프론트가 포함되어 있으므로 위 명령을 표준 품질 게이트로 사용합니다. `test`는 단위/API/저장소 중심의 빠른 회귀 게이트이고, `scenarioTest`는 대표 사용자/운영 흐름을 검증하는 시나리오 게이트입니다. `frontend` build는 사용자 화면의 TypeScript/Vite smoke gate이고, `frontend` E2E는 브라우저에서 Vite proxy와 Spring Boot API 연결을 검증합니다.
 
+로컬 테스트 실행 순서와 실패 대응은 [Local Test Guide](docs/testing/local-test-guide.md)를 따릅니다.
 시나리오 테스트 추가 기준은 [Scenario Test Strategy](docs/testing/scenario-test-strategy.md)를 따릅니다.
 
 ## 로컬 실행
@@ -151,7 +152,7 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 
 `postgres` 프로필의 스키마 기준은 Flyway migration입니다. 초기 migration은 `src/main/resources/db/migration`에 두며, 기존 `src/main/resources/db/postgresql` SQL 파일은 H2 테스트와 수동 비교를 위해 일시적으로 유지합니다.
 
-React 사용자 화면은 [React User Frontend](docs/frontend/react-user-frontend.md)를 따릅니다. 백엔드는 `./gradlew bootRun`으로 실행하고, 프론트는 `frontend`에서 `npm install`, `npm run dev`로 실행합니다.
+React 사용자 화면은 [React User Frontend](docs/frontend/react-user-frontend.md)를 따릅니다. 백엔드는 `./gradlew bootRun`으로 실행하고, 프론트는 `frontend`에서 `npm install`, `npm run dev`로 실행합니다. 로컬 검증은 [Local Test Guide](docs/testing/local-test-guide.md)를 기준으로 합니다.
 
 ## 문서화 전략
 

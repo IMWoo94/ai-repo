@@ -22,6 +22,8 @@ npm run e2e
 
 Playwright 설정은 Spring Boot 백엔드와 Vite 프론트를 자동 실행한다.
 
+백엔드/프론트 전체 테스트 실행 순서와 실패 대응은 `local-test-guide.md`를 따른다.
+
 ## 1차 시나리오
 
 - 초기 화면에서 `wallet-001` 잔액 `125,000 KRW`가 보인다.

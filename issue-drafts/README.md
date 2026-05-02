@@ -50,6 +50,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/43
 - `0022-frontend-e2e-test-pipeline.md`: React 사용자 화면 E2E 테스트 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/47
+- `0023-local-test-guide.md`: 백엔드/프론트 테스트 가이드 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/49
 
 ## GitHub CLI로 생성
 
