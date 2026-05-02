@@ -48,6 +48,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/41
 - `0021-react-user-frontend-mvp.md`: React 사용자 화면 프론트 MVP 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/43
+- `0022-frontend-e2e-test-pipeline.md`: React 사용자 화면 E2E 테스트 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/47
 
 ## GitHub CLI로 생성
 
