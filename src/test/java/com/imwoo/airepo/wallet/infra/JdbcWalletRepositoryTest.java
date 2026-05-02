@@ -10,6 +10,8 @@ import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
@@ -330,6 +332,40 @@ class JdbcWalletRepositoryTest {
         ))
                 .singleElement()
                 .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING));
+    }
+
+    @Test
+    void recordsAndReturnsRecentOutboxRelayRuns() {
+        repository.saveOutboxRelayRun(new OperationOutboxRelayRun(
+                repository.nextRelayRunId(),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                Instant.parse("2026-05-01T00:00:01Z"),
+                OperationOutboxRelayRunStatus.SUCCESS,
+                10,
+                3,
+                2,
+                1,
+                null
+        ));
+        repository.saveOutboxRelayRun(new OperationOutboxRelayRun(
+                repository.nextRelayRunId(),
+                Instant.parse("2026-05-01T00:00:02Z"),
+                Instant.parse("2026-05-01T00:00:03Z"),
+                OperationOutboxRelayRunStatus.FAILED,
+                10,
+                0,
+                0,
+                0,
+                "publisher down"
+        ));
+
+        assertThat(repository.findRecentOutboxRelayRuns(1))
+                .singleElement()
+                .satisfies(relayRun -> {
+                    assertThat(relayRun.relayRunId()).isEqualTo("outbox-relay-run-002");
+                    assertThat(relayRun.status()).isEqualTo(OperationOutboxRelayRunStatus.FAILED);
+                    assertThat(relayRun.errorMessage()).isEqualTo("publisher down");
+                });
     }
 
     @Test
