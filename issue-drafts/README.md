@@ -52,6 +52,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/47
 - `0023-local-test-guide.md`: 백엔드/프론트 테스트 가이드 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/49
+- `0024-transfer-e2e-scenarios.md`: 송금 성공/실패 E2E 시나리오 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/51
 
 ## GitHub CLI로 생성
 

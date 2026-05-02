@@ -143,7 +143,9 @@ Running 1 test using 1 worker
 - 초기 화면에 `125,000 KRW` 잔액이 표시된다.
 - 충전 금액과 송금 금액 입력이 서로 독립적으로 동작한다.
 - 충전 실행 후 잔액이 `132,000 KRW`로 증가한다.
-- 최근 operation, `LEDGER_RECORDED`, `CHARGE_COMPLETED` outbox event가 표시된다.
+- 송금 실행 후 출금 지갑 잔액이 `129,000 KRW`로 감소한다.
+- 잔액 부족 송금 시 `INSUFFICIENT_BALANCE` 오류가 표시된다.
+- 최근 operation, `LEDGER_RECORDED`, `CHARGE_COMPLETED`, `TRANSFER_COMPLETED` outbox event가 표시된다.
 
 ## CI 대응 관계
 
