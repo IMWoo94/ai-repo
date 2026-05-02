@@ -64,6 +64,16 @@ public class WalletApiExceptionHandler {
         return error(HttpStatus.CONFLICT, "WALLET_BALANCE_BUSY", exception.getMessage());
     }
 
+    @ExceptionHandler(AdminAuthenticationException.class)
+    ResponseEntity<ApiErrorResponse> handleAdminAuthentication(AdminAuthenticationException exception) {
+        return error(HttpStatus.UNAUTHORIZED, "ADMIN_AUTHENTICATION_REQUIRED", exception.getMessage());
+    }
+
+    @ExceptionHandler(AdminAuthorizationException.class)
+    ResponseEntity<ApiErrorResponse> handleAdminAuthorization(AdminAuthorizationException exception) {
+        return error(HttpStatus.FORBIDDEN, "ADMIN_AUTHORIZATION_DENIED", exception.getMessage());
+    }
+
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status)
                 .body(new ApiErrorResponse(code, message, Instant.now(clock)));

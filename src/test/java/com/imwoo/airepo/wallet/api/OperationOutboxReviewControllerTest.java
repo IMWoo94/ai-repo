@@ -26,6 +26,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class OperationOutboxReviewControllerTest {
 
+    private static final String ADMIN_TOKEN = "local-ops-token";
+    private static final String OPERATOR_ID = "ops-user";
+
     private final MockMvc mockMvc;
     private final OperationOutboxRelayService operationOutboxRelayService;
 
@@ -43,6 +46,8 @@ class OperationOutboxReviewControllerTest {
         makeManualReviewEvent();
 
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .param("limit", "10"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
@@ -57,16 +62,23 @@ class OperationOutboxReviewControllerTest {
         makeManualReviewEvent();
 
         mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, "ops-header-user")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "operator": "ops-user",
                                   "reason": "broker recovered"
                                 }
                                 """))
                 .andExpect(status().isNoContent());
 
         mockMvc.perform(get("/api/v1/outbox-events/manual-review"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));
+
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(0));
         mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
@@ -74,18 +86,22 @@ class OperationOutboxReviewControllerTest {
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
                 .andExpect(jsonPath("$[0].attemptCount").value(0))
                 .andExpect(jsonPath("$[0].lastError").doesNotExist());
-        mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits"))
+        mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
                 .andExpect(jsonPath("$[0].operationId").value("op-001"))
-                .andExpect(jsonPath("$[0].operator").value("ops-user"))
+                .andExpect(jsonPath("$[0].operator").value("ops-header-user"))
                 .andExpect(jsonPath("$[0].reason").value("broker recovered"));
     }
 
     @Test
     void rejectsInvalidManualReviewLimit() throws Exception {
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .param("limit", "0"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"));
@@ -96,15 +112,41 @@ class OperationOutboxReviewControllerTest {
         makeManualReviewEvent();
 
         mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "operator": " ",
-                                  "reason": "broker recovered"
+                                  "reason": " "
                                 }
                                 """))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"));
+    }
+
+    @Test
+    void rejectsMissingAdminToken() throws Exception {
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void rejectsInvalidAdminToken() throws Exception {
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, "wrong-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));
+    }
+
+    @Test
+    void rejectsMissingOperatorId() throws Exception {
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHORIZATION_DENIED"));
     }
 
     private void makeManualReviewEvent() throws Exception {

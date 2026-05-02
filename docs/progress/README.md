@@ -42,10 +42,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0024 | [Transfer E2E Scenarios](0024-transfer-e2e-scenarios.md) | 완료 |
 | 0025 | [Frontend Component Tests](0025-frontend-component-tests.md) | 완료 |
 | 0026 | [Outbox Publisher Port](0026-outbox-publisher-port.md) | 완료 |
+| 0027 | [Admin API Authz](0027-admin-api-authz.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox Publisher Port
+- 최신 완료 기능: Admin API Authz
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 운영자 manual review 화면, 실제 broker adapter, relay scheduler, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책
+- 아직 미완료: 운영자 manual review 화면, Spring Security role 모델, 실제 broker adapter, relay scheduler, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책

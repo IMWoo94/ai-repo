@@ -44,4 +44,32 @@ class WalletApiExceptionHandlerTest {
                 Instant.parse("2026-05-01T00:00:00Z")
         ));
     }
+
+    @Test
+    void mapsAdminAuthenticationToUnauthorized() {
+        ResponseEntity<ApiErrorResponse> response = exceptionHandler.handleAdminAuthentication(
+                new AdminAuthenticationException("admin token is required")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.UNAUTHORIZED);
+        assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
+                "ADMIN_AUTHENTICATION_REQUIRED",
+                "admin token is required",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+    }
+
+    @Test
+    void mapsAdminAuthorizationToForbidden() {
+        ResponseEntity<ApiErrorResponse> response = exceptionHandler.handleAdminAuthorization(
+                new AdminAuthorizationException("operator id is required")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
+                "ADMIN_AUTHORIZATION_DENIED",
+                "operator id is required",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+    }
 }
