@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.imwoo.airepo.AiRepoApplication;
+import com.imwoo.airepo.wallet.api.AdminAuthorizationGuard;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayService;
 import java.time.Clock;
 import java.time.Instant;
@@ -29,6 +30,9 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 class WalletScenarioFlowTest {
+
+    private static final String ADMIN_TOKEN = "local-ops-token";
+    private static final String OPERATOR_ID = "scenario-ops";
 
     private final MockMvc mockMvc;
     private final OperationOutboxRelayService operationOutboxRelayService;
@@ -133,7 +137,9 @@ class WalletScenarioFlowTest {
         operationOutboxRelayService.markFailed("outbox-001", "broker unavailable");
         operationOutboxRelayService.markFailed("outbox-001", "broker unavailable");
 
-        mockMvc.perform(get("/api/v1/outbox-events/manual-review"))
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
@@ -141,16 +147,19 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$[0].attemptCount").value(3));
 
         mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
-                                  "operator": "scenario-ops",
                                   "reason": "broker recovered in scenario"
                                 }
                                 """))
                 .andExpect(status().isNoContent());
 
-        mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits"))
+        mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
