@@ -65,6 +65,26 @@ class OperationOutboxRelayRunControllerTest {
     }
 
     @Test
+    void returnsRelayHealthSummary() throws Exception {
+        monitoringService.recordSuccess(
+                Instant.parse("2026-05-01T00:00:00Z"),
+                Instant.parse("2026-05-01T00:00:01Z"),
+                10,
+                new OperationOutboxPublishBatchResult(3, 2, 1)
+        );
+
+        mockMvc.perform(get("/api/v1/outbox-relay-runs/health")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("OK"))
+                .andExpect(jsonPath("$.totalRunCount").value(1))
+                .andExpect(jsonPath("$.successCount").value(1))
+                .andExpect(jsonPath("$.failedCount").value(0))
+                .andExpect(jsonPath("$.lastSuccessAt").value("2026-05-01T00:00:01Z"));
+    }
+
+    @Test
     void rejectsMissingAdminToken() throws Exception {
         mockMvc.perform(get("/api/v1/outbox-relay-runs")
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))

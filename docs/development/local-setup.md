@@ -109,6 +109,14 @@ curl -H "X-Admin-Token: local-ops-token" \
   "http://localhost:8080/api/v1/outbox-relay-runs?limit=10"
 ```
 
+Scheduler health summary와 alert 판정도 운영 header와 함께 조회합니다. 기본 기준은 최근 20회, warning 연속 실패 2회, critical 연속 실패 3회, warning 실패율 50%, 마지막 성공 15분 초과 critical입니다.
+
+```bash
+curl -H "X-Admin-Token: local-ops-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-relay-runs/health"
+```
+
 운영 API 접근 감사 로그도 같은 header로 조회합니다. Admin token 값은 감사 로그에 저장하지 않습니다.
 
 ```bash

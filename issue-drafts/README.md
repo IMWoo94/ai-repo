@@ -68,6 +68,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/63
 - `0031-operational-log-pruning.md`: 운영 로그 보존 기간과 pruning 정책 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/65
+- `0032-outbox-relay-health-metrics-alert.md`: Outbox relay health metric과 alert 판정 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/67
 
 ## GitHub CLI로 생성
 
