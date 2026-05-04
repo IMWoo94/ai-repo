@@ -51,6 +51,7 @@
 ## 확장 후보
 
 - PostgreSQL profile 기반 실제 DB scenario
-- 실제 broker adapter publish scenario
+- HTTP broker adapter publish contract
+- Kafka/RabbitMQ/SQS adapter publish scenario
 - 관리자 인증/인가 후 manual review 권한 scenario
 - release smoke scenario
