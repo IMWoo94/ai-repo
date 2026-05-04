@@ -263,6 +263,7 @@ Proposed | Accepted | Deprecated | Superseded
 
 - [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
 - [Unreleased Release Candidate Notes](docs/releases/unreleased.md)
+- [MVP Release Checklist](docs/releases/mvp-release-checklist.md)
 
 릴리스 노트에는 반드시 다음을 포함합니다.
 
