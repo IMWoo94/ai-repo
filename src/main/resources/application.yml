@@ -13,6 +13,12 @@ server:
 ai-repo:
   ops:
     admin-token: ${AI_REPO_OPS_ADMIN_TOKEN:local-ops-token}
+  outbox:
+    publisher:
+      type: ${AI_REPO_OUTBOX_PUBLISHER_TYPE:memory}
+      http:
+        endpoint: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT:http://127.0.0.1:18080/outbox-events}
+        timeout-ms: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_TIMEOUT_MS:3000}
   outbox-relay:
     scheduler:
       enabled: ${AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED:false}

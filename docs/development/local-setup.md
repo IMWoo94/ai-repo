@@ -99,6 +99,17 @@ AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS=5000 \
 ./gradlew bootRun
 ```
 
+Outbox publisher는 기본 `memory` adapter를 사용합니다. 실제 HTTP broker endpoint로 발행하려면 다음 환경 변수를 함께 설정합니다.
+
+```bash
+AI_REPO_OUTBOX_PUBLISHER_TYPE=http \
+AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT=http://127.0.0.1:18080/outbox-events \
+AI_REPO_OUTBOX_PUBLISHER_HTTP_TIMEOUT_MS=3000 \
+./gradlew bootRun
+```
+
+HTTP broker adapter는 `POST`와 `application/json`, `X-Outbox-Event-Id` header로 outbox event envelope를 발행합니다. HTTP 2xx만 성공으로 처리하고 non-2xx 또는 I/O 실패는 relay 실패로 기록합니다.
+
 수동 검증 중 잔액/거래/outbox 상태가 자동으로 바뀌면 scheduler가 켜져 있는지 먼저 확인합니다.
 
 Scheduler 실행 결과는 운영 header와 함께 조회합니다.
