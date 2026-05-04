@@ -400,6 +400,14 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public int deleteOutboxRelayRunsCompletedBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from operation_outbox_relay_runs where completed_at < ?",
+                timestamp(cutoff)
+        );
+    }
+
+    @Override
     public String nextAdminApiAccessAuditId() {
         return nextId("admin-api-access-audit", "admin_api_access_audit_id_seq");
     }
@@ -434,6 +442,14 @@ public class JdbcWalletRepository implements
                         """,
                 adminApiAccessAuditMapper(),
                 limit
+        );
+    }
+
+    @Override
+    public int deleteAdminApiAccessAuditsOccurredBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from admin_api_access_audits where occurred_at < ?",
+                timestamp(cutoff)
         );
     }
 

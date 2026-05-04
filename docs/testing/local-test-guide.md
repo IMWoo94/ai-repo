@@ -175,7 +175,7 @@ Running 1 test using 1 worker
 
 ### Outbox 운영 API가 401 또는 403을 반환할 때
 
-Outbox manual review, requeue, requeue audit, relay run 조회, admin access audit 조회는 운영 API다. 로컬 호출에는 다음 header가 필요하다.
+Outbox manual review, requeue, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
 
 ```bash
 X-Admin-Token: local-ops-token
@@ -186,6 +186,7 @@ X-Operator-Id: local-operator
 - `403 ADMIN_AUTHORIZATION_DENIED`: token은 맞지만 `X-Operator-Id`가 없다.
 - 실제 로컬 token은 `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
+- 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.
 
 ### Playwright 브라우저가 없을 때
 

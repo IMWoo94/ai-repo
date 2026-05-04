@@ -241,6 +241,13 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized int deleteOutboxRelayRunsCompletedBefore(Instant cutoff) {
+        int beforeSize = outboxRelayRuns.size();
+        outboxRelayRuns.removeIf(relayRun -> relayRun.completedAt().isBefore(cutoff));
+        return beforeSize - outboxRelayRuns.size();
+    }
+
+    @Override
     public synchronized String nextAdminApiAccessAuditId() {
         adminApiAccessAuditSequence++;
         return "admin-api-access-audit-%03d".formatted(adminApiAccessAuditSequence);
@@ -263,6 +270,13 @@ public class InMemoryWalletRepository implements
                 })
                 .limit(limit)
                 .toList();
+    }
+
+    @Override
+    public synchronized int deleteAdminApiAccessAuditsOccurredBefore(Instant cutoff) {
+        int beforeSize = adminApiAccessAudits.size();
+        adminApiAccessAudits.removeIf(accessAudit -> accessAudit.occurredAt().isBefore(cutoff));
+        return beforeSize - adminApiAccessAudits.size();
     }
 
     @Override
