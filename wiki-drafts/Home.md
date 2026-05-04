@@ -8,6 +8,7 @@
 
 - 현재 릴리스 후보: `v0.7.0`
 - 기준 문서: `docs/releases/v0.7.0.md`
+- Wiki publish 상태: `v0.7.0` 기준 publish 완료
 - 로컬 smoke 명령: `scripts/mvp-local-smoke.sh`
 - 핵심 실행 화면: React 사용자 화면과 운영자 manual review 콘솔
 

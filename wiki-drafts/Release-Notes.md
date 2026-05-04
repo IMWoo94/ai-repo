@@ -43,7 +43,7 @@
 - 운영자 승인 워크플로우와 external alert channel은 아직 없다.
 - admin token과 operator identity는 local header 기반이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
-- GitHub Wiki actual publication은 release operation으로 수행한다.
+- GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
 
 ## 다음 후보
 

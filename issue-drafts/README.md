@@ -94,6 +94,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/92
 - `0044-v0.7.0-release-baseline.md`: v0.7.0 release baseline 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/94
+- `0045-v0.7.0-wiki-publication.md`: v0.7.0 Wiki publication 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/96
 
 ## GitHub CLI로 생성
 
