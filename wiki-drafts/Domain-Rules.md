@@ -4,14 +4,30 @@
 
 중요한 도메인 정책이 확정되면 ADR로 승격한다. 이 문서는 사고 과정과 도메인 지식의 축적 공간이다.
 
+## 현재 MVP 기준선
+
+현재 1차 MVP는 다음 범위를 검증한다.
+
+- 사용자는 React 화면에서 잔액, 거래내역, 충전, 송금, 원장, 감사 로그, operation 증거를 확인한다.
+- 백엔드는 Java 25와 Spring Boot 기반 모놀리식 애플리케이션으로 동작한다.
+- 기본 실행은 인메모리 저장소이며, `postgres` 프로필에서는 PostgreSQL, Flyway, JDBC 저장소를 사용한다.
+- 돈 이동 성공 결과는 거래내역, 원장, 감사 이벤트, operation step log, transactional outbox event로 추적한다.
+- outbox event는 relay 상태와 retry 정책을 가지며, 반복 실패 시 `MANUAL_REVIEW`로 격리된다.
+- 운영자는 manual review outbox를 조회하고 requeue하며, requeue audit trail을 확인한다.
+- 운영 API는 local admin token과 operator id header로 보호된다.
+- 현재 릴리스 후보 기준은 `docs/releases/unreleased.md`를 따른다.
+
 ## 현재 도메인 진행 순서
 
 1. 잔액과 거래내역
 2. 회원과 지갑 계정
 3. 충전과 송금
 4. 원장과 감사 로그
-5. 정산과 재처리
-6. 이상거래 탐지
+5. PostgreSQL 영속화와 스키마 migration
+6. 논리적 트랜잭션 단계 로그
+7. Transactional Outbox와 relay 운영
+8. 운영자 manual review와 requeue
+9. 운영 모니터링과 release health
 
 ## 용어
 
@@ -21,7 +37,12 @@
 | 지갑 | 회원이 보유한 금액과 거래내역의 기준 단위 | 초안 |
 | 잔액 | 특정 지갑의 현재 사용 가능 금액 | 초안 |
 | 거래내역 | 잔액에 영향을 준 사건 또는 사용자가 조회할 수 있는 금융 활동 기록 | 초안 |
-| 원장 | 감사와 정합성 검증을 위해 보존되는 불변 기록 | DECIDE_LATER |
+| 원장 | 감사와 정합성 검증을 위해 보존되는 불변 기록 | ADR-0007 |
+| 감사 이벤트 | 명령 처리 결과를 운영 관점에서 추적하는 기록 | ADR-0007 |
+| Operation step log | 하나의 돈 이동 명령 안에서 단계별 진행 상태를 기록하는 관측 로그 | ADR-0013 |
+| Transactional outbox | 돈 이동 결과와 외부 반응 후보를 같은 트랜잭션에 저장하는 event | ADR-0014 |
+| Manual review | 자동 relay에서 제외하고 운영자가 확인해야 하는 outbox 상태 | ADR-0018 |
+| Requeue audit | 운영자가 manual review event를 재처리 흐름에 넣은 이력 | ADR-0020 |
 | 거래 상태 | 거래가 생성, 완료, 실패, 취소 등 어느 단계에 있는지 나타내는 값 | 초안 |
 
 ## 잔액 규칙
@@ -112,6 +133,28 @@
 - 거래 상태 목록을 어디까지 둘지 여부.
 - 통화 정책을 원화 단일로 둘지 다중 통화 가능성을 열지 여부.
 - 인증/인가 도입 전 조회 권한을 어떻게 표현할지 여부.
+
+## Outbox와 운영자 조치 규칙
+
+| 규칙 | 설명 | 근거 |
+| --- | --- | --- |
+| 돈 이동 성공은 outbox event를 남긴다 | 외부 반응 후보를 같은 트랜잭션 안에 기록한다 | ADR-0014 |
+| relay는 event를 claim한 뒤 발행한다 | 중복 처리와 lease 유실을 줄인다 | ADR-0016, ADR-0017 |
+| 발행 실패는 retry 정책을 따른다 | 일시 장애를 자동 재시도로 흡수한다 | ADR-0016 |
+| 최대 재시도 초과 event는 manual review로 격리한다 | 무한 재시도를 막고 운영자 확인 대상으로 분리한다 | ADR-0018 |
+| manual review event는 운영자 API로 조회한다 | 장애 event를 운영자가 확인할 수 있어야 한다 | ADR-0019 |
+| requeue는 operator와 reason을 감사 이력으로 남긴다 | 금융/핀테크 운영 조치는 사후 추적 가능해야 한다 | ADR-0020 |
+| 운영 API는 admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이다 | ADR-0028, ADR-0034 |
+| relay run, health summary, admin access audit, pruning run은 운영 관측 기록이다 | 운영자는 상태와 조치 이력을 API로 확인한다 | ADR-0030, ADR-0031, ADR-0032, ADR-0033 |
+
+## 화면과 검증 규칙
+
+| 규칙 | 설명 | 검증 |
+| --- | --- | --- |
+| 사용자 화면은 API 결과를 숨기지 않는다 | 잔액, 거래내역, 원장, 감사 로그, operation 증거를 함께 보여준다 | Frontend E2E |
+| 충전 금액과 송금 금액 입력은 독립 상태다 | 한쪽 입력이 다른 폼을 오염시키면 실제 사용 흐름이 깨진다 | Frontend unit, E2E |
+| 운영자 콘솔은 empty state와 error state를 구분한다 | 조치 대상 없음과 API 실패를 혼동하지 않아야 한다 | Frontend unit, E2E |
+| release candidate는 backend, frontend, PostgreSQL scenario gate를 통과해야 한다 | MVP는 코드와 문서뿐 아니라 실행 검증으로 판단한다 | `docs/releases/unreleased.md` |
 
 ## 회원/지갑 계정 규칙 후보
 

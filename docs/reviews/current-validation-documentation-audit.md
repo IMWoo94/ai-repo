@@ -27,11 +27,11 @@
 
 | 등급 | 항목 | 판단 |
 | --- | --- | --- |
-| P1 | Wiki draft 최신화 | 일부 내용이 최근 구현 상태보다 오래됨 |
+| P1 | Wiki draft 최신화 | `wiki-drafts/Domain-Rules.md`와 Wiki index 후속 보강 완료 |
 | P1 | 다음 릴리스 후보 문서 | `docs/releases/unreleased.md`로 후속 보강 완료 |
-| P2 | QA 시나리오 Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
-| P2 | Architecture Decisions Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
-| P2 | MCP and Skills Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
+| P2 | QA 시나리오 Wiki | `wiki-drafts/QA-Scenarios.md`로 후속 보강 완료 |
+| P2 | Architecture Decisions Wiki | `wiki-drafts/Architecture-Decisions.md`로 후속 보강 완료 |
+| P2 | MCP and Skills Wiki | `wiki-drafts/MCP-and-Skills.md`로 후속 보강 완료 |
 | P3 | `.dev/rules` 기반 자동 체크 규칙 | `check` 스킬 기준 rule directory가 없음 |
 
 ## 확인된 정상 항목
@@ -94,7 +94,7 @@
 
 판단:
 
-- ADR과 Progress는 최신이지만, Wiki draft가 도메인 설명 문서라면 최신화가 필요하다.
+- ADR과 Progress는 최신이며, Wiki draft도 현재 MVP 기준선을 반영하도록 보강했다.
 - 단, 과거 progress 문서의 “남은 일”은 당시 시점 기록이므로 소급 수정 대상이 아니다.
 
 ### P1. 다음 릴리스 후보 문서
@@ -127,7 +127,7 @@ README의 권장 Wiki 구조에는 `QA-Scenarios`가 있다.
 판단:
 
 - 코드 검증 기준은 존재한다.
-- 포트폴리오형 설명 문서로는 QA 시나리오 Wiki 초안이 있으면 좋다.
+- `wiki-drafts/QA-Scenarios.md`를 추가해 포트폴리오형 설명 문서 gap을 보강했다.
 
 ### P2. Architecture Decisions Wiki 초안
 
@@ -138,7 +138,7 @@ README의 권장 Wiki 구조에는 `Architecture-Decisions`가 있다.
 판단:
 
 - source of truth는 충분하다.
-- Wiki에는 비기술 독자가 읽기 쉬운 결정 지도 형태가 있으면 좋다.
+- `wiki-drafts/Architecture-Decisions.md`를 추가해 비기술 독자가 읽기 쉬운 결정 지도를 보강했다.
 
 ### P2. MCP and Skills Wiki 초안
 
@@ -148,6 +148,7 @@ README의 권장 Wiki 구조에는 `MCP-and-Skills`가 있다.
 
 판단:
 
+- `wiki-drafts/MCP-and-Skills.md`를 추가해 MCP/스킬 사용 원칙과 후보를 보강했다.
 - 기능 검증에는 영향이 낮다.
 - 하네스 운영 포트폴리오 관점에서는 보강 가치가 있다.
 
@@ -164,15 +165,12 @@ README의 권장 Wiki 구조에는 `MCP-and-Skills`가 있다.
 
 ## 권장 후속 작업
 
-1. Wiki draft 최신화
-   - `wiki-drafts/Domain-Rules.md`
-   - `wiki-drafts/README.md`
+1. Wiki draft 게시 또는 동기화
+   - `wiki-drafts/` 초안을 실제 GitHub Wiki에 반영
 2. 다음 릴리스 후보 문서 유지
    - `docs/releases/unreleased.md`를 실제 tag 발행 전 버전 릴리스 노트로 승격
-3. QA/Architecture/MCP Wiki 초안 추가
-   - `wiki-drafts/QA-Scenarios.md`
-   - `wiki-drafts/Architecture-Decisions.md`
-   - `wiki-drafts/MCP-and-Skills.md`
+3. Release Notes Wiki 초안 추가
+   - 실제 tag 발행 시 release note를 Wiki 요약과 연결
 4. 자동 점검 규칙 도입 검토
    - `.dev/rules/documentation-sync.md`
    - `.dev/rules/testing-gates.md`
@@ -182,6 +180,6 @@ README의 권장 Wiki 구조에는 `MCP-and-Skills`가 있다.
 - 기능 검증 문서: PASS
 - ADR/Progress 추적: PASS
 - Issue/PR/CI 연결: PASS
-- 릴리스 최신 추적: WARN
-- Wiki 최신성: WARN
+- 릴리스 최신 추적: PASS
+- Wiki 최신성: PASS
 - 자동 누락 점검 규칙: OPTIONAL

@@ -82,6 +82,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/79
 - `0038-unreleased-release-candidate-notes.md`: Unreleased 릴리스 후보 문서 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/81
+- `0039-refresh-mvp-wiki-drafts.md`: MVP Wiki 초안 최신화 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/83
 
 ## GitHub CLI로 생성
 
