@@ -16,7 +16,8 @@ public class AdminApiAccessAuditFilter extends OncePerRequestFilter {
     private static final List<String> ADMIN_API_PATH_PREFIXES = List.of(
             "/api/v1/outbox-events",
             "/api/v1/outbox-relay-runs",
-            "/api/v1/admin-api-access-audits"
+            "/api/v1/admin-api-access-audits",
+            "/api/v1/operational-log-pruning-runs"
     );
 
     private final AdminApiAccessAuditService adminApiAccessAuditService;

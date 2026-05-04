@@ -371,6 +371,39 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void deletesOutboxRelayRunsCompletedBeforeCutoff() {
+        repository.saveOutboxRelayRun(new OperationOutboxRelayRun(
+                repository.nextRelayRunId(),
+                Instant.parse("2026-04-30T23:59:58Z"),
+                Instant.parse("2026-04-30T23:59:59Z"),
+                OperationOutboxRelayRunStatus.SUCCESS,
+                10,
+                0,
+                0,
+                0,
+                null
+        ));
+        repository.saveOutboxRelayRun(new OperationOutboxRelayRun(
+                repository.nextRelayRunId(),
+                Instant.parse("2026-04-30T23:59:59Z"),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                OperationOutboxRelayRunStatus.SUCCESS,
+                10,
+                0,
+                0,
+                0,
+                null
+        ));
+
+        int deletedCount = repository.deleteOutboxRelayRunsCompletedBefore(Instant.parse("2026-05-01T00:00:00Z"));
+
+        assertThat(deletedCount).isEqualTo(1);
+        assertThat(repository.findRecentOutboxRelayRuns(10))
+                .singleElement()
+                .satisfies(relayRun -> assertThat(relayRun.relayRunId()).isEqualTo("outbox-relay-run-002"));
+    }
+
+    @Test
     void recordsAndReturnsRecentAdminApiAccessAudits() {
         repository.saveAdminApiAccessAudit(new AdminApiAccessAudit(
                 repository.nextAdminApiAccessAuditId(),
@@ -399,6 +432,37 @@ class JdbcWalletRepositoryTest {
                     assertThat(accessAudit.statusCode()).isEqualTo(401);
                     assertThat(accessAudit.outcome()).isEqualTo(AdminApiAccessOutcome.FAILURE);
                 });
+    }
+
+    @Test
+    void deletesAdminApiAccessAuditsOccurredBeforeCutoff() {
+        repository.saveAdminApiAccessAudit(new AdminApiAccessAudit(
+                repository.nextAdminApiAccessAuditId(),
+                Instant.parse("2026-04-30T23:59:59Z"),
+                "GET",
+                "/api/v1/outbox-relay-runs",
+                "ops-user",
+                200,
+                AdminApiAccessOutcome.SUCCESS
+        ));
+        repository.saveAdminApiAccessAudit(new AdminApiAccessAudit(
+                repository.nextAdminApiAccessAuditId(),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                "GET",
+                "/api/v1/outbox-relay-runs",
+                "ops-user",
+                200,
+                AdminApiAccessOutcome.SUCCESS
+        ));
+
+        int deletedCount = repository.deleteAdminApiAccessAuditsOccurredBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(deletedCount).isEqualTo(1);
+        assertThat(repository.findRecentAdminApiAccessAudits(10))
+                .singleElement()
+                .satisfies(accessAudit -> assertThat(accessAudit.auditId()).isEqualTo("admin-api-access-audit-002"));
     }
 
     @Test
