@@ -15,24 +15,17 @@ public class OperationalLogPruningController {
 
     private final OperationalLogPruningService operationalLogPruningService;
     private final OperationalLogPruningPolicy operationalLogPruningPolicy;
-    private final AdminAuthorizationGuard adminAuthorizationGuard;
 
     public OperationalLogPruningController(
             OperationalLogPruningService operationalLogPruningService,
-            OperationalLogPruningPolicy operationalLogPruningPolicy,
-            AdminAuthorizationGuard adminAuthorizationGuard
+            OperationalLogPruningPolicy operationalLogPruningPolicy
     ) {
         this.operationalLogPruningService = operationalLogPruningService;
         this.operationalLogPruningPolicy = operationalLogPruningPolicy;
-        this.adminAuthorizationGuard = adminAuthorizationGuard;
     }
 
     @PostMapping
-    public ResponseEntity<OperationalLogPruningResult> prune(
-            @RequestHeader(name = AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, required = false) String adminToken,
-            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId
-    ) {
-        adminAuthorizationGuard.authenticate(adminToken, operatorId);
+    public ResponseEntity<OperationalLogPruningResult> prune() {
         return ResponseEntity.ok(operationalLogPruningService.prune(
                 operationalLogPruningPolicy.relayRunRetention(),
                 operationalLogPruningPolicy.adminAccessAuditRetention()

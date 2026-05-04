@@ -70,6 +70,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/65
 - `0032-outbox-relay-health-metrics-alert.md`: Outbox relay health metric과 alert 판정 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/67
+- `0033-spring-security-role-model.md`: Spring Security 기반 운영 API role model 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/69
 
 ## GitHub CLI로 생성
 

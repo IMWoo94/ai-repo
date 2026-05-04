@@ -15,32 +15,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class OperationOutboxRelayRunController {
 
     private final OperationOutboxRelayMonitoringService operationOutboxRelayMonitoringService;
-    private final AdminAuthorizationGuard adminAuthorizationGuard;
 
-    public OperationOutboxRelayRunController(
-            OperationOutboxRelayMonitoringService operationOutboxRelayMonitoringService,
-            AdminAuthorizationGuard adminAuthorizationGuard
-    ) {
+    public OperationOutboxRelayRunController(OperationOutboxRelayMonitoringService operationOutboxRelayMonitoringService) {
         this.operationOutboxRelayMonitoringService = operationOutboxRelayMonitoringService;
-        this.adminAuthorizationGuard = adminAuthorizationGuard;
     }
 
     @GetMapping
     public List<OperationOutboxRelayRun> recentRuns(
-            @RequestHeader(name = AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, required = false) String adminToken,
-            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId,
             @RequestParam(defaultValue = "50") int limit
     ) {
-        adminAuthorizationGuard.authenticate(adminToken, operatorId);
         return operationOutboxRelayMonitoringService.getRecentRuns(limit);
     }
 
     @GetMapping("/health")
-    public OutboxRelayHealthSummary health(
-            @RequestHeader(name = AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, required = false) String adminToken,
-            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId
-    ) {
-        adminAuthorizationGuard.authenticate(adminToken, operatorId);
+    public OutboxRelayHealthSummary health() {
         return operationOutboxRelayMonitoringService.getHealthSummary();
     }
 }

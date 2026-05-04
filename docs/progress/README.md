@@ -48,10 +48,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0030 | [Admin API Access Audit](0030-admin-api-access-audit.md) | 완료 |
 | 0031 | [Operational Log Pruning](0031-operational-log-pruning.md) | 완료 |
 | 0032 | [Outbox Relay Health Metrics and Alert](0032-outbox-relay-health-metrics-alert.md) | 완료 |
+| 0033 | [Spring Security Role Model](0033-spring-security-role-model.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox Relay Health Metrics and Alert
+- 최신 완료 기능: Spring Security Role Model
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 운영자 manual review 화면, Spring Security role 모델, 실제 broker adapter, pruning 실행 이력, external alert channel, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책
+- 아직 미완료: 운영자 manual review 화면, 실제 broker adapter, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, PostgreSQL scenario test, GitHub Wiki 동기화, Testcontainers 강제 실행 정책

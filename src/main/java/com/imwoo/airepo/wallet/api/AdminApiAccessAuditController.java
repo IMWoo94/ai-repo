@@ -14,23 +14,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminApiAccessAuditController {
 
     private final AdminApiAccessAuditService adminApiAccessAuditService;
-    private final AdminAuthorizationGuard adminAuthorizationGuard;
 
-    public AdminApiAccessAuditController(
-            AdminApiAccessAuditService adminApiAccessAuditService,
-            AdminAuthorizationGuard adminAuthorizationGuard
-    ) {
+    public AdminApiAccessAuditController(AdminApiAccessAuditService adminApiAccessAuditService) {
         this.adminApiAccessAuditService = adminApiAccessAuditService;
-        this.adminAuthorizationGuard = adminAuthorizationGuard;
     }
 
     @GetMapping
     public List<AdminApiAccessAudit> recentAccessAudits(
-            @RequestHeader(name = AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, required = false) String adminToken,
-            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId,
             @RequestParam(defaultValue = "50") int limit
     ) {
-        adminAuthorizationGuard.authenticate(adminToken, operatorId);
         return adminApiAccessAuditService.getRecentAudits(limit);
     }
 }
