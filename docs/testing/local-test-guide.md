@@ -185,6 +185,23 @@ Running 3 tests using 1 worker
 - 운영자 콘솔에서 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
 - 운영자 콘솔에서 local admin header로 manual review empty state가 표시된다.
 
+## MVP 로컬 smoke
+
+백엔드와 프론트를 이미 띄운 상태에서 릴리스 시연 전 최소 연결 상태를 빠르게 확인한다.
+
+```bash
+scripts/mvp-local-smoke.sh
+```
+
+검증 대상:
+
+- 백엔드 지갑 잔액 API 응답
+- 운영자 manual review API의 local admin header 성공 응답
+- 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
+- Vite 프론트 HTML 응답
+
+기본 URL은 `http://127.0.0.1:8080`, `http://127.0.0.1:5173`이다. 필요하면 `AI_REPO_BACKEND_URL`, `AI_REPO_FRONTEND_URL`, `AI_REPO_OPS_ADMIN_TOKEN`, `AI_REPO_SMOKE_OPERATOR_ID`로 override한다.
+
 ## CI 대응 관계
 
 | CI job | 로컬 명령 |

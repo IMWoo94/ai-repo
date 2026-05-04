@@ -84,6 +84,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/81
 - `0039-refresh-mvp-wiki-drafts.md`: MVP Wiki 초안 최신화 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/83
+- `0040-mvp-local-smoke-script.md`: MVP 로컬 smoke 스크립트 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/85
 
 ## GitHub CLI로 생성
 

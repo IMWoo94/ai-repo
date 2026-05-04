@@ -50,6 +50,7 @@
 npm --prefix frontend run test
 npm --prefix frontend run build
 npm --prefix frontend run e2e
+scripts/mvp-local-smoke.sh
 docker compose config
 git diff --check
 ```
@@ -76,13 +77,13 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 - 릴리스 tag 이름과 version bump 기준을 결정한다.
 - `unreleased` 내용을 실제 버전 릴리스 노트로 승격한다.
-- 로컬 시연 smoke 결과를 릴리스 PR에 첨부한다.
+- `scripts/mvp-local-smoke.sh` 실행 결과를 릴리스 PR에 첨부한다.
 - GitHub Wiki에 MVP 개요, 운영자 콘솔, 테스트 전략 요약을 반영한다.
 
 ## 후속 후보
 
 - 운영자 requeue full E2E fixture
-- release smoke script 또는 actuator 기반 health check
+- actuator 기반 health check
 - relay health/pruning operator UI
 - broker-specific Testcontainers contract
 - consumer idempotency
