@@ -86,6 +86,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/83
 - `0040-mvp-local-smoke-script.md`: MVP 로컬 smoke 스크립트 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/85
+- `0041-github-wiki-sync-workflow.md`: GitHub Wiki sync workflow 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/87
 
 ## GitHub CLI로 생성
 

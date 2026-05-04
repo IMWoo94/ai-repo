@@ -56,10 +56,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0038 | [Unreleased Release Candidate Notes](0038-unreleased-release-candidate-notes.md) | 완료 |
 | 0039 | [Refresh MVP Wiki Drafts](0039-refresh-mvp-wiki-drafts.md) | 완료 |
 | 0040 | [MVP Local Smoke Script](0040-mvp-local-smoke-script.md) | 완료 |
+| 0041 | [GitHub Wiki Sync Workflow](0041-github-wiki-sync-workflow.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: MVP Local Smoke Script
+- 최신 완료 기능: GitHub Wiki Sync Workflow
 - 현재 릴리스 후보: `unreleased`
-- 아직 미완료: 운영자 relay health/pruning 화면, Kafka/RabbitMQ/SQS adapter, consumer idempotency, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, GitHub Wiki 게시/동기화, broker-specific Testcontainers 정책, manual review requeue full E2E fixture, actuator health check
+- 아직 미완료: 운영자 relay health/pruning 화면, Kafka/RabbitMQ/SQS adapter, consumer idempotency, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, GitHub Wiki 실제 push, broker-specific Testcontainers 정책, manual review requeue full E2E fixture, actuator health check
