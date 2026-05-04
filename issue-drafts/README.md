@@ -76,6 +76,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/71
 - `0035-postgresql-scenario-testcontainers-ci.md`: PostgreSQL scenario와 Testcontainers CI gate 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/73
+- `0036-operator-manual-review-console-ui.md`: 운영자 manual review console UI 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/77
 
 ## GitHub CLI로 생성
 
