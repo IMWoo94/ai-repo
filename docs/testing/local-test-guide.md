@@ -195,6 +195,7 @@ scripts/mvp-local-smoke.sh
 
 검증 대상:
 
+- Actuator health endpoint의 `UP` 응답
 - 백엔드 지갑 잔액 API 응답
 - 운영자 manual review API의 local admin header 성공 응답
 - 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
