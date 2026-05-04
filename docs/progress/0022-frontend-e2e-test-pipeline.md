@@ -23,9 +23,7 @@
 
 ## 남은 일
 
-- 송금 성공 흐름 E2E를 추가한다.
-- 송금 실패와 오류 메시지 E2E를 추가한다.
-- 운영자 manual review 화면이 생기면 outbox requeue E2E를 추가한다.
+- manual review fixture 생성 방식이 정리되면 운영자 requeue 성공 E2E를 추가한다.
 
 ## 관련 문서
 

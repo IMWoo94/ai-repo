@@ -78,6 +78,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/73
 - `0036-operator-manual-review-console-ui.md`: 운영자 manual review console UI 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/77
+- `0037-operator-console-e2e-smoke.md`: 운영자 콘솔 E2E smoke 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/79
 
 ## GitHub CLI로 생성
 

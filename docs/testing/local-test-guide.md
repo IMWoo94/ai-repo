@@ -167,9 +167,11 @@ npm --prefix frontend run e2e
 통과 기준:
 
 ```text
-Running 1 test using 1 worker
+Running 3 tests using 1 worker
 ✓  1 [chromium] › e2e/wallet-flow.spec.ts
-1 passed
+✓  2 [chromium] › e2e/wallet-flow.spec.ts
+✓  3 [chromium] › e2e/wallet-flow.spec.ts
+3 passed
 ```
 
 현재 E2E 시나리오는 다음을 검증한다.
@@ -180,6 +182,8 @@ Running 1 test using 1 worker
 - 송금 실행 후 출금 지갑 잔액이 `129,000 KRW`로 감소한다.
 - 잔액 부족 송금 시 `INSUFFICIENT_BALANCE` 오류가 표시된다.
 - 최근 operation, `LEDGER_RECORDED`, `CHARGE_COMPLETED`, `TRANSFER_COMPLETED` outbox event가 표시된다.
+- 운영자 콘솔에서 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
+- 운영자 콘솔에서 local admin header로 manual review empty state가 표시된다.
 
 ## CI 대응 관계
 

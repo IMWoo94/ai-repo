@@ -47,3 +47,26 @@ test('잔액 부족 송금은 오류 메시지를 표시한다', async ({ page }
 
   await expect(page.getByText('INSUFFICIENT_BALANCE: Insufficient balance: wallet-002')).toBeVisible();
 });
+
+test('운영자는 manual review 콘솔의 인증 오류와 empty state를 확인한다', async ({ page }) => {
+  await page.goto('/');
+
+  const operatorConsole = page.locator('.operator-console');
+
+  await expect(operatorConsole.getByRole('heading', { name: 'Manual review outbox를 운영자가 직접 확인합니다.' })).toBeVisible();
+  await expect(operatorConsole.getByLabel('운영자 Admin Token')).toHaveValue('local-ops-token');
+  await expect(operatorConsole.getByLabel('운영자 ID')).toHaveValue('local-operator');
+  await expect(operatorConsole.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('선택된 outbox event가 없습니다.')).toBeVisible();
+
+  await operatorConsole.getByLabel('운영자 Admin Token').fill('wrong-token');
+  await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
+
+  await expect(operatorConsole.getByText(/ADMIN_AUTHENTICATION_REQUIRED/)).toBeVisible();
+
+  await operatorConsole.getByLabel('운영자 Admin Token').fill('local-ops-token');
+  await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
+
+  await expect(operatorConsole.getByText('Manual review event 조회가 완료되었습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
+});
