@@ -90,6 +90,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/87
 - `0042-actuator-health-smoke-endpoint.md`: Actuator health smoke endpoint 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/90
+- `0043-mvp-release-checklist.md`: MVP release checklist 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/92
 
 ## GitHub CLI로 생성
 
