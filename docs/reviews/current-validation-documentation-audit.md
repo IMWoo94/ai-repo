@@ -28,7 +28,7 @@
 | 등급 | 항목 | 판단 |
 | --- | --- | --- |
 | P1 | Wiki draft 최신화 | 일부 내용이 최근 구현 상태보다 오래됨 |
-| P1 | 다음 릴리스 후보 문서 | `v0.6.0` 이후 변경분의 unreleased/release candidate 문서가 없음 |
+| P1 | 다음 릴리스 후보 문서 | `docs/releases/unreleased.md`로 후속 보강 완료 |
 | P2 | QA 시나리오 Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
 | P2 | Architecture Decisions Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
 | P2 | MCP and Skills Wiki | README 권장 Wiki 구조에는 있으나 초안 파일이 없음 |
@@ -115,7 +115,8 @@
 판단:
 
 - 아직 새 버전을 발행하지 않았다면 문제는 아니다.
-- 다만 릴리스 관리 관점에서는 `docs/releases/unreleased.md` 또는 `docs/releases/v0.7.0-candidate.md`가 있으면 현재 개발분 검증 기준이 더 명확해진다.
+- `docs/releases/unreleased.md`를 추가해 현재 개발분 검증 기준을 추적한다.
+- 실제 tag 발행 전에는 `unreleased`를 버전 릴리스 노트로 승격해야 한다.
 
 ### P2. QA Scenarios Wiki 초안
 
@@ -166,8 +167,8 @@ README의 권장 Wiki 구조에는 `MCP-and-Skills`가 있다.
 1. Wiki draft 최신화
    - `wiki-drafts/Domain-Rules.md`
    - `wiki-drafts/README.md`
-2. 다음 릴리스 후보 문서 추가
-   - `docs/releases/unreleased.md` 또는 `docs/releases/v0.7.0-candidate.md`
+2. 다음 릴리스 후보 문서 유지
+   - `docs/releases/unreleased.md`를 실제 tag 발행 전 버전 릴리스 노트로 승격
 3. QA/Architecture/MCP Wiki 초안 추가
    - `wiki-drafts/QA-Scenarios.md`
    - `wiki-drafts/Architecture-Decisions.md`

@@ -80,6 +80,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/77
 - `0037-operator-console-e2e-smoke.md`: 운영자 콘솔 E2E smoke 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/79
+- `0038-unreleased-release-candidate-notes.md`: Unreleased 릴리스 후보 문서 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/81
 
 ## GitHub CLI로 생성
 
