@@ -257,10 +257,12 @@ Proposed | Accepted | Deprecated | Superseded
 - `v0.4.0`: 원장 모델, 감사 로그
 - `v0.5.0`: PostgreSQL 스키마 migration, 정산 배치 후보
 - `v0.6.0`: outbox 재처리, manual review, requeue 감사 이력, 첫 GitHub Release 기준선
-- `unreleased`: 1차 MVP 출시 후보 검증 기준선
+- `v0.7.0`: 1차 MVP 시연 기준선
+- `unreleased`: `v0.7.0` 이후 변경 후보
 
 현재 릴리스 노트:
 
+- [v0.7.0 Release Notes](docs/releases/v0.7.0.md)
 - [v0.6.0 Release Notes](docs/releases/v0.6.0.md)
 - [Unreleased Release Candidate Notes](docs/releases/unreleased.md)
 - [MVP Release Checklist](docs/releases/mvp-release-checklist.md)

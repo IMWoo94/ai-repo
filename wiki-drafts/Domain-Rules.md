@@ -15,7 +15,7 @@
 - outbox event는 relay 상태와 retry 정책을 가지며, 반복 실패 시 `MANUAL_REVIEW`로 격리된다.
 - 운영자는 manual review outbox를 조회하고 requeue하며, requeue audit trail을 확인한다.
 - 운영 API는 local admin token과 operator id header로 보호된다.
-- 현재 릴리스 후보 기준은 `docs/releases/unreleased.md`를 따른다.
+- 현재 릴리스 후보 기준은 `docs/releases/v0.7.0.md`를 따른다.
 
 ## 현재 도메인 진행 순서
 

@@ -92,6 +92,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/90
 - `0043-mvp-release-checklist.md`: MVP release checklist 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/92
+- `0044-v0.7.0-release-baseline.md`: v0.7.0 release baseline 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/94
 
 ## GitHub CLI로 생성
 

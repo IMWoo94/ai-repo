@@ -80,6 +80,6 @@ Accepted
 
 후속 작업:
 
-- `v0.7.0` 후보로 실제 broker 발행 또는 인증/인가 정책을 설계한다.
+- `v0.8.0` 이후 후보로 broker-specific adapter와 consumer idempotency를 설계한다.
 - GitHub Wiki 동기화 절차를 릴리스 체크리스트에 연결한다.
 - 필요하면 컨테이너 이미지 빌드/검증 단계를 추가한다.

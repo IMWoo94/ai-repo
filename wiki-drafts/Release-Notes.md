@@ -2,11 +2,11 @@
 
 이 문서는 GitHub Wiki에 게시할 릴리스 요약 초안이다.
 
-상세한 release candidate source는 `docs/releases/unreleased.md`이고, 실제 tag 발행 시 버전별 릴리스 노트로 승격한다.
+상세한 release note source는 `docs/releases/v0.7.0.md`이고, 이후 변경 후보는 `docs/releases/unreleased.md`에서 추적한다.
 
-## 현재 후보: unreleased
+## 현재 후보: v0.7.0
 
-`unreleased`는 `v0.6.0` 이후 `main`에 누적된 1차 MVP 출시 후보 변경분을 추적한다.
+`v0.7.0`은 `v0.6.0` 이후 `main`에 누적된 1차 MVP 출시 후보 변경분을 확정한 기준선이다.
 
 ## 포함된 큰 흐름
 
@@ -48,7 +48,6 @@
 ## 다음 후보
 
 - manual review requeue full E2E fixture
-- actuator 기반 health check
 - relay health/pruning operator UI
 - broker-specific Testcontainers contract
 - consumer idempotency
