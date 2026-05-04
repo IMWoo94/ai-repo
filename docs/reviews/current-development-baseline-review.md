@@ -21,13 +21,13 @@
 | P2 | 운영 API 인증/인가 부재 | manual review/requeue API는 운영 행위인데 현재 누구나 호출 가능한 형태다 | 관리자 인증/인가 ADR과 테스트를 추가한다 |
 | P2 | 실제 broker 미연동 | outbox는 상태와 retry는 있지만 외부 publish adapter가 없다 | broker port/interface와 fake adapter부터 도입한다 |
 | P3 | Wiki 동기화 수동 | `scripts/sync-wiki-drafts.sh`로 checkout 동기화 절차는 생겼고 실제 push는 release operation이다 | 릴리스 체크리스트에서 Wiki push를 확인한다 |
-| P3 | release health check 부재 | Release는 발행됐지만 로컬 앱 기동 smoke 검증은 별도 게이트가 아니다 | `bootRun` 또는 actuator 도입 후 smoke script를 추가한다 |
+| P3 | release health check 부재 | Actuator health endpoint와 MVP local smoke script로 후속 보강 완료 | 릴리스 PR에서 smoke 결과를 첨부한다 |
 
 ## 이번 작업에서 반영한 개선
 
 - P1 항목인 시나리오 기반 게이트 부족을 `scenarioTest` Gradle task와 GitHub Actions `Scenario Test` job으로 보완했다.
 - 돈 이동 증거 흐름과 outbox 운영 흐름을 첫 시나리오 테스트로 고정했다.
-- 남은 개선점은 실제 Wiki push, release health check, broker-specific 검증, 운영자 승인 workflow다.
+- 남은 개선점은 실제 Wiki push, broker-specific 검증, 운영자 승인 workflow다.
 
 ## 테스트 파이프라인 진단
 

@@ -88,6 +88,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/85
 - `0041-github-wiki-sync-workflow.md`: GitHub Wiki sync workflow 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/87
+- `0042-actuator-health-smoke-endpoint.md`: Actuator health smoke endpoint 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/90
 
 ## GitHub CLI로 생성
 

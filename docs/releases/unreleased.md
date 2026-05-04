@@ -25,6 +25,7 @@
 - PostgreSQL scenario Testcontainers CI gate
 - 운영자 manual review console UI
 - 운영자 console E2E smoke
+- Actuator health endpoint 기반 release smoke
 
 ## MVP 출시 판단 기준
 
@@ -83,7 +84,6 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 ## 후속 후보
 
 - 운영자 requeue full E2E fixture
-- actuator 기반 health check
 - relay health/pruning operator UI
 - broker-specific Testcontainers contract
 - consumer idempotency

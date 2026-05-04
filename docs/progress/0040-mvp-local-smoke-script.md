@@ -22,7 +22,7 @@
 
 ## 남은 일
 
-- actuator 기반 health check를 추가할지 별도 ADR에서 결정한다.
+- Actuator health check는 후속 단계에서 MVP local smoke에 포함했다.
 - smoke script가 서버를 직접 기동/중지하는 방식은 필요해질 때 별도 작업으로 분리한다.
 
 ## 관련 문서

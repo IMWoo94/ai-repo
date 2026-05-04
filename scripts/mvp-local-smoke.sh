@@ -25,6 +25,10 @@ echo "MVP local smoke"
 echo "- backend:  ${BACKEND_URL}"
 echo "- frontend: ${FRONTEND_URL}"
 
+health_response="$(curl -fsS "${BACKEND_URL}/actuator/health")" \
+  || fail "actuator health endpoint is not reachable"
+check_contains "$health_response" '"status":"UP"' "actuator health response"
+
 wallet_response="$(curl -fsS "${BACKEND_URL}/api/v1/wallets/wallet-001/balance")" \
   || fail "backend wallet balance API is not reachable"
 check_contains "$wallet_response" '"walletId":"wallet-001"' "wallet balance response"
