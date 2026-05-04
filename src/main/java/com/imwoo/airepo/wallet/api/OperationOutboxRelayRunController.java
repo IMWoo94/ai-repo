@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.api;
 
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayMonitoringService;
+import com.imwoo.airepo.wallet.application.OutboxRelayHealthSummary;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -32,5 +33,14 @@ public class OperationOutboxRelayRunController {
     ) {
         adminAuthorizationGuard.authenticate(adminToken, operatorId);
         return operationOutboxRelayMonitoringService.getRecentRuns(limit);
+    }
+
+    @GetMapping("/health")
+    public OutboxRelayHealthSummary health(
+            @RequestHeader(name = AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, required = false) String adminToken,
+            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId
+    ) {
+        adminAuthorizationGuard.authenticate(adminToken, operatorId);
+        return operationOutboxRelayMonitoringService.getHealthSummary();
     }
 }

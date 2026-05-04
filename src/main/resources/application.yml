@@ -19,6 +19,12 @@ ai-repo:
       batch-size: ${AI_REPO_OUTBOX_RELAY_BATCH_SIZE:10}
       initial-delay-ms: ${AI_REPO_OUTBOX_RELAY_INITIAL_DELAY_MS:5000}
       fixed-delay-ms: ${AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS:5000}
+    health:
+      sample-size: ${AI_REPO_OUTBOX_RELAY_HEALTH_SAMPLE_SIZE:20}
+      warning-consecutive-failures: ${AI_REPO_OUTBOX_RELAY_HEALTH_WARNING_CONSECUTIVE_FAILURES:2}
+      critical-consecutive-failures: ${AI_REPO_OUTBOX_RELAY_HEALTH_CRITICAL_CONSECUTIVE_FAILURES:3}
+      warning-failure-rate-percent: ${AI_REPO_OUTBOX_RELAY_HEALTH_WARNING_FAILURE_RATE_PERCENT:50}
+      critical-last-success-age-minutes: ${AI_REPO_OUTBOX_RELAY_HEALTH_CRITICAL_LAST_SUCCESS_AGE_MINUTES:15}
   operational-log-pruning:
     relay-run-retention-days: ${AI_REPO_OPERATIONAL_LOG_PRUNING_RELAY_RUN_RETENTION_DAYS:30}
     admin-access-audit-retention-days: ${AI_REPO_OPERATIONAL_LOG_PRUNING_ADMIN_ACCESS_AUDIT_RETENTION_DAYS:180}
