@@ -74,6 +74,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/69
 - `0034-http-outbox-broker-adapter.md`: HTTP outbox broker adapter와 contract test 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/71
+- `0035-postgresql-scenario-testcontainers-ci.md`: PostgreSQL scenario와 Testcontainers CI gate 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/73
 
 ## GitHub CLI로 생성
 

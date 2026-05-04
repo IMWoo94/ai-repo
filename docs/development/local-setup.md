@@ -87,7 +87,7 @@ docker compose down
 
 Gradle Wrapper는 `9.3.0`을 사용합니다. Java 25 SDK가 설치되어 있지 않으면 toolchain 해석 또는 컴파일 단계에서 실패할 수 있습니다.
 
-PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. Testcontainers 테스트는 Flyway migration 경로를 실행해 PostgreSQL 런타임 스키마를 준비합니다. Docker가 없는 로컬 환경에서는 Testcontainers 테스트가 스킵될 수 있습니다.
+PostgreSQL 저장소는 H2 PostgreSQL mode 기반 테스트와 Testcontainers 기반 실제 PostgreSQL 테스트로 검증합니다. `./gradlew postgresScenarioTest`는 Flyway migration 경로와 Spring `postgres` profile을 실제 PostgreSQL 컨테이너에서 검증합니다. 이 명령은 Docker daemon이 필요하며, Docker가 꺼져 있으면 실패할 수 있습니다.
 
 Outbox relay scheduler는 기본 비활성화입니다. 로컬에서 자동 relay 실행을 확인하려면 다음 환경 변수를 설정한 뒤 애플리케이션을 실행합니다.
 
