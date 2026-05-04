@@ -71,7 +71,7 @@ Accepted
 
 - `미존재 operation은 빈 목록으로 둘 수 있다`는 반박은 채택하지 않는다. 현재 성공 operation은 step log와 outbox event를 남기는 정책이므로 빈 목록은 식별자 오류를 숨길 가능성이 더 크다.
 - `fixtures-schema drift probe`는 이번 PR에서 보류한다. Flyway V2 seed migration이 이미 기준 경로이고, H2 fixture는 빠른 테스트 보조 경로라 rollback 회귀 보호보다 우선순위가 낮다.
-- `CI Testcontainers SKIP 위험`은 별도 ADR이 필요하다. Docker availability를 강제하면 CI 비용과 실패 모드가 바뀌므로 v0.7.0 인프라 정책에서 결정한다.
+- `CI Testcontainers SKIP 위험`은 별도 ADR이 필요하다. Docker availability를 강제하면 CI 비용과 실패 모드가 바뀌므로 post-MVP 인프라 정책에서 계속 점검한다.
 
 ## 결과
 
@@ -89,5 +89,5 @@ Accepted
 후속 작업:
 
 - Wiki 동기화 부채를 별도 작업으로 처리한다.
-- Testcontainers 강제 실행 정책을 v0.7.0 CI ADR에서 결정한다.
+- Testcontainers 강제 실행 정책을 post-MVP CI ADR에서 계속 점검한다.
 - broker adapter 도입 시 operation/outbox 조회 정책을 다시 검토한다.

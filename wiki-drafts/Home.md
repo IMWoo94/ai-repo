@@ -6,8 +6,8 @@
 
 ## 현재 릴리스 상태
 
-- 현재 릴리스 후보: `unreleased`
-- 기준 문서: `docs/releases/unreleased.md`
+- 현재 릴리스 후보: `v0.7.0`
+- 기준 문서: `docs/releases/v0.7.0.md`
 - 로컬 smoke 명령: `scripts/mvp-local-smoke.sh`
 - 핵심 실행 화면: React 사용자 화면과 운영자 manual review 콘솔
 
@@ -43,6 +43,6 @@
 
 - GitHub Actions 전체 gate 통과
 - `scripts/mvp-local-smoke.sh` 통과
-- `docs/releases/unreleased.md`를 버전 릴리스 노트로 승격
+- `docs/releases/v0.7.0.md` release note 확정
 - Wiki draft를 GitHub Wiki checkout에 동기화
 - 릴리스 PR에 smoke 결과와 알려진 제약을 첨부
