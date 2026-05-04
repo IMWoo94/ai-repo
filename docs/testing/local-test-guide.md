@@ -124,6 +124,8 @@ Vitest와 Testing Library로 React 컴포넌트 테스트를 실행한다.
 - 충전/송금 금액 입력 상태 독립성
 - 충전 요청 payload
 - 잔액 부족 송금 오류 메시지
+- 운영자 manual review empty state
+- 운영자 requeue 요청 payload와 audit trail 표시
 
 ### `npm run build`
 

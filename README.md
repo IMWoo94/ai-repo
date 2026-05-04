@@ -165,7 +165,7 @@ Operational log pruning scheduler도 기본 비활성화입니다. 자동 prunin
 
 `postgres` 프로필의 스키마 기준은 Flyway migration입니다. 초기 migration은 `src/main/resources/db/migration`에 두며, 기존 `src/main/resources/db/postgresql` SQL 파일은 H2 테스트와 수동 비교를 위해 일시적으로 유지합니다.
 
-React 사용자 화면은 [React User Frontend](docs/frontend/react-user-frontend.md)를 따릅니다. 백엔드는 `./gradlew bootRun`으로 실행하고, 프론트는 `frontend`에서 `npm install`, `npm run dev`로 실행합니다. 로컬 검증은 [Local Test Guide](docs/testing/local-test-guide.md)를 기준으로 합니다.
+React 사용자 화면과 운영자 manual review 콘솔은 [React User Frontend](docs/frontend/react-user-frontend.md)를 따릅니다. 백엔드는 `./gradlew bootRun`으로 실행하고, 프론트는 `frontend`에서 `npm install`, `npm run dev`로 실행합니다. 로컬 검증은 [Local Test Guide](docs/testing/local-test-guide.md)를 기준으로 합니다.
 
 ## 문서화 전략
 

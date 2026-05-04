@@ -7,9 +7,43 @@ type MockFetchState = {
   balanceAmount: number;
   operationId: string | null;
   operationType: 'CHARGE' | 'TRANSFER' | null;
+  manualReviewEvents: MockOutboxEvent[];
+  requeueAudits: MockRequeueAudit[];
 };
 
-function setupFetch(state: MockFetchState = { balanceAmount: 125000, operationId: null, operationType: null }) {
+type MockOutboxEvent = {
+  outboxEventId: string;
+  operationId: string;
+  eventType: string;
+  aggregateType: string;
+  aggregateId: string;
+  payload: string;
+  status: string;
+  occurredAt: string;
+  attemptCount: number;
+  nextRetryAt: string | null;
+  claimedAt: string | null;
+  leaseExpiresAt: string | null;
+  publishedAt: string | null;
+  lastError: string | null;
+};
+
+type MockRequeueAudit = {
+  auditId: string;
+  outboxEventId: string;
+  operationId: string;
+  requeuedAt: string;
+  operator: string;
+  reason: string;
+};
+
+function setupFetch(state: MockFetchState = {
+  balanceAmount: 125000,
+  operationId: null,
+  operationType: null,
+  manualReviewEvents: [],
+  requeueAudits: [],
+}) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
     const method = init?.method ?? 'GET';
@@ -43,6 +77,35 @@ function setupFetch(state: MockFetchState = { balanceAmount: 125000, operationId
 
     if (url.endsWith('/audit-events')) {
       return jsonResponse([]);
+    }
+
+    if (url.includes('/outbox-events/manual-review')) {
+      return jsonResponse(state.manualReviewEvents);
+    }
+
+    if (url.includes('/requeue-audits')) {
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-audits')[0];
+      return jsonResponse(state.requeueAudits.filter((audit) => audit.outboxEventId === outboxEventId));
+    }
+
+    if (url.includes('/outbox-events/') && url.endsWith('/requeue') && method === 'POST') {
+      expect(init?.headers).toMatchObject({
+        'X-Admin-Token': 'local-ops-token',
+        'X-Operator-Id': 'local-operator',
+      });
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue')[0];
+      const requeuedEvent = state.manualReviewEvents.find((event) => event.outboxEventId === outboxEventId);
+      const body = JSON.parse(String(init?.body));
+      state.manualReviewEvents = state.manualReviewEvents.filter((event) => event.outboxEventId !== outboxEventId);
+      state.requeueAudits.push({
+        auditId: 'outbox-requeue-audit-001',
+        outboxEventId,
+        operationId: requeuedEvent?.operationId ?? 'op-operator-001',
+        requeuedAt: '2026-05-02T00:00:00Z',
+        operator: 'local-operator',
+        reason: body.reason,
+      });
+      return emptyResponse(204);
     }
 
     if (url.endsWith('/step-logs')) {
@@ -121,6 +184,33 @@ function jsonResponse(body: unknown, status = 200) {
     status,
     json: async () => body,
   } as Response;
+}
+
+function emptyResponse(status = 204) {
+  return {
+    ok: status >= 200 && status < 300,
+    status,
+    json: async () => null,
+  } as Response;
+}
+
+function manualReviewEvent(): MockOutboxEvent {
+  return {
+    outboxEventId: 'outbox-manual-001',
+    operationId: 'op-manual-001',
+    eventType: 'CHARGE_COMPLETED',
+    aggregateType: 'WALLET',
+    aggregateId: 'wallet-001',
+    payload: '{}',
+    status: 'MANUAL_REVIEW',
+    occurredAt: '2026-05-02T00:00:00Z',
+    attemptCount: 3,
+    nextRetryAt: null,
+    claimedAt: null,
+    leaseExpiresAt: null,
+    publishedAt: null,
+    lastError: 'broker unavailable',
+  };
 }
 
 function operationResult({
@@ -232,6 +322,53 @@ describe('App', () => {
 
     await waitFor(() => {
       expect(screen.getByText('INSUFFICIENT_BALANCE: Insufficient balance: wallet-002')).toBeVisible();
+    });
+  });
+
+  it('manual review outbox가 없으면 운영자 empty state를 표시한다', async () => {
+    const user = userEvent.setup();
+    setupFetch();
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Manual review 조회' }));
+
+    expect(await screen.findByText('Manual review event 조회가 완료되었습니다.')).toBeVisible();
+    expect(screen.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
+  });
+
+  it('manual review outbox를 requeue하고 audit trail을 표시한다', async () => {
+    const user = userEvent.setup();
+    const fetchMock = setupFetch({
+      balanceAmount: 125000,
+      operationId: null,
+      operationType: null,
+      manualReviewEvents: [manualReviewEvent()],
+      requeueAudits: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Manual review 조회' }));
+
+    expect(await screen.findAllByText('outbox-manual-001')).toHaveLength(2);
+    expect(screen.getAllByText('MANUAL_REVIEW')).toHaveLength(2);
+
+    await user.clear(screen.getByLabelText('Requeue 사유'));
+    await user.type(screen.getByLabelText('Requeue 사유'), 'broker recovered');
+    await user.click(screen.getByRole('button', { name: 'Requeue 실행' }));
+
+    expect(await screen.findByText('Requeue가 완료되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
+    expect(screen.getAllByText('broker recovered')).toHaveLength(2);
+    expect(screen.getByText('local-operator')).toBeVisible();
+    expect(screen.getByText('REQUEUED')).toBeVisible();
+
+    const requeueCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/requeue'));
+    expect(requeueCall).toBeDefined();
+    expect(JSON.parse(String(requeueCall?.[1]?.body))).toMatchObject({
+      reason: 'broker recovered',
     });
   });
 });
