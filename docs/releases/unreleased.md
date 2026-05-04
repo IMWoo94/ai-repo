@@ -78,7 +78,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 - 릴리스 tag 이름과 version bump 기준을 결정한다.
 - `unreleased` 내용을 실제 버전 릴리스 노트로 승격한다.
 - `scripts/mvp-local-smoke.sh` 실행 결과를 릴리스 PR에 첨부한다.
-- GitHub Wiki에 MVP 개요, 운영자 콘솔, 테스트 전략 요약을 반영한다.
+- `scripts/sync-wiki-drafts.sh`로 Wiki 초안을 GitHub Wiki checkout에 반영한다.
 
 ## 후속 후보
 
