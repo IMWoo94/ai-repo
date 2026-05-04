@@ -184,6 +184,7 @@ X-Operator-Id: local-operator
 
 - `401 ADMIN_AUTHENTICATION_REQUIRED`: `X-Admin-Token`이 없거나 값이 다르다.
 - `403 ADMIN_AUTHORIZATION_DENIED`: token은 맞지만 `X-Operator-Id`가 없다.
+- 운영 API 권한 판단은 Spring Security `ROLE_OPERATOR`, `ROLE_ADMIN` 기반으로 수행한다.
 - 실제 로컬 token은 `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.

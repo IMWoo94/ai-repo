@@ -103,6 +103,8 @@ AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS=5000 \
 
 Scheduler 실행 결과는 운영 header와 함께 조회합니다.
 
+운영 API는 Spring Security 기반 role model을 사용합니다. 현재 로컬 token은 `ROLE_OPERATOR`와 `ROLE_ADMIN`을 모두 부여하며, `X-Operator-Id`가 없으면 role이 부여되지 않아 403을 반환합니다.
+
 ```bash
 curl -H "X-Admin-Token: local-ops-token" \
   -H "X-Operator-Id: local-operator" \
