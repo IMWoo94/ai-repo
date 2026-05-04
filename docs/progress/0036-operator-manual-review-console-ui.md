@@ -29,7 +29,7 @@
 
 - 운영자 승인 워크플로우는 아직 없다.
 - operator/admin role 분리와 실제 로그인 연동은 후속 작업이다.
-- 운영자 콘솔 E2E는 manual review fixture 생성 방식이 정리된 뒤 추가한다.
+- 운영자 콘솔 smoke E2E는 추가되었고, requeue 성공 E2E는 manual review fixture 생성 방식이 정리된 뒤 추가한다.
 - relay health와 pruning 화면은 별도 운영자 콘솔 확장 작업으로 분리한다.
 
 ## 관련 문서

@@ -52,10 +52,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0034 | [HTTP Outbox Broker Adapter](0034-http-outbox-broker-adapter.md) | 완료 |
 | 0035 | [PostgreSQL Scenario Testcontainers CI](0035-postgresql-scenario-testcontainers-ci.md) | 완료 |
 | 0036 | [Operator Manual Review Console UI](0036-operator-manual-review-console-ui.md) | 완료 |
+| 0037 | [Operator Console E2E Smoke](0037-operator-console-e2e-smoke.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Operator Manual Review Console UI
+- 최신 완료 기능: Operator Console E2E Smoke
 - 현재 릴리스 후보: `v0.6.0`
-- 아직 미완료: 운영자 relay health/pruning 화면, Kafka/RabbitMQ/SQS adapter, consumer idempotency, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, GitHub Wiki 동기화, broker-specific Testcontainers 정책
+- 아직 미완료: 운영자 relay health/pruning 화면, Kafka/RabbitMQ/SQS adapter, consumer idempotency, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, GitHub Wiki 동기화, broker-specific Testcontainers 정책, manual review requeue full E2E fixture
