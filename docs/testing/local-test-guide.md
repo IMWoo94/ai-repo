@@ -10,6 +10,7 @@
 | --- | --- | --- |
 | 백엔드 빠른 회귀 | `./gradlew test` | 도메인, application, API, repository 단위 테스트 |
 | 대표 업무 흐름 | `./gradlew scenarioTest` | 충전/송금/원장/감사/outbox 시나리오 |
+| PostgreSQL 대표 흐름 | `./gradlew postgresScenarioTest` | Testcontainers PostgreSQL, Flyway, postgres profile 시나리오 |
 | 백엔드 전체 게이트 | `./gradlew check` | Gradle 표준 검증 |
 | 프론트 컴포넌트 테스트 | `cd frontend && npm run test` | React 상태, API payload, 오류 메시지 |
 | 프론트 타입/번들 검증 | `cd frontend && npm run build` | TypeScript, Vite build |
@@ -22,6 +23,7 @@
 ```bash
 ./gradlew test
 ./gradlew scenarioTest
+./gradlew postgresScenarioTest
 ./gradlew check
 cd frontend
 npm run test
@@ -43,6 +45,7 @@ npm run e2e
 ```bash
 ./gradlew test
 ./gradlew scenarioTest
+./gradlew postgresScenarioTest
 ./gradlew check
 ```
 
@@ -74,6 +77,21 @@ npm run e2e
 - manual review와 requeue 감사 흐름
 
 상세 기준은 `scenario-test-strategy.md`를 따른다.
+
+### `./gradlew postgresScenarioTest`
+
+`postgres-scenario` tag가 붙은 PostgreSQL profile 대표 흐름 테스트만 실행한다.
+
+검증 대상:
+
+- Testcontainers PostgreSQL 기동
+- Flyway migration 적용
+- Spring `postgres` profile의 JDBC repository wiring
+- 충전/멱등 재시도/송금 API 흐름
+- 잔액/원장/감사/step log/outbox 정합성
+- outbox relay publish 상태 전이
+
+이 명령은 Docker daemon이 필요하다. Docker가 꺼져 있으면 실패할 수 있으며, CI의 `PostgreSQL Scenario Test` job과 대응된다.
 
 ### `./gradlew check`
 
@@ -167,6 +185,7 @@ Running 1 test using 1 worker
 | --- | --- |
 | `Gradle Check` | `./gradlew check` |
 | `Scenario Test` | `./gradlew scenarioTest` |
+| `PostgreSQL Scenario Test` | `./gradlew postgresScenarioTest` |
 | `Frontend Unit Test` | `cd frontend && npm ci && npm run test` |
 | `Frontend Build` | `cd frontend && npm ci && npm run build` |
 | `Frontend E2E` | `cd frontend && npm ci && npx playwright install --with-deps chromium && npm run e2e` |
@@ -217,5 +236,6 @@ npx playwright install chromium
 
 - 백엔드 정책/불변식은 Gradle 테스트에 둔다.
 - 여러 API가 이어지는 대표 업무 흐름은 `scenarioTest`에 둔다.
+- 실제 PostgreSQL profile과 Flyway/Testcontainers가 필요한 대표 흐름은 `postgresScenarioTest`에 둔다.
 - 브라우저 조작과 프론트-백엔드 연결은 Playwright E2E에 둔다.
 - E2E는 느리므로 릴리스 판단에 필요한 핵심 흐름만 유지한다.

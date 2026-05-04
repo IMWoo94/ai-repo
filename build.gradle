@@ -17,6 +17,7 @@ java {
 dependencies {
     implementation 'org.flywaydb:flyway-core'
     implementation 'org.flywaydb:flyway-database-postgresql'
+    implementation 'org.springframework.boot:spring-boot-flyway'
     implementation 'org.springframework.boot:spring-boot-starter-jdbc'
     implementation 'org.springframework.boot:spring-boot-starter-security'
     implementation 'org.springframework.boot:spring-boot-starter-webmvc'
@@ -34,7 +35,7 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform {
-        excludeTags 'scenario'
+        excludeTags 'scenario', 'postgres-scenario'
     }
 }
 
@@ -47,5 +48,17 @@ tasks.register('scenarioTest', Test) {
 
     useJUnitPlatform {
         includeTags 'scenario'
+    }
+}
+
+tasks.register('postgresScenarioTest', Test) {
+    description = 'Runs PostgreSQL Testcontainers scenario tests.'
+    group = 'verification'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    shouldRunAfter tasks.named('scenarioTest')
+
+    useJUnitPlatform {
+        includeTags 'postgres-scenario'
     }
 }
