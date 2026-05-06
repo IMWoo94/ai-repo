@@ -38,6 +38,7 @@
 ## 관련 문서
 
 - `docs/adr/0037-operator-admin-token-split.md`
+- `docs/reviews/2026-05-06-top3-documentation-implementation-verification.md`
 - `docs/reviews/2026-05-06-full-review-improvement-list.md`
 - `docs/frontend/react-user-frontend.md`
 - `docs/testing/local-test-guide.md`
