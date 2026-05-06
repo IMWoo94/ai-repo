@@ -23,6 +23,9 @@ management:
 ai-repo:
   ops:
     admin-token: ${AI_REPO_OPS_ADMIN_TOKEN:local-ops-token}
+    operator-token: ${AI_REPO_OPS_OPERATOR_TOKEN:local-operator-token}
+  test-fixtures:
+    enabled: ${AI_REPO_TEST_FIXTURES_ENABLED:false}
   outbox:
     publisher:
       type: ${AI_REPO_OUTBOX_PUBLISHER_TYPE:memory}

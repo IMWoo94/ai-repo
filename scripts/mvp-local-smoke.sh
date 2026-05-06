@@ -4,6 +4,7 @@ set -euo pipefail
 BACKEND_URL="${AI_REPO_BACKEND_URL:-http://127.0.0.1:8080}"
 FRONTEND_URL="${AI_REPO_FRONTEND_URL:-http://127.0.0.1:5173}"
 ADMIN_TOKEN="${AI_REPO_OPS_ADMIN_TOKEN:-local-ops-token}"
+OPERATOR_TOKEN="${AI_REPO_OPS_OPERATOR_TOKEN:-local-operator-token}"
 OPERATOR_ID="${AI_REPO_SMOKE_OPERATOR_ID:-local-smoke-operator}"
 
 fail() {
@@ -35,15 +36,16 @@ check_contains "$wallet_response" '"walletId":"wallet-001"' "wallet balance resp
 
 manual_review_response="$(
   curl -fsS \
-    -H "X-Admin-Token: ${ADMIN_TOKEN}" \
+    -H "X-Operator-Token: ${OPERATOR_TOKEN}" \
     -H "X-Operator-Id: ${OPERATOR_ID}" \
     "${BACKEND_URL}/api/v1/outbox-events/manual-review?limit=20"
-)" || fail "operator manual review API is not reachable with local admin headers"
+)" || fail "operator manual review API is not reachable with local operator headers"
 check_contains "$manual_review_response" '[' "manual review response"
 
 auth_error_response="$(
   curl -sS \
     -H "X-Admin-Token: wrong-token" \
+    -H "X-Operator-Token: wrong-token" \
     -H "X-Operator-Id: ${OPERATOR_ID}" \
     "${BACKEND_URL}/api/v1/outbox-events/manual-review?limit=20"
 )" || true

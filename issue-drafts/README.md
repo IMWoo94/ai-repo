@@ -96,6 +96,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/94
 - `0045-v0.7.0-wiki-publication.md`: v0.7.0 Wiki publication 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/96
+- `0046-top3-operational-hardening.md`: Top3 operational hardening 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/98
 
 ## GitHub CLI로 생성
 

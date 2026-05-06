@@ -35,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class OperationalLogPruningControllerTest {
 
     private static final String ADMIN_TOKEN = "local-ops-token";
+    private static final String OPERATOR_TOKEN = "local-operator-token";
     private static final String OPERATOR_ID = "ops-user";
 
     private final MockMvc mockMvc;
@@ -67,6 +68,15 @@ class OperationalLogPruningControllerTest {
                 .andExpect(jsonPath("$.adminAccessAuditCutoff").value("2026-05-01T00:00:00Z"))
                 .andExpect(jsonPath("$.deletedRelayRunCount").value(1))
                 .andExpect(jsonPath("$.deletedAdminAccessAuditCount").value(1));
+    }
+
+    @Test
+    void rejectsOperatorTokenForPruning() throws Exception {
+        mockMvc.perform(post("/api/v1/operational-log-pruning-runs")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHORIZATION_DENIED"));
     }
 
     @Test

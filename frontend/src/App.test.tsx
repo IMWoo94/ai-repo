@@ -9,6 +9,7 @@ type MockFetchState = {
   operationType: 'CHARGE' | 'TRANSFER' | null;
   manualReviewEvents: MockOutboxEvent[];
   requeueAudits: MockRequeueAudit[];
+  relayRuns: MockRelayRun[];
 };
 
 type MockOutboxEvent = {
@@ -37,12 +38,25 @@ type MockRequeueAudit = {
   reason: string;
 };
 
+type MockRelayRun = {
+  relayRunId: string;
+  startedAt: string;
+  completedAt: string;
+  status: string;
+  batchSize: number;
+  claimedCount: number;
+  publishedCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+};
+
 function setupFetch(state: MockFetchState = {
   balanceAmount: 125000,
   operationId: null,
   operationType: null,
   manualReviewEvents: [],
   requeueAudits: [],
+  relayRuns: [],
 }) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
@@ -83,6 +97,42 @@ function setupFetch(state: MockFetchState = {
       return jsonResponse(state.manualReviewEvents);
     }
 
+    if (url.includes('/outbox-relay-runs/health')) {
+      return jsonResponse({
+        evaluatedAt: '2026-05-02T00:00:00Z',
+        status: state.relayRuns.length === 0 ? 'NO_DATA' : 'OK',
+        sampleSize: 20,
+        observedRunCount: state.relayRuns.length,
+        successCount: state.relayRuns.filter((run) => run.status === 'SUCCESS').length,
+        failedCount: state.relayRuns.filter((run) => run.status === 'FAILED').length,
+        failureRate: 0,
+        consecutiveFailureCount: 0,
+        lastCompletedAt: state.relayRuns[0]?.completedAt ?? null,
+        lastSuccessAt: state.relayRuns.find((run) => run.status === 'SUCCESS')?.completedAt ?? null,
+        lastFailureAt: state.relayRuns.find((run) => run.status === 'FAILED')?.completedAt ?? null,
+        alertReasons: state.relayRuns.length === 0 ? ['no relay run data'] : [],
+      });
+    }
+
+    if (url.includes('/outbox-relay-runs')) {
+      return jsonResponse(state.relayRuns);
+    }
+
+    if (url.includes('/operational-log-pruning-runs') && method === 'POST') {
+      expect(init?.headers).toMatchObject({
+        'X-Admin-Token': 'local-ops-token',
+        'X-Operator-Token': 'local-operator-token',
+        'X-Operator-Id': 'local-operator',
+      });
+      return jsonResponse({
+        prunedAt: '2026-05-02T00:00:00Z',
+        relayRunCutoff: '2026-04-02T00:00:00Z',
+        adminAccessAuditCutoff: '2025-11-03T00:00:00Z',
+        deletedRelayRunCount: 1,
+        deletedAdminAccessAuditCount: 2,
+      });
+    }
+
     if (url.includes('/requeue-audits')) {
       const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-audits')[0];
       return jsonResponse(state.requeueAudits.filter((audit) => audit.outboxEventId === outboxEventId));
@@ -91,6 +141,7 @@ function setupFetch(state: MockFetchState = {
     if (url.includes('/outbox-events/') && url.endsWith('/requeue') && method === 'POST') {
       expect(init?.headers).toMatchObject({
         'X-Admin-Token': 'local-ops-token',
+        'X-Operator-Token': 'local-operator-token',
         'X-Operator-Id': 'local-operator',
       });
       const outboxEventId = url.split('/outbox-events/')[1].split('/requeue')[0];
@@ -346,6 +397,7 @@ describe('App', () => {
       operationType: null,
       manualReviewEvents: [manualReviewEvent()],
       requeueAudits: [],
+      relayRuns: [],
     });
 
     render(<App />);
@@ -371,4 +423,46 @@ describe('App', () => {
       reason: 'broker recovered',
     });
   });
+
+  it('relay health와 pruning 결과를 운영자 콘솔에 표시한다', async () => {
+    const user = userEvent.setup();
+    setupFetch({
+      balanceAmount: 125000,
+      operationId: null,
+      operationType: null,
+      manualReviewEvents: [],
+      requeueAudits: [],
+      relayRuns: [relayRun()],
+    });
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Relay 상태 조회' }));
+
+    expect(await screen.findByText('Relay health와 실행 기록 조회가 완료되었습니다.')).toBeVisible();
+    expect(screen.getByText('outbox-relay-run-001')).toBeVisible();
+    expect(screen.getByText('1/20')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Pruning 실행' }));
+
+    expect(await screen.findByText('운영 로그 pruning이 완료되었습니다.')).toBeVisible();
+    expect(screen.getByText('Relay run 삭제')).toBeVisible();
+    expect(screen.getByText('Access audit 삭제')).toBeVisible();
+    expect(screen.getByText('2')).toBeVisible();
+  });
 });
+
+function relayRun(): MockRelayRun {
+  return {
+    relayRunId: 'outbox-relay-run-001',
+    startedAt: '2026-05-02T00:00:00Z',
+    completedAt: '2026-05-02T00:00:01Z',
+    status: 'SUCCESS',
+    batchSize: 10,
+    claimedCount: 1,
+    publishedCount: 1,
+    failedCount: 0,
+    errorMessage: null,
+  };
+}

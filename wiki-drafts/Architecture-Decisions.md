@@ -59,6 +59,7 @@
    - ADR-0033 Outbox Relay Health Metrics Alert
    - ADR-0034 Spring Security Role Model
    - ADR-0035 HTTP Outbox Broker Adapter
+   - ADR-0037 Operator/Admin Token Split
 
 ## 중요한 트레이드오프
 
@@ -73,9 +74,9 @@
 
 ## 다음 구조 후보
 
-- release smoke script 또는 actuator health endpoint
-- relay health/pruning 운영자 화면
-- manual review requeue full E2E fixture
 - broker-specific adapter와 Testcontainers contract
 - consumer idempotency
+- pruning 실행 이력 저장과 조회 API
+- external alert channel
+- requeue 승인 워크플로우
 - 실제 운영자 identity와 role scope 분리

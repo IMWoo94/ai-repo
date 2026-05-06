@@ -1,5 +1,8 @@
 # Current Validation Documentation Audit
 
+> 이 문서는 2026-05-04 기준 검증 기록이다.
+> 2026-05-06 Top3 운영 하드닝 검증은 `docs/reviews/2026-05-06-top3-documentation-implementation-verification.md`와 `docs/progress/0046-top3-operational-hardening.md`를 기준으로 본다.
+
 ## 점검 일자
 
 - 2026-05-04

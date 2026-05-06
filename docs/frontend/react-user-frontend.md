@@ -87,6 +87,7 @@ cd frontend && npm run e2e
 | 입력 | 기본값 | 용도 |
 | --- | --- | --- |
 | Admin token | `local-ops-token` | `X-Admin-Token` header |
+| Operator token | `local-operator-token` | `X-Operator-Token` header |
 | Operator ID | `local-operator` | `X-Operator-Id` header |
 | Requeue reason | `broker recovered from operator console` | requeue audit reason |
 
@@ -96,3 +97,5 @@ cd frontend && npm run e2e
 - API 오류는 error callout으로 표시한다.
 - outbox status는 status badge로 표시한다.
 - requeue 성공 후에는 선택한 event의 audit trail을 유지해서 운영 조치 증거를 확인한다.
+- relay health와 최근 relay run은 별도 운영 카드로 조회한다.
+- operational log pruning은 admin token 기반 변경성 운영 조치로 실행한다.

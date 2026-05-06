@@ -182,8 +182,10 @@ Running 3 tests using 1 worker
 - 송금 실행 후 출금 지갑 잔액이 `129,000 KRW`로 감소한다.
 - 잔액 부족 송금 시 `INSUFFICIENT_BALANCE` 오류가 표시된다.
 - 최근 operation, `LEDGER_RECORDED`, `CHARGE_COMPLETED`, `TRANSFER_COMPLETED` outbox event가 표시된다.
-- 운영자 콘솔에서 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
-- 운영자 콘솔에서 local admin header로 manual review empty state가 표시된다.
+- 운영자 콘솔에서 잘못된 admin/operator token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
+- 운영자 콘솔에서 local operator header로 manual review empty state가 표시된다.
+- manual review fixture 기반 requeue 성공과 audit trail이 표시된다.
+- relay health와 operational log pruning 결과가 운영자 콘솔에 표시된다.
 
 ## MVP 로컬 smoke
 
@@ -197,8 +199,8 @@ scripts/mvp-local-smoke.sh
 
 - Actuator health endpoint의 `UP` 응답
 - 백엔드 지갑 잔액 API 응답
-- 운영자 manual review API의 local admin header 성공 응답
-- 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
+- 운영자 manual review API의 local operator header 성공 응답
+- 잘못된 admin/operator token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
 - Vite 프론트 HTML 응답
 
 기본 URL은 `http://127.0.0.1:8080`, `http://127.0.0.1:5173`이다. 필요하면 `AI_REPO_BACKEND_URL`, `AI_REPO_FRONTEND_URL`, `AI_REPO_OPS_ADMIN_TOKEN`, `AI_REPO_SMOKE_OPERATOR_ID`로 override한다.
@@ -221,14 +223,17 @@ scripts/mvp-local-smoke.sh
 Outbox manual review, requeue, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
 
 ```bash
+X-Operator-Token: local-operator-token
 X-Admin-Token: local-ops-token
 X-Operator-Id: local-operator
 ```
 
-- `401 ADMIN_AUTHENTICATION_REQUIRED`: `X-Admin-Token`이 없거나 값이 다르다.
+- `401 ADMIN_AUTHENTICATION_REQUIRED`: `X-Operator-Token`과 `X-Admin-Token`이 모두 없거나 값이 다르다.
 - `403 ADMIN_AUTHORIZATION_DENIED`: token은 맞지만 `X-Operator-Id`가 없다.
 - 운영 API 권한 판단은 Spring Security `ROLE_OPERATOR`, `ROLE_ADMIN` 기반으로 수행한다.
-- 실제 로컬 token은 `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
+- 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있다.
+- requeue와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
+- 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.

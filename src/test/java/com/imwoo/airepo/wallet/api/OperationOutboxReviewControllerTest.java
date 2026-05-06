@@ -27,6 +27,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class OperationOutboxReviewControllerTest {
 
     private static final String ADMIN_TOKEN = "local-ops-token";
+    private static final String OPERATOR_TOKEN = "local-operator-token";
     private static final String OPERATOR_ID = "ops-user";
 
     private final MockMvc mockMvc;
@@ -46,7 +47,7 @@ class OperationOutboxReviewControllerTest {
         makeManualReviewEvent();
 
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
-                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .param("limit", "10"))
                 .andExpect(status().isOk())
@@ -55,6 +56,23 @@ class OperationOutboxReviewControllerTest {
                 .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"))
                 .andExpect(jsonPath("$[0].attemptCount").value(3))
                 .andExpect(jsonPath("$[0].lastError").value("broker unavailable"));
+    }
+
+    @Test
+    void rejectsOperatorTokenForRequeueAction() throws Exception {
+        makeManualReviewEvent();
+
+        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "broker recovered"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHORIZATION_DENIED"));
     }
 
     @Test
@@ -136,6 +154,7 @@ class OperationOutboxReviewControllerTest {
     void rejectsInvalidAdminToken() throws Exception {
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, "wrong-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "wrong-token")
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));

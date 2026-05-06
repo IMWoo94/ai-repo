@@ -55,18 +55,59 @@ test('운영자는 manual review 콘솔의 인증 오류와 empty state를 확�
 
   await expect(operatorConsole.getByRole('heading', { name: 'Manual review outbox를 운영자가 직접 확인합니다.' })).toBeVisible();
   await expect(operatorConsole.getByLabel('운영자 Admin Token')).toHaveValue('local-ops-token');
+  await expect(operatorConsole.getByLabel('운영자 Operator Token')).toHaveValue('local-operator-token');
   await expect(operatorConsole.getByLabel('운영자 ID')).toHaveValue('local-operator');
   await expect(operatorConsole.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
   await expect(operatorConsole.getByText('선택된 outbox event가 없습니다.')).toBeVisible();
 
   await operatorConsole.getByLabel('운영자 Admin Token').fill('wrong-token');
+  await operatorConsole.getByLabel('운영자 Operator Token').fill('wrong-token');
   await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
 
   await expect(operatorConsole.getByText(/ADMIN_AUTHENTICATION_REQUIRED/)).toBeVisible();
 
   await operatorConsole.getByLabel('운영자 Admin Token').fill('local-ops-token');
+  await operatorConsole.getByLabel('운영자 Operator Token').fill('local-operator-token');
   await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
 
   await expect(operatorConsole.getByText('Manual review event 조회가 완료되었습니다.')).toBeVisible();
   await expect(operatorConsole.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
+});
+
+test('운영자는 manual review event를 requeue하고 audit trail을 확인한다', async ({ page }) => {
+  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review');
+  expect(fixtureResponse.ok()).toBeTruthy();
+
+  await page.goto('/');
+
+  const operatorConsole = page.locator('.operator-console');
+  await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
+
+  await expect(operatorConsole.getByText('Manual review event 조회가 완료되었습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('MANUAL_REVIEW').first()).toBeVisible();
+  await expect(operatorConsole.getByText('e2e broker unavailable')).toBeVisible();
+
+  await operatorConsole.getByLabel('Requeue 사유').fill('e2e broker recovered');
+  await operatorConsole.getByRole('button', { name: 'Requeue 실행' }).click();
+
+  await expect(operatorConsole.getByText('Requeue가 완료되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
+  await expect(operatorConsole.getByText('local-operator')).toBeVisible();
+  await expect(operatorConsole.locator('.audit-trail').getByText('e2e broker recovered')).toBeVisible();
+  await expect(operatorConsole.getByText('REQUEUED')).toBeVisible();
+});
+
+test('운영자는 relay health와 pruning 결과를 화면에서 확인한다', async ({ page }) => {
+  await page.goto('/');
+
+  const operatorConsole = page.locator('.operator-console');
+  await operatorConsole.getByRole('button', { name: 'Relay 상태 조회' }).click();
+
+  await expect(operatorConsole.getByText('Relay health와 실행 기록 조회가 완료되었습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('Scheduler 상태')).toBeVisible();
+
+  await operatorConsole.getByRole('button', { name: 'Pruning 실행' }).click();
+
+  await expect(operatorConsole.getByText('운영 로그 pruning이 완료되었습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('Relay run 삭제')).toBeVisible();
+  await expect(operatorConsole.getByText('Access audit 삭제')).toBeVisible();
 });
