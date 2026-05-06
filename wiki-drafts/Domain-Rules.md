@@ -14,7 +14,7 @@
 - 돈 이동 성공 결과는 거래내역, 원장, 감사 이벤트, operation step log, transactional outbox event로 추적한다.
 - outbox event는 relay 상태와 retry 정책을 가지며, 반복 실패 시 `MANUAL_REVIEW`로 격리된다.
 - 운영자는 manual review outbox를 조회하고 requeue하며, requeue audit trail을 확인한다.
-- 운영 API는 local admin token과 operator id header로 보호된다.
+- 운영 API는 local operator/admin token과 operator id header로 보호된다.
 - 현재 릴리스 후보 기준은 `docs/releases/v0.7.0.md`를 따른다.
 
 ## 현재 도메인 진행 순서
@@ -144,7 +144,7 @@
 | 최대 재시도 초과 event는 manual review로 격리한다 | 무한 재시도를 막고 운영자 확인 대상으로 분리한다 | ADR-0018 |
 | manual review event는 운영자 API로 조회한다 | 장애 event를 운영자가 확인할 수 있어야 한다 | ADR-0019 |
 | requeue는 operator와 reason을 감사 이력으로 남긴다 | 금융/핀테크 운영 조치는 사후 추적 가능해야 한다 | ADR-0020 |
-| 운영 API는 admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이다 | ADR-0028, ADR-0034 |
+| 운영 API는 operator/admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이며, 변경성 운영 조치는 admin 권한이 필요하다 | ADR-0028, ADR-0034, ADR-0037 |
 | relay run, health summary, admin access audit, pruning run은 운영 관측 기록이다 | 운영자는 상태와 조치 이력을 API로 확인한다 | ADR-0030, ADR-0031, ADR-0032, ADR-0033 |
 
 ## 화면과 검증 규칙

@@ -47,19 +47,14 @@ public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
             return;
         }
         String adminToken = request.getHeader(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER);
-        if (adminToken == null || adminToken.isBlank()) {
+        String operatorToken = request.getHeader(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER);
+        boolean adminAuthenticated = tokenMatches(properties.adminToken(), adminToken);
+        boolean operatorAuthenticated = tokenMatches(properties.operatorToken(), operatorToken);
+        if (!adminAuthenticated && !operatorAuthenticated) {
             adminSecurityErrorHandler.commence(
                     request,
                     response,
-                    new BadCredentialsException("admin token is required")
-            );
-            return;
-        }
-        if (!tokensEqual(properties.adminToken(), adminToken)) {
-            adminSecurityErrorHandler.commence(
-                    request,
-                    response,
-                    new BadCredentialsException("admin token is invalid")
+                    new BadCredentialsException("operator or admin token is required")
             );
             return;
         }
@@ -68,7 +63,7 @@ public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
         UsernamePasswordAuthenticationToken authentication = new UsernamePasswordAuthenticationToken(
                 principal(operatorId),
                 null,
-                authorities(operatorId)
+                authorities(operatorId, adminAuthenticated)
         );
         try {
             SecurityContextHolder.getContext().setAuthentication(authentication);
@@ -89,21 +84,27 @@ public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
         return operatorId.trim();
     }
 
-    private List<SimpleGrantedAuthority> authorities(String operatorId) {
+    private List<SimpleGrantedAuthority> authorities(String operatorId, boolean adminAuthenticated) {
         if (operatorId == null || operatorId.isBlank()) {
             return List.of();
         }
-        return List.of(
-                authority(AdminSecurityRole.OPERATOR),
-                authority(AdminSecurityRole.ADMIN)
-        );
+        if (adminAuthenticated) {
+            return List.of(
+                    authority(AdminSecurityRole.OPERATOR),
+                    authority(AdminSecurityRole.ADMIN)
+            );
+        }
+        return List.of(authority(AdminSecurityRole.OPERATOR));
     }
 
     private SimpleGrantedAuthority authority(AdminSecurityRole role) {
         return new SimpleGrantedAuthority("ROLE_" + role.name());
     }
 
-    private boolean tokensEqual(String expectedToken, String actualToken) {
+    private boolean tokenMatches(String expectedToken, String actualToken) {
+        if (actualToken == null || actualToken.isBlank()) {
+            return false;
+        }
         return MessageDigest.isEqual(
                 expectedToken.getBytes(StandardCharsets.UTF_8),
                 actualToken.getBytes(StandardCharsets.UTF_8)

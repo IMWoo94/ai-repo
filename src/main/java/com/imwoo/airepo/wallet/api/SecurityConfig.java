@@ -30,6 +30,8 @@ public class SecurityConfig {
                 .authorizeHttpRequests(authorize -> authorize
                         .requestMatchers(HttpMethod.POST, "/api/v1/operational-log-pruning-runs/**")
                         .hasRole(AdminSecurityRole.ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/outbox-events/*/requeue")
+                        .hasRole(AdminSecurityRole.ADMIN.name())
                         .requestMatchers(
                                 "/api/v1/outbox-events/**",
                                 "/api/v1/outbox-relay-runs/**",

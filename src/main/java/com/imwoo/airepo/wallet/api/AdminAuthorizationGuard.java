@@ -8,6 +8,7 @@ import org.springframework.stereotype.Component;
 public class AdminAuthorizationGuard {
 
     public static final String ADMIN_TOKEN_HEADER = "X-Admin-Token";
+    public static final String OPERATOR_TOKEN_HEADER = "X-Operator-Token";
     public static final String OPERATOR_ID_HEADER = "X-Operator-Id";
 
     private final AdminAuthorizationProperties properties;

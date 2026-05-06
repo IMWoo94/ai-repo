@@ -17,6 +17,10 @@ export default defineConfig({
     {
       command: './gradlew bootRun --no-daemon',
       cwd: '..',
+      env: {
+        ...process.env,
+        AI_REPO_TEST_FIXTURES_ENABLED: 'true',
+      },
       url: 'http://127.0.0.1:8080/api/v1/wallets/wallet-001/balance',
       timeout: 120_000,
       reuseExistingServer: !isCi,

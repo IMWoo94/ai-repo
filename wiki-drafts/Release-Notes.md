@@ -13,6 +13,9 @@
 - React 사용자 화면 MVP
 - Frontend unit/build/E2E gate
 - 운영자 manual review console UI
+- 운영자 relay health/pruning console UI
+- Manual review requeue success E2E fixture
+- Operator/admin token split
 - 운영자 console E2E smoke
 - 운영 API 인증/인가와 Spring Security role model
 - Outbox relay scheduler, run monitoring, health summary
@@ -38,17 +41,14 @@
 
 ## 알려진 제약
 
-- 운영자 requeue 성공 E2E는 manual review fixture 정책이 필요하다.
-- 운영자 relay health/pruning 화면은 아직 없다.
 - 운영자 승인 워크플로우와 external alert channel은 아직 없다.
-- admin token과 operator identity는 local header 기반이다.
+- token과 operator identity는 local header 기반이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
 
 ## 다음 후보
 
-- manual review requeue full E2E fixture
-- relay health/pruning operator UI
+- requeue approval workflow
 - broker-specific Testcontainers contract
 - consumer idempotency
 - external alert channel

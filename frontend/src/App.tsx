@@ -87,6 +87,41 @@ type OperationOutboxRequeueAudit = {
   reason: string;
 };
 
+type OperationOutboxRelayRun = {
+  relayRunId: string;
+  startedAt: string;
+  completedAt: string;
+  status: string;
+  batchSize: number;
+  claimedCount: number;
+  publishedCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+};
+
+type OutboxRelayHealthSummary = {
+  evaluatedAt: string;
+  status: string;
+  sampleSize: number;
+  observedRunCount: number;
+  successCount: number;
+  failedCount: number;
+  failureRate: number;
+  consecutiveFailureCount: number;
+  lastCompletedAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  alertReasons: string[];
+};
+
+type OperationalLogPruningResult = {
+  prunedAt: string;
+  relayRunCutoff: string;
+  adminAccessAuditCutoff: string;
+  deletedRelayRunCount: number;
+  deletedAdminAccessAuditCount: number;
+};
+
 type ApiError = {
   code: string;
   message: string;
@@ -111,11 +146,11 @@ const initialApiState: ApiState = {
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
-    ...init,
   });
 
   if (!response.ok) {
@@ -128,11 +163,11 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
 
 async function requestEmpty(url: string, init?: RequestInit): Promise<void> {
   const response = await fetch(url, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
-    ...init,
   });
 
   if (!response.ok) {
@@ -164,11 +199,15 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState('Spring Boot API를 실행한 뒤 데이터를 불러오세요.');
   const [isLoading, setIsLoading] = useState(false);
   const [adminToken, setAdminToken] = useState('local-ops-token');
+  const [operatorToken, setOperatorToken] = useState('local-operator-token');
   const [operatorId, setOperatorId] = useState('local-operator');
   const [manualReviewEvents, setManualReviewEvents] = useState<OperationOutboxEvent[]>([]);
   const [selectedOutboxEventId, setSelectedOutboxEventId] = useState('');
   const [requeueReason, setRequeueReason] = useState('broker recovered from operator console');
   const [requeueAudits, setRequeueAudits] = useState<OperationOutboxRequeueAudit[]>([]);
+  const [relayHealth, setRelayHealth] = useState<OutboxRelayHealthSummary | null>(null);
+  const [relayRuns, setRelayRuns] = useState<OperationOutboxRelayRun[]>([]);
+  const [pruningResult, setPruningResult] = useState<OperationalLogPruningResult | null>(null);
   const [operatorStatusMessage, setOperatorStatusMessage] = useState('운영자 token과 operator id를 입력한 뒤 manual review를 조회하세요.');
   const [isOperatorLoading, setIsOperatorLoading] = useState(false);
 
@@ -207,6 +246,7 @@ export function App() {
   function operatorHeaders(): HeadersInit {
     return {
       'X-Admin-Token': adminToken,
+      'X-Operator-Token': operatorToken,
       'X-Operator-Id': operatorId,
     };
   }
@@ -253,6 +293,29 @@ export function App() {
       { headers: operatorHeaders() },
     );
     setRequeueAudits(audits);
+  }
+
+  async function loadRelayOperations() {
+    const [health, runs] = await Promise.all([
+      requestJson<OutboxRelayHealthSummary>('/api/v1/outbox-relay-runs/health', {
+        headers: operatorHeaders(),
+      }),
+      requestJson<OperationOutboxRelayRun[]>('/api/v1/outbox-relay-runs?limit=5', {
+        headers: operatorHeaders(),
+      }),
+    ]);
+    setRelayHealth(health);
+    setRelayRuns(runs);
+  }
+
+  async function submitPruning() {
+    await runOperatorAction(async () => {
+      const result = await requestJson<OperationalLogPruningResult>('/api/v1/operational-log-pruning-runs', {
+        method: 'POST',
+        headers: operatorHeaders(),
+      });
+      setPruningResult(result);
+    }, '운영 로그 pruning이 완료되었습니다.');
   }
 
   async function submitRequeue(event: FormEvent<HTMLFormElement>) {
@@ -413,6 +476,10 @@ export function App() {
               <input aria-label="운영자 Admin Token" value={adminToken} onChange={(event) => setAdminToken(event.target.value)} />
             </label>
             <label>
+              Operator token
+              <input aria-label="운영자 Operator Token" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} />
+            </label>
+            <label>
               Operator ID
               <input aria-label="운영자 ID" value={operatorId} onChange={(event) => setOperatorId(event.target.value)} />
             </label>
@@ -527,6 +594,91 @@ export function App() {
               </>
             )}
           </article>
+
+          <article className="panel operator-card relay-card">
+            <div className="card-heading inline-heading">
+              <div>
+                <p className="eyebrow">Relay health</p>
+                <h3>Scheduler 상태</h3>
+              </div>
+              {relayHealth && <StatusBadge status={relayHealth.status} />}
+            </div>
+            <button
+              type="button"
+              onClick={() => runOperatorAction(loadRelayOperations, 'Relay health와 실행 기록 조회가 완료되었습니다.')}
+              disabled={isOperatorLoading}
+            >
+              Relay 상태 조회
+            </button>
+            {!relayHealth ? (
+              <EmptyState
+                title="Relay health 데이터가 없습니다."
+                description="조회 버튼을 누르면 scheduler health summary와 최근 실행 기록을 확인할 수 있습니다."
+              />
+            ) : (
+              <div className="metric-grid">
+                <MetricCard label="관측 실행" value={`${relayHealth.observedRunCount}/${relayHealth.sampleSize}`} />
+                <MetricCard label="성공/실패" value={`${relayHealth.successCount}/${relayHealth.failedCount}`} />
+                <MetricCard label="실패율" value={`${Math.round(relayHealth.failureRate * 100)}%`} />
+                <MetricCard label="연속 실패" value={String(relayHealth.consecutiveFailureCount)} />
+              </div>
+            )}
+            {relayHealth && relayHealth.alertReasons.length > 0 && (
+              <ul className="alert-list">
+                {relayHealth.alertReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            <div className="relay-run-list">
+              <h4>최근 relay run</h4>
+              {relayRuns.length === 0 ? (
+                <p className="empty compact-empty">최근 relay run이 없습니다.</p>
+              ) : (
+                <ul>
+                  {relayRuns.map((run) => (
+                    <li key={run.relayRunId}>
+                      <span>
+                        <strong>{run.relayRunId}</strong>
+                        <small>{run.completedAt} · claimed {run.claimedCount} · failed {run.failedCount}</small>
+                      </span>
+                      <StatusBadge status={run.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </article>
+
+          <article className="panel operator-card pruning-card">
+            <div className="card-heading">
+              <p className="eyebrow">Pruning</p>
+              <h3>운영 로그 정리</h3>
+            </div>
+            <p className="operator-description">
+              관리자 token으로 relay run과 admin access audit 보존 기간이 지난 데이터를 정리합니다.
+            </p>
+            <button
+              type="button"
+              onClick={submitPruning}
+              disabled={isOperatorLoading}
+            >
+              Pruning 실행
+            </button>
+            {!pruningResult ? (
+              <EmptyState
+                title="아직 pruning 실행 결과가 없습니다."
+                description="관리자 권한으로 실행하면 삭제 기준 시각과 삭제 건수를 표시합니다."
+              />
+            ) : (
+              <div className="pruning-result">
+                <MetricCard label="Relay run 삭제" value={String(pruningResult.deletedRelayRunCount)} />
+                <MetricCard label="Access audit 삭제" value={String(pruningResult.deletedAdminAccessAuditCount)} />
+                <small>relay cutoff {pruningResult.relayRunCutoff}</small>
+                <small>audit cutoff {pruningResult.adminAccessAuditCutoff}</small>
+              </div>
+            )}
+          </article>
         </div>
       </section>
 
@@ -550,6 +702,15 @@ function StatusCallout({ message, tone }: { message: string; tone: 'info' | 'err
     <p className={tone === 'error' ? 'status-callout error-callout' : 'status-callout'}>
       {message}
     </p>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 
