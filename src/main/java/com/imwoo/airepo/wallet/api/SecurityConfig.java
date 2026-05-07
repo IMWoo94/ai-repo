@@ -32,6 +32,10 @@ public class SecurityConfig {
                         .hasRole(AdminSecurityRole.ADMIN.name())
                         .requestMatchers(HttpMethod.POST, "/api/v1/outbox-events/*/requeue")
                         .hasRole(AdminSecurityRole.ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/outbox-events/requeue-requests/*/approve")
+                        .hasRole(AdminSecurityRole.ADMIN.name())
+                        .requestMatchers(HttpMethod.POST, "/api/v1/outbox-events/requeue-requests/*/execute")
+                        .hasRole(AdminSecurityRole.ADMIN.name())
                         .requestMatchers(
                                 "/api/v1/outbox-events/**",
                                 "/api/v1/outbox-relay-runs/**",

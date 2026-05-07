@@ -21,6 +21,8 @@ import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
@@ -226,6 +228,22 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public List<OperationOutboxRequeueRequestRecord> findOutboxRequeueRequests(String outboxEventId) {
+        return jdbcTemplate.query(
+                """
+                        select request_id, outbox_event_id, operation_id, status, requested_by,
+                               request_reason, requested_at, approved_by, approved_at, approval_reason,
+                               executed_by, executed_at
+                        from operation_outbox_requeue_requests
+                        where outbox_event_id = ?
+                        order by requested_at, request_id
+                        """,
+                outboxRequeueRequestMapper(),
+                outboxEventId
+        );
+    }
+
+    @Override
     public List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         return transactionTemplate.execute(status -> {
             List<String> outboxEventIds = claimReadyOutboxEventIds(limit, now);
@@ -354,6 +372,143 @@ public class JdbcWalletRepository implements
                     operator,
                     reason
             );
+        });
+    }
+
+    @Override
+    public OperationOutboxRequeueRequestRecord requestManualReviewRequeue(
+            String outboxEventId,
+            Instant requestedAt,
+            String requestedBy,
+            String reason
+    ) {
+        return transactionTemplate.execute(status -> {
+            OperationOutboxEvent event = manualReviewOutboxEvent(outboxEventId);
+            OperationOutboxRequeueRequestRecord request = new OperationOutboxRequeueRequestRecord(
+                    nextId("outbox-requeue-request", "outbox_requeue_request_id_seq"),
+                    outboxEventId,
+                    event.operationId(),
+                    OperationOutboxRequeueRequestStatus.REQUESTED,
+                    requestedBy,
+                    reason,
+                    requestedAt,
+                    null,
+                    null,
+                    null,
+                    null,
+                    null
+            );
+            jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_requeue_requests (
+                                request_id, outbox_event_id, operation_id, status, requested_by,
+                                request_reason, requested_at, approved_by, approved_at, approval_reason,
+                                executed_by, executed_at
+                            )
+                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """,
+                    request.requestId(),
+                    request.outboxEventId(),
+                    request.operationId(),
+                    request.status().name(),
+                    request.requestedBy(),
+                    request.requestReason(),
+                    timestamp(request.requestedAt()),
+                    request.approvedBy(),
+                    timestamp(request.approvedAt()),
+                    request.approvalReason(),
+                    request.executedBy(),
+                    timestamp(request.executedAt())
+            );
+            return request;
+        });
+    }
+
+    @Override
+    public OperationOutboxRequeueRequestRecord approveManualReviewRequeueRequest(
+            String requestId,
+            Instant approvedAt,
+            String approvedBy,
+            String approvalReason
+    ) {
+        return transactionTemplate.execute(status -> {
+            OperationOutboxRequeueRequestRecord request = requeueRequest(requestId);
+            if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+                throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+            }
+            if (request.requestedBy().equals(approvedBy)) {
+                throw new InvalidWalletOperationException("approver must be different from requester");
+            }
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_requeue_requests
+                            set status = ?, approved_by = ?, approved_at = ?, approval_reason = ?
+                            where request_id = ?
+                              and status = ?
+                            """,
+                    OperationOutboxRequeueRequestStatus.APPROVED.name(),
+                    approvedBy,
+                    timestamp(approvedAt),
+                    approvalReason,
+                    requestId,
+                    OperationOutboxRequeueRequestStatus.REQUESTED.name()
+            );
+            return requeueRequest(requestId);
+        });
+    }
+
+    @Override
+    public OperationOutboxRequeueRequestRecord executeManualReviewRequeueRequest(
+            String requestId,
+            Instant executedAt,
+            String executedBy
+    ) {
+        return transactionTemplate.execute(status -> {
+            OperationOutboxRequeueRequestRecord request = requeueRequest(requestId);
+            if (request.status() != OperationOutboxRequeueRequestStatus.APPROVED) {
+                throw new InvalidWalletOperationException("requeue request must be APPROVED: " + requestId);
+            }
+            OperationOutboxEvent event = manualReviewOutboxEvent(request.outboxEventId());
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_events
+                            set status = ?, attempt_count = 0, next_retry_at = null,
+                                claimed_at = null, lease_expires_at = null, published_at = null, last_error = null
+                            where outbox_event_id = ?
+                              and status = ?
+                            """,
+                    OperationOutboxStatus.PENDING.name(),
+                    request.outboxEventId(),
+                    OperationOutboxStatus.MANUAL_REVIEW.name()
+            );
+            jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_requeue_audits (
+                                audit_id, outbox_event_id, operation_id, requeued_at, operator_name, reason
+                            )
+                            values (?, ?, ?, ?, ?, ?)
+                            """,
+                    nextId("outbox-requeue-audit", "outbox_requeue_audit_id_seq"),
+                    request.outboxEventId(),
+                    event.operationId(),
+                    timestamp(executedAt),
+                    executedBy,
+                    request.requestReason()
+            );
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_requeue_requests
+                            set status = ?, executed_by = ?, executed_at = ?
+                            where request_id = ?
+                              and status = ?
+                            """,
+                    OperationOutboxRequeueRequestStatus.EXECUTED.name(),
+                    executedBy,
+                    timestamp(executedAt),
+                    requestId,
+                    OperationOutboxRequeueRequestStatus.APPROVED.name()
+            );
+            return requeueRequest(requestId);
         });
     }
 
@@ -1029,6 +1184,39 @@ public class JdbcWalletRepository implements
         }
     }
 
+    private OperationOutboxEvent manualReviewOutboxEvent(String outboxEventId) {
+        return queryOptional(
+                """
+                        select outbox_event_id, operation_id, event_type, aggregate_type,
+                               aggregate_id, payload, status, occurred_at,
+                               attempt_count, next_retry_at, claimed_at, lease_expires_at,
+                               published_at, last_error
+                        from operation_outbox_events
+                        where outbox_event_id = ?
+                          and status = ?
+                        """,
+                operationOutboxEventMapper(),
+                outboxEventId,
+                OperationOutboxStatus.MANUAL_REVIEW.name()
+        )
+                .orElseThrow(() -> new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId));
+    }
+
+    private OperationOutboxRequeueRequestRecord requeueRequest(String requestId) {
+        return queryOptional(
+                """
+                        select request_id, outbox_event_id, operation_id, status, requested_by,
+                               request_reason, requested_at, approved_by, approved_at, approval_reason,
+                               executed_by, executed_at
+                        from operation_outbox_requeue_requests
+                        where request_id = ?
+                        """,
+                outboxRequeueRequestMapper(),
+                requestId
+        )
+                .orElseThrow(() -> new InvalidWalletOperationException("requeue request not found: " + requestId));
+    }
+
     private RowMapper<Member> memberMapper() {
         return (resultSet, rowNumber) -> new Member(
                 resultSet.getString("member_id"),
@@ -1132,6 +1320,23 @@ public class JdbcWalletRepository implements
         );
     }
 
+    private RowMapper<OperationOutboxRequeueRequestRecord> outboxRequeueRequestMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxRequeueRequestRecord(
+                resultSet.getString("request_id"),
+                resultSet.getString("outbox_event_id"),
+                resultSet.getString("operation_id"),
+                OperationOutboxRequeueRequestStatus.valueOf(resultSet.getString("status")),
+                resultSet.getString("requested_by"),
+                resultSet.getString("request_reason"),
+                instant(resultSet, "requested_at"),
+                resultSet.getString("approved_by"),
+                nullableInstant(resultSet, "approved_at"),
+                resultSet.getString("approval_reason"),
+                resultSet.getString("executed_by"),
+                nullableInstant(resultSet, "executed_at")
+        );
+    }
+
     private RowMapper<OperationOutboxRelayRun> operationOutboxRelayRunMapper() {
         return (resultSet, rowNumber) -> new OperationOutboxRelayRun(
                 resultSet.getString("relay_run_id"),
@@ -1189,6 +1394,9 @@ public class JdbcWalletRepository implements
     }
 
     private Timestamp timestamp(Instant instant) {
+        if (instant == null) {
+            return null;
+        }
         return Timestamp.from(instant);
     }
 

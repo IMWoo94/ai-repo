@@ -17,6 +17,8 @@ import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
@@ -58,6 +60,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
+    private final Map<String, List<OperationOutboxRequeueRequestRecord>> outboxRequeueRequests = new HashMap<>();
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
@@ -68,6 +71,7 @@ public class InMemoryWalletRepository implements
     private int operationStepLogSequence = 0;
     private int outboxEventSequence = 0;
     private int outboxRequeueAuditSequence = 0;
+    private int outboxRequeueRequestSequence = 0;
     private int outboxRelayRunSequence = 0;
     private int adminApiAccessAuditSequence = 0;
 
@@ -213,6 +217,11 @@ public class InMemoryWalletRepository implements
     @Override
     public synchronized List<OperationOutboxRequeueAudit> findOutboxRequeueAudits(String outboxEventId) {
         return List.copyOf(outboxRequeueAudits.getOrDefault(outboxEventId, List.of()));
+    }
+
+    @Override
+    public synchronized List<OperationOutboxRequeueRequestRecord> findOutboxRequeueRequests(String outboxEventId) {
+        return List.copyOf(outboxRequeueRequests.getOrDefault(outboxEventId, List.of()));
     }
 
     @Override
@@ -375,6 +384,96 @@ public class InMemoryWalletRepository implements
                         operator,
                         reason
                 ));
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord requestManualReviewRequeue(
+            String outboxEventId,
+            Instant requestedAt,
+            String requestedBy,
+            String reason
+    ) {
+        OperationOutboxEvent event = findOutboxEvent(outboxEventId);
+        if (event.status() != OperationOutboxStatus.MANUAL_REVIEW) {
+            throw new InvalidWalletOperationException("outboxEventId must be in MANUAL_REVIEW: " + outboxEventId);
+        }
+        OperationOutboxRequeueRequestRecord request = new OperationOutboxRequeueRequestRecord(
+                nextOutboxRequeueRequestId(),
+                outboxEventId,
+                event.operationId(),
+                OperationOutboxRequeueRequestStatus.REQUESTED,
+                requestedBy,
+                reason,
+                requestedAt,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        outboxRequeueRequests.computeIfAbsent(outboxEventId, ignored -> new ArrayList<>()).add(request);
+        return request;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord approveManualReviewRequeueRequest(
+            String requestId,
+            Instant approvedAt,
+            String approvedBy,
+            String approvalReason
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+            throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+        }
+        if (request.requestedBy().equals(approvedBy)) {
+            throw new InvalidWalletOperationException("approver must be different from requester");
+        }
+        OperationOutboxRequeueRequestRecord approvedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.APPROVED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                approvedBy,
+                approvedAt,
+                approvalReason,
+                null,
+                null
+        );
+        replaceOutboxRequeueRequest(approvedRequest);
+        return approvedRequest;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord executeManualReviewRequeueRequest(
+            String requestId,
+            Instant executedAt,
+            String executedBy
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.APPROVED) {
+            throw new InvalidWalletOperationException("requeue request must be APPROVED: " + requestId);
+        }
+        requeueManualReviewOutboxEvent(request.outboxEventId(), executedAt, executedBy, request.requestReason());
+        OperationOutboxRequeueRequestRecord executedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.EXECUTED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                request.approvedBy(),
+                request.approvedAt(),
+                request.approvalReason(),
+                executedBy,
+                executedAt
+        );
+        replaceOutboxRequeueRequest(executedRequest);
+        return executedRequest;
     }
 
     @Override
@@ -604,6 +703,14 @@ public class InMemoryWalletRepository implements
                 .orElseThrow(() -> new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId));
     }
 
+    private OperationOutboxRequeueRequestRecord findOutboxRequeueRequest(String requestId) {
+        return outboxRequeueRequests.values().stream()
+                .flatMap(List::stream)
+                .filter(request -> request.requestId().equals(requestId))
+                .findFirst()
+                .orElseThrow(() -> new InvalidWalletOperationException("requeue request not found: " + requestId));
+    }
+
     private int compareOutboxEvents(OperationOutboxEvent left, OperationOutboxEvent right) {
         int occurredComparison = left.occurredAt().compareTo(right.occurredAt());
         if (occurredComparison != 0) {
@@ -649,6 +756,20 @@ public class InMemoryWalletRepository implements
                 }
             }
             return replacedEvents;
+        });
+    }
+
+    private void replaceOutboxRequeueRequest(OperationOutboxRequeueRequestRecord replacement) {
+        outboxRequeueRequests.replaceAll((outboxEventId, requests) -> {
+            List<OperationOutboxRequeueRequestRecord> replacedRequests = new ArrayList<>();
+            for (OperationOutboxRequeueRequestRecord request : requests) {
+                if (request.requestId().equals(replacement.requestId())) {
+                    replacedRequests.add(replacement);
+                } else {
+                    replacedRequests.add(request);
+                }
+            }
+            return replacedRequests;
         });
     }
 
@@ -775,5 +896,10 @@ public class InMemoryWalletRepository implements
     private String nextOutboxRequeueAuditId() {
         outboxRequeueAuditSequence += 1;
         return "outbox-requeue-audit-%03d".formatted(outboxRequeueAuditSequence);
+    }
+
+    private String nextOutboxRequeueRequestId() {
+        outboxRequeueRequestSequence += 1;
+        return "outbox-requeue-request-%03d".formatted(outboxRequeueRequestSequence);
     }
 }

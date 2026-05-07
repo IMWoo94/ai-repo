@@ -60,6 +60,7 @@
    - ADR-0034 Spring Security Role Model
    - ADR-0035 HTTP Outbox Broker Adapter
    - ADR-0037 Operator/Admin Token Split
+   - ADR-0038 Requeue Approval Workflow
 
 ## 중요한 트레이드오프
 
@@ -78,5 +79,5 @@
 - consumer idempotency
 - pruning 실행 이력 저장과 조회 API
 - external alert channel
-- requeue 승인 워크플로우
+- requeue 승인 반려 정책
 - 실제 운영자 identity와 role scope 분리

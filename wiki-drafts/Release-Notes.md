@@ -16,6 +16,7 @@
 - 운영자 relay health/pruning console UI
 - Manual review requeue success E2E fixture
 - Operator/admin token split
+- Requeue approval workflow
 - 운영자 console E2E smoke
 - 운영 API 인증/인가와 Spring Security role model
 - Outbox relay scheduler, run monitoring, health summary
@@ -41,14 +42,14 @@
 
 ## 알려진 제약
 
-- 운영자 승인 워크플로우와 external alert channel은 아직 없다.
+- requeue 승인 반려 워크플로우와 external alert channel은 아직 없다.
 - token과 operator identity는 local header 기반이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
 
 ## 다음 후보
 
-- requeue approval workflow
+- requeue rejection workflow
 - broker-specific Testcontainers contract
 - consumer idempotency
 - external alert channel

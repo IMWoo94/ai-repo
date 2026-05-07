@@ -4,7 +4,7 @@
 
 이 화면은 백엔드 API가 만든 금융 도메인 결과를 사람이 직접 검증하기 위한 사용자 화면이다. 잔액, 거래내역, 충전, 송금, 원장, 감사 로그, step log, outbox event를 하나의 흐름으로 확인한다.
 
-운영자 콘솔 영역에서는 manual review outbox를 조회하고, requeue를 실행하며, requeue audit trail을 확인한다.
+운영자 콘솔 영역에서는 manual review outbox를 조회하고, requeue 요청/승인/실행 workflow와 requeue audit trail을 확인한다.
 
 ## 디자인 기준
 
@@ -70,13 +70,13 @@ cd frontend && npm run e2e
 - 원장, 감사 로그, step log, outbox event 조회
 - 운영자 token/operator header 입력
 - manual review outbox 조회
-- manual review outbox requeue
+- manual review outbox requeue 요청, 승인, 실행
 - requeue audit trail 조회
 
 ## 범위 제외
 
 - 실제 로그인/OIDC/IAM
-- 운영자 승인 워크플로우
+- 승인 반려 워크플로우
 - React 라우팅
 - 운영 배포 파이프라인
 
@@ -89,13 +89,15 @@ cd frontend && npm run e2e
 | Admin token | `local-ops-token` | `X-Admin-Token` header |
 | Operator token | `local-operator-token` | `X-Operator-Token` header |
 | Operator ID | `local-operator` | `X-Operator-Id` header |
-| Requeue reason | `broker recovered from operator console` | requeue audit reason |
+| Requeue reason | `broker recovered from operator console` | requeue 요청 사유 |
+| Approval reason | `원인 조치 확인` | requeue 승인 사유 |
 
 화면 상태는 다음 기준으로 표시한다.
 
 - manual review event가 없으면 empty state를 표시한다.
 - API 오류는 error callout으로 표시한다.
 - outbox status는 status badge로 표시한다.
-- requeue 성공 후에는 선택한 event의 audit trail을 유지해서 운영 조치 증거를 확인한다.
+- requeue는 `REQUESTED -> APPROVED -> EXECUTED` 상태로 표시한다.
+- execute 성공 후에는 선택한 event의 audit trail을 유지해서 운영 조치 증거를 확인한다.
 - relay health와 최근 relay run은 별도 운영 카드로 조회한다.
 - operational log pruning은 admin token 기반 변경성 운영 조치로 실행한다.

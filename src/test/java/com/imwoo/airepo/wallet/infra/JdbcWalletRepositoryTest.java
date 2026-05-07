@@ -12,6 +12,7 @@ import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
@@ -334,6 +335,60 @@ class JdbcWalletRepositoryTest {
         ))
                 .singleElement()
                 .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING));
+    }
+
+    @Test
+    void outboxManualReviewRequeueCanBeRequestedApprovedAndExecuted() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+
+        var requested = repository.requestManualReviewRequeue(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-requester",
+                "broker recovered"
+        );
+
+        assertThat(requested.requestId()).isEqualTo("outbox-requeue-request-001");
+        assertThat(requested.status()).isEqualTo(OperationOutboxRequeueRequestStatus.REQUESTED);
+
+        var approved = repository.approveManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:11:00Z"),
+                "ops-approver",
+                "원인 조치 확인"
+        );
+
+        assertThat(approved.status()).isEqualTo(OperationOutboxRequeueRequestStatus.APPROVED);
+        assertThat(approved.approvedBy()).isEqualTo("ops-approver");
+
+        var executed = repository.executeManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:12:00Z"),
+                "ops-executor"
+        );
+
+        assertThat(executed.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED);
+        assertThat(executed.executedBy()).isEqualTo("ops-executor");
+        assertThat(repository.findOutboxRequeueRequests("outbox-001"))
+                .singleElement()
+                .satisfies(request -> {
+                    assertThat(request.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED);
+                    assertThat(request.requestedBy()).isEqualTo("ops-requester");
+                    assertThat(request.approvedBy()).isEqualTo("ops-approver");
+                });
+        assertThat(repository.findOutboxRequeueAudits("outbox-001"))
+                .singleElement()
+                .satisfies(audit -> {
+                    assertThat(audit.requeuedAt()).isEqualTo(Instant.parse("2026-05-01T00:12:00Z"));
+                    assertThat(audit.operator()).isEqualTo("ops-executor");
+                    assertThat(audit.reason()).isEqualTo("broker recovered");
+                });
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING));
     }
 
     @Test

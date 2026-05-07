@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.infra.InMemoryOperationOutboxPublisher;
 import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
@@ -307,6 +308,65 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void requestsApprovesAndExecutesManualReviewRequeue() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+
+        var requested = relayService.requestManualReviewRequeue("outbox-001", "ops-requester", "broker recovered");
+
+        assertThat(requested.requestId()).isEqualTo("outbox-requeue-request-001");
+        assertThat(requested.status()).isEqualTo(OperationOutboxRequeueRequestStatus.REQUESTED);
+        assertThat(requested.requestedBy()).isEqualTo("ops-requester");
+        assertThat(requested.requestReason()).isEqualTo("broker recovered");
+
+        var approved = relayService.approveManualReviewRequeueRequest(
+                requested.requestId(),
+                "ops-approver",
+                "원인 조치 확인"
+        );
+
+        assertThat(approved.status()).isEqualTo(OperationOutboxRequeueRequestStatus.APPROVED);
+        assertThat(approved.approvedBy()).isEqualTo("ops-approver");
+        assertThat(approved.approvalReason()).isEqualTo("원인 조치 확인");
+
+        var executed = relayService.executeManualReviewRequeueRequest(requested.requestId(), "ops-executor");
+
+        assertThat(executed.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED);
+        assertThat(executed.executedBy()).isEqualTo("ops-executor");
+        assertThat(relayService.getRequeueRequests("outbox-001"))
+                .singleElement()
+                .satisfies(request -> assertThat(request.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED));
+        assertThat(relayService.getRequeueAudits("outbox-001"))
+                .singleElement()
+                .satisfies(audit -> {
+                    assertThat(audit.operator()).isEqualTo("ops-executor");
+                    assertThat(audit.reason()).isEqualTo("broker recovered");
+                });
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING));
+    }
+
+    @Test
+    void rejectsSameRequesterAndApprover() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        var requested = relayService.requestManualReviewRequeue("outbox-001", "ops-user", "broker recovered");
+
+        assertThatThrownBy(() -> relayService.approveManualReviewRequeueRequest(
+                requested.requestId(),
+                "ops-user",
+                "self approval"
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("approver must be different from requester");
+    }
+
+    @Test
     void rejectsInvalidRelayInputs() {
         assertThatThrownBy(() -> relayService.getPendingEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)
@@ -335,6 +395,15 @@ class OperationOutboxRelayServiceTest {
         assertThatThrownBy(() -> relayService.requeueManualReviewEvent("outbox-001", "ops-user", " "))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("reason must not be blank");
+        assertThatThrownBy(() -> relayService.requestManualReviewRequeue(" ", "ops-user", "reason"))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outboxEventId must not be blank");
+        assertThatThrownBy(() -> relayService.approveManualReviewRequeueRequest(" ", "ops-user", "reason"))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("requestId must not be blank");
+        assertThatThrownBy(() -> relayService.executeManualReviewRequeueRequest(" ", "ops-user"))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("requestId must not be blank");
     }
 
     private Money money(String amount) {

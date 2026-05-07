@@ -74,7 +74,7 @@ test('운영자는 manual review 콘솔의 인증 오류와 empty state를 확�
   await expect(operatorConsole.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
 });
 
-test('운영자는 manual review event를 requeue하고 audit trail을 확인한다', async ({ page }) => {
+test('운영자는 manual review event requeue를 요청, 승인, 실행하고 audit trail을 확인한다', async ({ page }) => {
   const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review');
   expect(fixtureResponse.ok()).toBeTruthy();
 
@@ -88,12 +88,25 @@ test('운영자는 manual review event를 requeue하고 audit trail을 확인한
   await expect(operatorConsole.getByText('e2e broker unavailable')).toBeVisible();
 
   await operatorConsole.getByLabel('Requeue 사유').fill('e2e broker recovered');
+  await operatorConsole.getByRole('button', { name: 'Requeue 요청' }).click();
+
+  await expect(operatorConsole.getByText('Requeue 요청이 등록되었습니다. 승인자를 분리해 승인하세요.')).toBeVisible();
+  await expect(operatorConsole.getByText('REQUESTED')).toBeVisible();
+
+  await operatorConsole.getByLabel('운영자 ID').fill('e2e-approver');
+  await operatorConsole.getByLabel('Requeue 승인 사유').fill('operator verified broker recovery');
+  await operatorConsole.getByRole('button', { name: 'Requeue 승인' }).click();
+
+  await expect(operatorConsole.getByText('Requeue 요청이 승인되었습니다. 실행 단계로 진행하세요.')).toBeVisible();
+  await expect(operatorConsole.locator('.status-badge').getByText('APPROVED', { exact: true })).toBeVisible();
+
+  await operatorConsole.getByLabel('운영자 ID').fill('e2e-executor');
   await operatorConsole.getByRole('button', { name: 'Requeue 실행' }).click();
 
-  await expect(operatorConsole.getByText('Requeue가 완료되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
-  await expect(operatorConsole.getByText('local-operator')).toBeVisible();
-  await expect(operatorConsole.locator('.audit-trail').getByText('e2e broker recovered')).toBeVisible();
-  await expect(operatorConsole.getByText('REQUEUED')).toBeVisible();
+  await expect(operatorConsole.getByText('Requeue가 실행되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
+  await expect(operatorConsole.locator('.audit-trail strong').getByText('e2e-executor', { exact: true })).toBeVisible();
+  await expect(operatorConsole.locator('.audit-trail').getByText('e2e broker recovered').last()).toBeVisible();
+  await expect(operatorConsole.locator('.status-badge').getByText('EXECUTED', { exact: true })).toBeVisible();
 });
 
 test('운영자는 relay health와 pruning 결과를 화면에서 확인한다', async ({ page }) => {

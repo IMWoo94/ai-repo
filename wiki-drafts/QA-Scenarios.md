@@ -14,7 +14,7 @@
 | 잔액 부족 실패 | 잔액 부족 송금은 오류 메시지를 표시하고 잔액을 바꾸지 않는다 | Frontend E2E, API test |
 | 운영자 콘솔 empty | manual review event가 없으면 empty state를 표시한다 | Frontend unit, E2E |
 | 운영자 인증 오류 | 잘못된 admin/operator token은 `ADMIN_AUTHENTICATION_REQUIRED`로 표시된다 | Frontend E2E, API test |
-| 운영자 requeue | manual review event를 requeue하면 audit trail이 남는다 | Frontend unit, E2E, scenario test |
+| 운영자 requeue | manual review event requeue를 요청, 승인, 실행하면 audit trail이 남는다 | Frontend unit, E2E, scenario test |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
 
@@ -47,7 +47,7 @@
 
 ## 남은 QA 후보
 
-- requeue 승인 워크플로우 E2E
+- requeue 승인 반려 워크플로우 E2E
 - external alert channel E2E
 - release smoke script 또는 actuator health check
 - broker-specific Testcontainers contract scenario

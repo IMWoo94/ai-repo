@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -46,6 +47,11 @@ public class OperationOutboxRelayService {
     public List<OperationOutboxRequeueAudit> getRequeueAudits(String outboxEventId) {
         validateOutboxEventId(outboxEventId);
         return operationOutboxRelayRepository.findOutboxRequeueAudits(outboxEventId);
+    }
+
+    public List<OperationOutboxRequeueRequestRecord> getRequeueRequests(String outboxEventId) {
+        validateOutboxEventId(outboxEventId);
+        return operationOutboxRelayRepository.findOutboxRequeueRequests(outboxEventId);
     }
 
     public List<OperationOutboxEvent> claimReadyEvents(int limit) {
@@ -101,6 +107,48 @@ public class OperationOutboxRelayService {
                 Instant.now(clock),
                 operator,
                 reason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord requestManualReviewRequeue(
+            String outboxEventId,
+            String requestedBy,
+            String reason
+    ) {
+        validateOutboxEventId(outboxEventId);
+        validateRequired("requestedBy", requestedBy);
+        validateRequired("reason", reason);
+        return operationOutboxRelayRepository.requestManualReviewRequeue(
+                outboxEventId,
+                Instant.now(clock),
+                requestedBy,
+                reason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord approveManualReviewRequeueRequest(
+            String requestId,
+            String approvedBy,
+            String approvalReason
+    ) {
+        validateRequired("requestId", requestId);
+        validateRequired("approvedBy", approvedBy);
+        validateRequired("approvalReason", approvalReason);
+        return operationOutboxRelayRepository.approveManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                approvedBy,
+                approvalReason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord executeManualReviewRequeueRequest(String requestId, String executedBy) {
+        validateRequired("requestId", requestId);
+        validateRequired("executedBy", executedBy);
+        return operationOutboxRelayRepository.executeManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                executedBy
         );
     }
 

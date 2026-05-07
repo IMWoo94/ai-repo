@@ -62,10 +62,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0044 | [v0.7.0 Release Baseline](0044-v0.7.0-release-baseline.md) | 완료 |
 | 0045 | [v0.7.0 Wiki Publication](0045-v0.7.0-wiki-publication.md) | 완료 |
 | 0046 | [Top3 Operational Hardening](0046-top3-operational-hardening.md) | 완료 |
+| 0047 | [Requeue Approval Workflow](0047-requeue-approval-workflow.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Top3 Operational Hardening
+- 최신 완료 기능: Requeue Approval Workflow
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer idempotency, pruning 실행 이력, external alert channel, 승인 워크플로우, broker-specific Testcontainers 정책
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer idempotency, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 승인 반려 정책

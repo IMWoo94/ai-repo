@@ -9,6 +9,7 @@ type MockFetchState = {
   operationType: 'CHARGE' | 'TRANSFER' | null;
   manualReviewEvents: MockOutboxEvent[];
   requeueAudits: MockRequeueAudit[];
+  requeueRequests: MockRequeueRequest[];
   relayRuns: MockRelayRun[];
 };
 
@@ -38,6 +39,21 @@ type MockRequeueAudit = {
   reason: string;
 };
 
+type MockRequeueRequest = {
+  requestId: string;
+  outboxEventId: string;
+  operationId: string;
+  status: string;
+  requestedBy: string;
+  requestReason: string;
+  requestedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalReason: string | null;
+  executedBy: string | null;
+  executedAt: string | null;
+};
+
 type MockRelayRun = {
   relayRunId: string;
   startedAt: string;
@@ -56,6 +72,7 @@ function setupFetch(state: MockFetchState = {
   operationType: null,
   manualReviewEvents: [],
   requeueAudits: [],
+  requeueRequests: [],
   relayRuns: [],
 }) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
@@ -136,6 +153,68 @@ function setupFetch(state: MockFetchState = {
     if (url.includes('/requeue-audits')) {
       const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-audits')[0];
       return jsonResponse(state.requeueAudits.filter((audit) => audit.outboxEventId === outboxEventId));
+    }
+
+    if (url.includes('/outbox-events/') && url.endsWith('/requeue-requests') && method === 'GET') {
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-requests')[0];
+      return jsonResponse(state.requeueRequests.filter((request) => request.outboxEventId === outboxEventId));
+    }
+
+    if (url.includes('/outbox-events/') && url.endsWith('/requeue-requests') && method === 'POST') {
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-requests')[0];
+      const outboxEvent = state.manualReviewEvents.find((event) => event.outboxEventId === outboxEventId);
+      const body = JSON.parse(String(init?.body));
+      const request: MockRequeueRequest = {
+        requestId: 'outbox-requeue-request-001',
+        outboxEventId,
+        operationId: outboxEvent?.operationId ?? 'op-operator-001',
+        status: 'REQUESTED',
+        requestedBy: 'local-operator',
+        requestReason: body.reason,
+        requestedAt: '2026-05-02T00:00:00Z',
+        approvedBy: null,
+        approvedAt: null,
+        approvalReason: null,
+        executedBy: null,
+        executedAt: null,
+      };
+      state.requeueRequests.push(request);
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/approve') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/approve')[0];
+      const body = JSON.parse(String(init?.body));
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'APPROVED';
+      request.approvedBy = 'local-operator';
+      request.approvalReason = body.reason;
+      request.approvedAt = '2026-05-02T00:01:00Z';
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/execute') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/execute')[0];
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'EXECUTED';
+      request.executedBy = 'local-operator';
+      request.executedAt = '2026-05-02T00:02:00Z';
+      state.manualReviewEvents = state.manualReviewEvents.filter((event) => event.outboxEventId !== request.outboxEventId);
+      state.requeueAudits.push({
+        auditId: 'outbox-requeue-audit-001',
+        outboxEventId: request.outboxEventId,
+        operationId: request.operationId,
+        requeuedAt: '2026-05-02T00:02:00Z',
+        operator: 'local-operator',
+        reason: request.requestReason,
+      });
+      return jsonResponse(request);
     }
 
     if (url.includes('/outbox-events/') && url.endsWith('/requeue') && method === 'POST') {
@@ -389,7 +468,7 @@ describe('App', () => {
     expect(screen.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
   });
 
-  it('manual review outbox를 requeue하고 audit trail을 표시한다', async () => {
+  it('manual review outbox requeue를 요청, 승인, 실행하고 audit trail을 표시한다', async () => {
     const user = userEvent.setup();
     const fetchMock = setupFetch({
       balanceAmount: 125000,
@@ -397,6 +476,7 @@ describe('App', () => {
       operationType: null,
       manualReviewEvents: [manualReviewEvent()],
       requeueAudits: [],
+      requeueRequests: [],
       relayRuns: [],
     });
 
@@ -410,16 +490,26 @@ describe('App', () => {
 
     await user.clear(screen.getByLabelText('Requeue 사유'));
     await user.type(screen.getByLabelText('Requeue 사유'), 'broker recovered');
+    await user.click(screen.getByRole('button', { name: 'Requeue 요청' }));
+
+    expect(await screen.findByText('Requeue 요청이 등록되었습니다. 승인자를 분리해 승인하세요.')).toBeVisible();
+    expect(screen.getByText('REQUESTED')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Requeue 승인' }));
+
+    expect(await screen.findByText('Requeue 요청이 승인되었습니다. 실행 단계로 진행하세요.')).toBeVisible();
+    expect(screen.getByText('APPROVED')).toBeVisible();
+
     await user.click(screen.getByRole('button', { name: 'Requeue 실행' }));
 
-    expect(await screen.findByText('Requeue가 완료되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
-    expect(screen.getAllByText('broker recovered')).toHaveLength(2);
-    expect(screen.getByText('local-operator')).toBeVisible();
-    expect(screen.getByText('REQUEUED')).toBeVisible();
+    expect(await screen.findByText('Requeue가 실행되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
+    expect(screen.getByText('EXECUTED')).toBeVisible();
+    expect(screen.getAllByText('broker recovered').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('local-operator').length).toBeGreaterThanOrEqual(1);
 
-    const requeueCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/requeue'));
-    expect(requeueCall).toBeDefined();
-    expect(JSON.parse(String(requeueCall?.[1]?.body))).toMatchObject({
+    const requeueRequestCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/requeue-requests'));
+    expect(requeueRequestCall).toBeDefined();
+    expect(JSON.parse(String(requeueRequestCall?.[1]?.body))).toMatchObject({
       reason: 'broker recovered',
     });
   });
@@ -432,6 +522,7 @@ describe('App', () => {
       operationType: null,
       manualReviewEvents: [],
       requeueAudits: [],
+      requeueRequests: [],
       relayRuns: [relayRun()],
     });
 
