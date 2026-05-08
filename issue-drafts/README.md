@@ -99,6 +99,8 @@
 - `0046-top3-operational-hardening.md`: Top3 operational hardening 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/98
 - `0047-requeue-approval-workflow.md`: Requeue approval workflow 작업 초안
+- `0048-dev-rules-automatic-check.md`: Dev rules automatic check 작업 초안
+- `0049-requeue-rejection-workflow.md`: Requeue rejection workflow 작업 초안
 
 ## GitHub CLI로 생성
 

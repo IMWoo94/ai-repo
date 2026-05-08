@@ -18,6 +18,7 @@ manual review requeue에 승인 요청 워크플로우를 추가한다.
 
 ```text
 REQUESTED -> APPROVED -> EXECUTED
+REQUESTED -> REJECTED
 ```
 
 API 계약:
@@ -28,10 +29,13 @@ API 계약:
 | 조회 | `GET /api/v1/outbox-events/{outboxEventId}/requeue-requests` | `ROLE_OPERATOR` |
 | 승인 | `POST /api/v1/outbox-events/requeue-requests/{requestId}/approve` | `ROLE_ADMIN` |
 | 실행 | `POST /api/v1/outbox-events/requeue-requests/{requestId}/execute` | `ROLE_ADMIN` |
+| 반려 | `POST /api/v1/outbox-events/requeue-requests/{requestId}/reject` | `ROLE_ADMIN` |
 
-승인자는 요청자와 달라야 한다.
+승인자와 반려자는 요청자와 달라야 한다.
 
 실행 단계에서만 실제 outbox event를 `PENDING`으로 되돌리고 기존 requeue audit을 저장한다.
+
+반려 단계에서는 outbox event를 변경하지 않고 `MANUAL_REVIEW` 상태를 유지한다. 반려자, 반려 사유, 반려 시각을 request record에 저장한다.
 
 ## 트레이드오프
 
@@ -52,11 +56,13 @@ API 계약:
 - operator token은 requeue 요청을 만들 수 있다.
 - operator token만으로 approve/execute는 실패한다.
 - 요청자와 동일한 operator id는 승인할 수 없다.
+- 요청자와 동일한 operator id는 반려할 수 없다.
 - 승인된 요청만 실행할 수 있다.
 - 실행 후 outbox event는 `PENDING`으로 돌아가고 requeue audit이 남는다.
+- 반려 후 outbox event는 `MANUAL_REVIEW`를 유지하고 requeue audit은 남지 않는다.
 
 ## 후속 작업
 
 - 기존 직접 requeue API를 deprecate할지 결정한다.
 - 실제 로그인/OIDC 도입 시 requester, approver, executor identity를 인증 주체와 연결한다.
-- 승인 반려 상태와 반려 사유를 추가할지 검토한다.
+- 반려 후 재요청 정책을 추가할지 검토한다.

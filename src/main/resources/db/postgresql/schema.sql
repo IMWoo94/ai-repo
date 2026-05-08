@@ -119,7 +119,10 @@ CREATE TABLE IF NOT EXISTS operation_outbox_requeue_requests (
     approved_at TIMESTAMP WITH TIME ZONE,
     approval_reason VARCHAR(255),
     executed_by VARCHAR(64),
-    executed_at TIMESTAMP WITH TIME ZONE
+    executed_at TIMESTAMP WITH TIME ZONE,
+    rejected_by VARCHAR(64),
+    rejected_at TIMESTAMP WITH TIME ZONE,
+    rejection_reason VARCHAR(255)
 );
 
 CREATE TABLE IF NOT EXISTS operation_outbox_relay_runs (

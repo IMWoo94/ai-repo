@@ -33,6 +33,9 @@ manual review requeue는 실패 outbox event를 다시 자동 처리 흐름에 �
 
 ## 제외
 
-- 승인 반려 상태
 - 실제 로그인/OIDC identity
 - 기존 직접 requeue API deprecation
+
+## 후속 반영
+
+- 승인 반려 상태는 `0049-requeue-rejection-workflow.md`에서 추가했다.

@@ -43,4 +43,11 @@ public interface OperationOutboxRelayRepository {
             Instant executedAt,
             String executedBy
     );
+
+    OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            Instant rejectedAt,
+            String rejectedBy,
+            String rejectionReason
+    );
 }

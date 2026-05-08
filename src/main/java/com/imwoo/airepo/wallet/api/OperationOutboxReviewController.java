@@ -81,4 +81,13 @@ public class OperationOutboxReviewController {
     ) {
         return operationOutboxRelayService.executeManualReviewRequeueRequest(requestId, operatorId.trim());
     }
+
+    @PostMapping("/requeue-requests/{requestId}/reject")
+    public OperationOutboxRequeueRequestRecord rejectRequeueRequest(
+            @RequestHeader(name = AdminAuthorizationGuard.OPERATOR_ID_HEADER, required = false) String operatorId,
+            @PathVariable String requestId,
+            @RequestBody OperationOutboxRequeueRejectionRequest request
+    ) {
+        return operationOutboxRelayService.rejectManualReviewRequeueRequest(requestId, operatorId.trim(), request.reason());
+    }
 }

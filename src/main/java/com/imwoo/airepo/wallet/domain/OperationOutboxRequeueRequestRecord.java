@@ -15,7 +15,10 @@ public record OperationOutboxRequeueRequestRecord(
         Instant approvedAt,
         String approvalReason,
         String executedBy,
-        Instant executedAt
+        Instant executedAt,
+        String rejectedBy,
+        Instant rejectedAt,
+        String rejectionReason
 ) {
 
     public OperationOutboxRequeueRequestRecord {

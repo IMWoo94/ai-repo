@@ -367,6 +367,46 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void rejectsManualReviewRequeueRequest() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        var requested = relayService.requestManualReviewRequeue("outbox-001", "ops-requester", "broker recovered");
+
+        var rejected = relayService.rejectManualReviewRequeueRequest(
+                requested.requestId(),
+                "ops-rejector",
+                "원인 조치 미확인"
+        );
+
+        assertThat(rejected.status()).isEqualTo(OperationOutboxRequeueRequestStatus.REJECTED);
+        assertThat(rejected.rejectedBy()).isEqualTo("ops-rejector");
+        assertThat(rejected.rejectionReason()).isEqualTo("원인 조치 미확인");
+        assertThat(relayService.getRequeueAudits("outbox-001")).isEmpty();
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW));
+    }
+
+    @Test
+    void rejectsSameRequesterAndRejector() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        relayService.markFailed("outbox-001", "broker unavailable");
+        var requested = relayService.requestManualReviewRequeue("outbox-001", "ops-user", "broker recovered");
+
+        assertThatThrownBy(() -> relayService.rejectManualReviewRequeueRequest(
+                requested.requestId(),
+                "ops-user",
+                "self rejection"
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("rejector must be different from requester");
+    }
+
+    @Test
     void rejectsInvalidRelayInputs() {
         assertThatThrownBy(() -> relayService.getPendingEvents(0))
                 .isInstanceOf(InvalidWalletOperationException.class)
@@ -402,6 +442,9 @@ class OperationOutboxRelayServiceTest {
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("requestId must not be blank");
         assertThatThrownBy(() -> relayService.executeManualReviewRequeueRequest(" ", "ops-user"))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("requestId must not be blank");
+        assertThatThrownBy(() -> relayService.rejectManualReviewRequeueRequest(" ", "ops-user", "reason"))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("requestId must not be blank");
     }

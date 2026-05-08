@@ -146,6 +146,7 @@
 | requeue는 operator와 reason을 감사 이력으로 남긴다 | 금융/핀테크 운영 조치는 사후 추적 가능해야 한다 | ADR-0020 |
 | 운영 API는 operator/admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이며, 변경성 운영 조치는 admin 권한이 필요하다 | ADR-0028, ADR-0034, ADR-0037 |
 | requeue는 요청자와 승인자를 분리한다 | 실패 event 재처리는 4-eyes 운영 조치로 설명 가능해야 한다 | ADR-0038 |
+| requeue 반려는 event 상태를 바꾸지 않는다 | 원인 조치가 확인되지 않은 event는 계속 `MANUAL_REVIEW`에 남아야 한다 | ADR-0038 |
 | relay run, health summary, admin access audit, pruning run은 운영 관측 기록이다 | 운영자는 상태와 조치 이력을 API로 확인한다 | ADR-0030, ADR-0031, ADR-0032, ADR-0033 |
 
 ## 화면과 검증 규칙
@@ -430,9 +431,11 @@
 - `POST /api/v1/outbox-events/{outboxEventId}/requeue-requests`로 requeue 요청을 만든다.
 - `POST /api/v1/outbox-events/requeue-requests/{requestId}/approve`로 요청자와 다른 승인자가 승인한다.
 - `POST /api/v1/outbox-events/requeue-requests/{requestId}/execute`로 승인된 요청을 실행한다.
-- requeue workflow 상태는 `REQUESTED -> APPROVED -> EXECUTED`다.
+- `POST /api/v1/outbox-events/requeue-requests/{requestId}/reject`로 요청자와 다른 반려자가 반려한다.
+- requeue workflow 상태는 `REQUESTED -> APPROVED -> EXECUTED`, `REQUESTED -> REJECTED`다.
 - `GET /api/v1/outbox-events/{outboxEventId}/requeue-audits`로 requeue 감사 이력을 조회한다.
 - requeue 대상은 `MANUAL_REVIEW` 상태 event로 제한한다.
 - execute 결과는 `PENDING`, `attemptCount = 0`, retry/lease/publish/error 필드 초기화다.
+- reject 결과는 기존 outbox event를 `MANUAL_REVIEW` 상태로 유지한다.
 - 인증/인가는 operator/admin token 기반이며, 실제 로그인 identity 연결은 후속 작업으로 남긴다.
 - 기준 결정은 ADR-0019를 따른다.

@@ -70,13 +70,13 @@ cd frontend && npm run e2e
 - 원장, 감사 로그, step log, outbox event 조회
 - 운영자 token/operator header 입력
 - manual review outbox 조회
-- manual review outbox requeue 요청, 승인, 실행
+- manual review outbox requeue 요청, 승인, 실행, 반려
 - requeue audit trail 조회
 
 ## 범위 제외
 
 - 실제 로그인/OIDC/IAM
-- 승인 반려 워크플로우
+- 실제 로그인/OIDC/IAM 기반 승인자 검증
 - React 라우팅
 - 운영 배포 파이프라인
 
@@ -98,6 +98,7 @@ cd frontend && npm run e2e
 - API 오류는 error callout으로 표시한다.
 - outbox status는 status badge로 표시한다.
 - requeue는 `REQUESTED -> APPROVED -> EXECUTED` 상태로 표시한다.
+- 반려된 요청은 `REJECTED` 상태로 표시하고 manual review 상태를 유지한다.
 - execute 성공 후에는 선택한 event의 audit trail을 유지해서 운영 조치 증거를 확인한다.
 - relay health와 최근 relay run은 별도 운영 카드로 조회한다.
 - operational log pruning은 admin token 기반 변경성 운영 조치로 실행한다.

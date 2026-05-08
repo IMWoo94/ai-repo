@@ -395,6 +395,26 @@ h3 {
   color: #4c2a91;
 }
 
+.status-requested {
+  background: #eaf4ff;
+  color: #0057a8;
+}
+
+.status-approved {
+  background: #eaf8ef;
+  color: #176b36;
+}
+
+.status-executed {
+  background: #f1edff;
+  color: #4c2a91;
+}
+
+.status-rejected {
+  background: #fff5f5;
+  color: #9a1b1b;
+}
+
 .status-ok {
   background: #eaf8ef;
   color: #176b36;

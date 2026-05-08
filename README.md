@@ -148,6 +148,7 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 - `GET /api/v1/outbox-events/outbox-001/requeue-requests`
 - `POST /api/v1/outbox-events/requeue-requests/outbox-requeue-request-001/approve`
 - `POST /api/v1/outbox-events/requeue-requests/outbox-requeue-request-001/execute`
+- `POST /api/v1/outbox-events/requeue-requests/outbox-requeue-request-001/reject`
 - `POST /api/v1/outbox-events/outbox-001/requeue`
 - `GET /api/v1/outbox-events/outbox-001/requeue-audits`
 - `GET /api/v1/outbox-relay-runs`
@@ -155,7 +156,9 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 - `GET /api/v1/admin-api-access-audits`
 - `POST /api/v1/operational-log-pruning-runs`
 
-Outbox 운영 API는 `X-Operator-Token`, `X-Admin-Token`, `X-Operator-Id` header를 사용합니다. 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있고, requeue 승인/실행과 operational log pruning 같은 변경성 운영 조치는 admin token을 요구합니다. 로컬 기본 token은 `local-operator-token`, `local-ops-token`이며, 실제 실행에서는 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override합니다. Manual review requeue는 `REQUESTED -> APPROVED -> EXECUTED` 승인 워크플로우를 사용하며, 승인자는 요청자와 달라야 합니다. Requeue audit의 operator는 request body가 아니라 실행 단계의 `X-Operator-Id`에서 기록합니다. Relay scheduler 실행 결과는 `/api/v1/outbox-relay-runs`에서 최근 이력으로 조회하고, `/api/v1/outbox-relay-runs/health`에서 health summary와 alert 판정을 조회합니다. 운영 API 접근 성공/실패 이력은 `/api/v1/admin-api-access-audits`에서 조회합니다. 운영 관측 로그 pruning은 `/api/v1/operational-log-pruning-runs`에서 수동 실행합니다.
+Outbox 운영 API는 `X-Operator-Token`, `X-Admin-Token`, `X-Operator-Id` header를 사용합니다. 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있고, requeue 승인/실행/반려와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구합니다. 로컬 기본 token은 `local-operator-token`, `local-ops-token`이며, 실제 실행에서는 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override합니다. Manual review requeue는 `REQUESTED -> APPROVED -> EXECUTED`와 `REQUESTED -> REJECTED` 워크플로우를 사용하며, 승인자/반려자는 요청자와 달라야 합니다. Requeue audit의 operator는 request body가 아니라 실행 단계의 `X-Operator-Id`에서 기록합니다. 반려 시 outbox event는 `MANUAL_REVIEW` 상태를 유지하고 requeue audit은 남기지 않습니다. Relay scheduler 실행 결과는 `/api/v1/outbox-relay-runs`에서 최근 이력으로 조회하고, `/api/v1/outbox-relay-runs/health`에서 health summary와 alert 판정을 조회합니다. 운영 API 접근 성공/실패 이력은 `/api/v1/admin-api-access-audits`에서 조회합니다. 운영 관측 로그 pruning은 `/api/v1/operational-log-pruning-runs`에서 수동 실행합니다.
+
+변경 누락 검사는 `.dev/rules`와 `scripts/check-dev-rules.sh`로 수행합니다. CI의 `Dev Rules Check` job은 코드, DB, 프론트, 운영 스크립트 변경 시 ADR/progress/Wiki/test/release 문서 동기화 누락을 파일 변경 기준으로 탐지합니다.
 
 Outbox relay scheduler는 기본 비활성화입니다. 자동 발행을 로컬에서 확인하려면 `AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED=true`를 설정합니다. Batch size와 실행 주기는 `AI_REPO_OUTBOX_RELAY_BATCH_SIZE`, `AI_REPO_OUTBOX_RELAY_INITIAL_DELAY_MS`, `AI_REPO_OUTBOX_RELAY_FIXED_DELAY_MS`로 조정합니다.
 

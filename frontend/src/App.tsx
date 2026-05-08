@@ -100,6 +100,9 @@ type OperationOutboxRequeueRequestRecord = {
   approvalReason: string | null;
   executedBy: string | null;
   executedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
 };
 
 type OperationOutboxRelayRun = {
@@ -205,6 +208,7 @@ export function App() {
   const [selectedOutboxEventId, setSelectedOutboxEventId] = useState('');
   const [requeueReason, setRequeueReason] = useState('broker recovered from operator console');
   const [approvalReason, setApprovalReason] = useState('원인 조치 확인');
+  const [rejectionReason, setRejectionReason] = useState('원인 조치 미확인');
   const [requeueAudits, setRequeueAudits] = useState<OperationOutboxRequeueAudit[]>([]);
   const [requeueRequests, setRequeueRequests] = useState<OperationOutboxRequeueRequestRecord[]>([]);
   const [relayHealth, setRelayHealth] = useState<OutboxRelayHealthSummary | null>(null);
@@ -395,6 +399,23 @@ export function App() {
         loadRequeueEvidence(selectedRequeueRequest.outboxEventId),
       ]);
     }, 'Requeue가 실행되었습니다. 감사 이력을 확인하세요.');
+  }
+
+  async function rejectSelectedRequeueRequest() {
+    if (!selectedRequeueRequest) {
+      return;
+    }
+    await runOperatorAction(async () => {
+      await requestJson<OperationOutboxRequeueRequestRecord>(
+        `/api/v1/outbox-events/requeue-requests/${selectedRequeueRequest.requestId}/reject`,
+        {
+          method: 'POST',
+          headers: operatorHeaders(),
+          body: JSON.stringify({ reason: rejectionReason }),
+        },
+      );
+      await loadRequeueEvidence(selectedRequeueRequest.outboxEventId);
+    }, 'Requeue 요청이 반려되었습니다. 감사 이력 없이 manual review 상태를 유지합니다.');
   }
 
   async function submitCharge(event: FormEvent<HTMLFormElement>) {
@@ -646,6 +667,14 @@ export function App() {
                     onChange={(event) => setApprovalReason(event.target.value)}
                   />
                 </label>
+                <label className="approval-reason">
+                  Rejection reason
+                  <textarea
+                    aria-label="Requeue 반려 사유"
+                    value={rejectionReason}
+                    onChange={(event) => setRejectionReason(event.target.value)}
+                  />
+                </label>
                 <div className="operator-actions">
                   <button
                     type="button"
@@ -654,6 +683,14 @@ export function App() {
                     disabled={isOperatorLoading || !selectedRequeueRequest || selectedRequeueRequest.status !== 'REQUESTED' || approvalReason.trim().length === 0}
                   >
                     Requeue 승인
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={rejectSelectedRequeueRequest}
+                    disabled={isOperatorLoading || !selectedRequeueRequest || selectedRequeueRequest.status !== 'REQUESTED' || rejectionReason.trim().length === 0}
+                  >
+                    Requeue 반려
                   </button>
                   <button
                     type="button"
@@ -678,6 +715,7 @@ export function App() {
                           <small>
                             {request.approvedBy ? `approved by ${request.approvedBy}` : 'approval pending'}
                             {request.executedBy ? ` · executed by ${request.executedBy}` : ''}
+                            {request.rejectedBy ? ` · rejected by ${request.rejectedBy}` : ''}
                           </small>
                         </li>
                       ))}

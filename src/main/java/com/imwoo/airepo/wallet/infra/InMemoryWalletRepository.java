@@ -409,6 +409,9 @@ public class InMemoryWalletRepository implements
                 null,
                 null,
                 null,
+                null,
+                null,
+                null,
                 null
         );
         outboxRequeueRequests.computeIfAbsent(outboxEventId, ignored -> new ArrayList<>()).add(request);
@@ -441,6 +444,9 @@ public class InMemoryWalletRepository implements
                 approvedAt,
                 approvalReason,
                 null,
+                null,
+                null,
+                null,
                 null
         );
         replaceOutboxRequeueRequest(approvedRequest);
@@ -470,10 +476,48 @@ public class InMemoryWalletRepository implements
                 request.approvedAt(),
                 request.approvalReason(),
                 executedBy,
-                executedAt
+                executedAt,
+                request.rejectedBy(),
+                request.rejectedAt(),
+                request.rejectionReason()
         );
         replaceOutboxRequeueRequest(executedRequest);
         return executedRequest;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            Instant rejectedAt,
+            String rejectedBy,
+            String rejectionReason
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+            throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+        }
+        if (request.requestedBy().equals(rejectedBy)) {
+            throw new InvalidWalletOperationException("rejector must be different from requester");
+        }
+        OperationOutboxRequeueRequestRecord rejectedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.REJECTED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                request.approvedBy(),
+                request.approvedAt(),
+                request.approvalReason(),
+                request.executedBy(),
+                request.executedAt(),
+                rejectedBy,
+                rejectedAt,
+                rejectionReason
+        );
+        replaceOutboxRequeueRequest(rejectedRequest);
+        return rejectedRequest;
     }
 
     @Override

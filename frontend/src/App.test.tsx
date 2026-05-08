@@ -52,6 +52,9 @@ type MockRequeueRequest = {
   approvalReason: string | null;
   executedBy: string | null;
   executedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
 };
 
 type MockRelayRun = {
@@ -177,8 +180,25 @@ function setupFetch(state: MockFetchState = {
         approvalReason: null,
         executedBy: null,
         executedAt: null,
+        rejectedBy: null,
+        rejectedAt: null,
+        rejectionReason: null,
       };
       state.requeueRequests.push(request);
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/reject') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/reject')[0];
+      const body = JSON.parse(String(init?.body));
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'REJECTED';
+      request.rejectedBy = 'local-operator';
+      request.rejectionReason = body.reason;
+      request.rejectedAt = '2026-05-02T00:01:00Z';
       return jsonResponse(request);
     }
 
@@ -512,6 +532,38 @@ describe('App', () => {
     expect(JSON.parse(String(requeueRequestCall?.[1]?.body))).toMatchObject({
       reason: 'broker recovered',
     });
+  });
+
+  it('manual review outbox requeue 요청을 반려하고 manual review 상태를 유지한다', async () => {
+    const user = userEvent.setup();
+    setupFetch({
+      balanceAmount: 125000,
+      operationId: null,
+      operationType: null,
+      manualReviewEvents: [manualReviewEvent()],
+      requeueAudits: [],
+      requeueRequests: [],
+      relayRuns: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Manual review 조회' }));
+    await user.clear(screen.getByLabelText('Requeue 사유'));
+    await user.type(screen.getByLabelText('Requeue 사유'), 'broker recovered');
+    await user.click(screen.getByRole('button', { name: 'Requeue 요청' }));
+
+    expect(await screen.findByText('REQUESTED')).toBeVisible();
+
+    await user.clear(screen.getByLabelText('Requeue 반려 사유'));
+    await user.type(screen.getByLabelText('Requeue 반려 사유'), '원인 조치 미확인');
+    await user.click(screen.getByRole('button', { name: 'Requeue 반려' }));
+
+    expect(await screen.findByText('Requeue 요청이 반려되었습니다. 감사 이력 없이 manual review 상태를 유지합니다.')).toBeVisible();
+    expect(screen.getByText('REJECTED')).toBeVisible();
+    expect(screen.getAllByText('MANUAL_REVIEW').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('아직 requeue audit이 없습니다.')).toBeVisible();
   });
 
   it('relay health와 pruning 결과를 운영자 콘솔에 표시한다', async () => {

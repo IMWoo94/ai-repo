@@ -220,7 +220,7 @@ scripts/mvp-local-smoke.sh
 
 ### Outbox 운영 API가 401 또는 403을 반환할 때
 
-Outbox manual review, requeue 요청/승인/실행, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
+Outbox manual review, requeue 요청/승인/실행/반려, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
 
 ```bash
 X-Operator-Token: local-operator-token
@@ -233,8 +233,9 @@ X-Operator-Id: local-operator
 - 운영 API 권한 판단은 Spring Security `ROLE_OPERATOR`, `ROLE_ADMIN` 기반으로 수행한다.
 - 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있다.
 - requeue 요청은 operator token으로 가능하다.
-- requeue 승인/실행과 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
-- requeue 승인은 요청자와 다른 `X-Operator-Id`를 요구한다.
+- requeue 승인/실행/반려와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
+- requeue 승인/반려는 요청자와 다른 `X-Operator-Id`를 요구한다.
+- requeue 반려는 outbox event를 `MANUAL_REVIEW` 상태로 유지하고 requeue audit을 남기지 않는다.
 - 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.

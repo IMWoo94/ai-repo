@@ -124,3 +124,28 @@ test('운영자는 relay health와 pruning 결과를 화면에서 확인한다',
   await expect(operatorConsole.getByText('Relay run 삭제')).toBeVisible();
   await expect(operatorConsole.getByText('Access audit 삭제')).toBeVisible();
 });
+
+test('운영자는 manual review requeue 요청을 반려하고 audit 없이 상태를 유지한다', async ({ page }) => {
+  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review');
+  expect(fixtureResponse.ok()).toBeTruthy();
+
+  await page.goto('/');
+
+  const operatorConsole = page.locator('.operator-console');
+  await operatorConsole.getByRole('button', { name: 'Manual review 조회' }).click();
+  await expect(operatorConsole.getByText('MANUAL_REVIEW').first()).toBeVisible();
+
+  await operatorConsole.getByLabel('Requeue 사유').fill('e2e broker recovered');
+  await operatorConsole.getByRole('button', { name: 'Requeue 요청' }).click();
+
+  await expect(operatorConsole.getByText('REQUESTED')).toBeVisible();
+
+  await operatorConsole.getByLabel('운영자 ID').fill('e2e-rejector');
+  await operatorConsole.getByLabel('Requeue 반려 사유').fill('operator could not verify recovery');
+  await operatorConsole.getByRole('button', { name: 'Requeue 반려' }).click();
+
+  await expect(operatorConsole.getByText('Requeue 요청이 반려되었습니다. 감사 이력 없이 manual review 상태를 유지합니다.')).toBeVisible();
+  await expect(operatorConsole.locator('.status-badge').getByText('REJECTED', { exact: true })).toBeVisible();
+  await expect(operatorConsole.getByText('아직 requeue audit이 없습니다.')).toBeVisible();
+  await expect(operatorConsole.getByText('MANUAL_REVIEW').first()).toBeVisible();
+});

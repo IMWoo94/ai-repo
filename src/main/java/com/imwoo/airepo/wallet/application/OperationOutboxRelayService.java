@@ -152,6 +152,22 @@ public class OperationOutboxRelayService {
         );
     }
 
+    public OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            String rejectedBy,
+            String rejectionReason
+    ) {
+        validateRequired("requestId", requestId);
+        validateRequired("rejectedBy", rejectedBy);
+        validateRequired("rejectionReason", rejectionReason);
+        return operationOutboxRelayRepository.rejectManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                rejectedBy,
+                rejectionReason
+        );
+    }
+
     private void validateOutboxEventId(String outboxEventId) {
         if (outboxEventId == null || outboxEventId.isBlank()) {
             throw new InvalidWalletOperationException("outboxEventId must not be blank");

@@ -233,7 +233,7 @@ public class JdbcWalletRepository implements
                 """
                         select request_id, outbox_event_id, operation_id, status, requested_by,
                                request_reason, requested_at, approved_by, approved_at, approval_reason,
-                               executed_by, executed_at
+                               executed_by, executed_at, rejected_by, rejected_at, rejection_reason
                         from operation_outbox_requeue_requests
                         where outbox_event_id = ?
                         order by requested_at, request_id
@@ -396,6 +396,9 @@ public class JdbcWalletRepository implements
                     null,
                     null,
                     null,
+                    null,
+                    null,
+                    null,
                     null
             );
             jdbcTemplate.update(
@@ -403,9 +406,9 @@ public class JdbcWalletRepository implements
                             insert into operation_outbox_requeue_requests (
                                 request_id, outbox_event_id, operation_id, status, requested_by,
                                 request_reason, requested_at, approved_by, approved_at, approval_reason,
-                                executed_by, executed_at
+                                executed_by, executed_at, rejected_by, rejected_at, rejection_reason
                             )
-                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                             """,
                     request.requestId(),
                     request.outboxEventId(),
@@ -418,7 +421,10 @@ public class JdbcWalletRepository implements
                     timestamp(request.approvedAt()),
                     request.approvalReason(),
                     request.executedBy(),
-                    timestamp(request.executedAt())
+                    timestamp(request.executedAt()),
+                    request.rejectedBy(),
+                    timestamp(request.rejectedAt()),
+                    request.rejectionReason()
             );
             return request;
         });
@@ -450,6 +456,39 @@ public class JdbcWalletRepository implements
                     approvedBy,
                     timestamp(approvedAt),
                     approvalReason,
+                    requestId,
+                    OperationOutboxRequeueRequestStatus.REQUESTED.name()
+            );
+            return requeueRequest(requestId);
+        });
+    }
+
+    @Override
+    public OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            Instant rejectedAt,
+            String rejectedBy,
+            String rejectionReason
+    ) {
+        return transactionTemplate.execute(status -> {
+            OperationOutboxRequeueRequestRecord request = requeueRequest(requestId);
+            if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+                throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+            }
+            if (request.requestedBy().equals(rejectedBy)) {
+                throw new InvalidWalletOperationException("rejector must be different from requester");
+            }
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_requeue_requests
+                            set status = ?, rejected_by = ?, rejected_at = ?, rejection_reason = ?
+                            where request_id = ?
+                              and status = ?
+                            """,
+                    OperationOutboxRequeueRequestStatus.REJECTED.name(),
+                    rejectedBy,
+                    timestamp(rejectedAt),
+                    rejectionReason,
                     requestId,
                     OperationOutboxRequeueRequestStatus.REQUESTED.name()
             );
@@ -1207,7 +1246,7 @@ public class JdbcWalletRepository implements
                 """
                         select request_id, outbox_event_id, operation_id, status, requested_by,
                                request_reason, requested_at, approved_by, approved_at, approval_reason,
-                               executed_by, executed_at
+                               executed_by, executed_at, rejected_by, rejected_at, rejection_reason
                         from operation_outbox_requeue_requests
                         where request_id = ?
                         """,
@@ -1333,7 +1372,10 @@ public class JdbcWalletRepository implements
                 nullableInstant(resultSet, "approved_at"),
                 resultSet.getString("approval_reason"),
                 resultSet.getString("executed_by"),
-                nullableInstant(resultSet, "executed_at")
+                nullableInstant(resultSet, "executed_at"),
+                resultSet.getString("rejected_by"),
+                nullableInstant(resultSet, "rejected_at"),
+                resultSet.getString("rejection_reason")
         );
     }
 
