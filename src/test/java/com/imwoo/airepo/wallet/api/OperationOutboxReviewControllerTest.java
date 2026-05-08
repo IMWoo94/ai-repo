@@ -76,7 +76,7 @@ class OperationOutboxReviewControllerTest {
     }
 
     @Test
-    void requeuesManualReviewOutboxEvent() throws Exception {
+    void rejectsDeprecatedDirectRequeueApi() throws Exception {
         makeManualReviewEvent();
 
         mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
@@ -88,31 +88,25 @@ class OperationOutboxReviewControllerTest {
                                   "reason": "broker recovered"
                                 }
                                 """))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(get("/api/v1/outbox-events/manual-review"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));
+                .andExpect(status().isGone())
+                .andExpect(jsonPath("$.code").value("DIRECT_REQUEUE_API_DEPRECATED"));
 
         mockMvc.perform(get("/api/v1/outbox-events/manual-review")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(0));
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"));
         mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].status").value("PENDING"))
-                .andExpect(jsonPath("$[0].attemptCount").value(0))
-                .andExpect(jsonPath("$[0].lastError").doesNotExist());
+                .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"))
+                .andExpect(jsonPath("$[0].attemptCount").value(3))
+                .andExpect(jsonPath("$[0].lastError").value("broker unavailable"));
         mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
-                .andExpect(jsonPath("$[0].operationId").value("op-001"))
-                .andExpect(jsonPath("$[0].operator").value("ops-header-user"))
-                .andExpect(jsonPath("$[0].reason").value("broker recovered"));
+                .andExpect(jsonPath("$.length()").value(0));
     }
 
     @Test
@@ -301,20 +295,12 @@ class OperationOutboxReviewControllerTest {
     }
 
     @Test
-    void rejectsInvalidRequeueRequest() throws Exception {
+    void rejectsUnauthenticatedManualReviewRead() throws Exception {
         makeManualReviewEvent();
 
-        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
-                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
-                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "reason": " "
-                                }
-                                """))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"));
+        mockMvc.perform(get("/api/v1/outbox-events/manual-review"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHENTICATION_REQUIRED"));
     }
 
     @Test

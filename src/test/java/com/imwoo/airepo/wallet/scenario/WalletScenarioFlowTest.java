@@ -146,8 +146,8 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"))
                 .andExpect(jsonPath("$[0].attemptCount").value(3));
 
-        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue")
-                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+        mockMvc.perform(post("/api/v1/outbox-events/outbox-001/requeue-requests")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -155,7 +155,26 @@ class WalletScenarioFlowTest {
                                   "reason": "broker recovered in scenario"
                                 }
                                 """))
-                .andExpect(status().isNoContent());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REQUESTED"));
+
+        mockMvc.perform(post("/api/v1/outbox-events/requeue-requests/outbox-requeue-request-001/approve")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, "scenario-approver")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "원인 조치 확인"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("APPROVED"));
+
+        mockMvc.perform(post("/api/v1/outbox-events/requeue-requests/outbox-requeue-request-001/execute")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, "scenario-executor"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXECUTED"));
 
         mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
@@ -164,7 +183,7 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))
                 .andExpect(jsonPath("$[0].operationId").value("op-001"))
-                .andExpect(jsonPath("$[0].operator").value("scenario-ops"))
+                .andExpect(jsonPath("$[0].operator").value("scenario-executor"))
                 .andExpect(jsonPath("$[0].reason").value("broker recovered in scenario"));
 
         mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))

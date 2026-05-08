@@ -97,7 +97,7 @@ cd frontend && npm run e2e
 - manual review event가 없으면 empty state를 표시한다.
 - API 오류는 error callout으로 표시한다.
 - outbox status는 status badge로 표시한다.
-- requeue는 `REQUESTED -> APPROVED -> EXECUTED` 상태로 표시한다.
+- requeue는 직접 실행 API가 아니라 `REQUESTED -> APPROVED -> EXECUTED` workflow 상태로 표시한다.
 - 반려된 요청은 `REJECTED` 상태로 표시하고 manual review 상태를 유지한다.
 - execute 성공 후에는 선택한 event의 audit trail을 유지해서 운영 조치 증거를 확인한다.
 - relay health와 최근 relay run은 별도 운영 카드로 조회한다.

@@ -432,6 +432,7 @@
 - `POST /api/v1/outbox-events/requeue-requests/{requestId}/approve`로 요청자와 다른 승인자가 승인한다.
 - `POST /api/v1/outbox-events/requeue-requests/{requestId}/execute`로 승인된 요청을 실행한다.
 - `POST /api/v1/outbox-events/requeue-requests/{requestId}/reject`로 요청자와 다른 반려자가 반려한다.
+- 기존 `POST /api/v1/outbox-events/{outboxEventId}/requeue` 직접 실행 API는 deprecated이며 `410 Gone`을 반환한다.
 - requeue workflow 상태는 `REQUESTED -> APPROVED -> EXECUTED`, `REQUESTED -> REJECTED`다.
 - `GET /api/v1/outbox-events/{outboxEventId}/requeue-audits`로 requeue 감사 이력을 조회한다.
 - requeue 대상은 `MANUAL_REVIEW` 상태 event로 제한한다.

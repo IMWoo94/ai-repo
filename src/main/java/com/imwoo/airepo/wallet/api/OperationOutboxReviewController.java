@@ -38,8 +38,9 @@ public class OperationOutboxReviewController {
             @PathVariable String outboxEventId,
             @RequestBody OperationOutboxRequeueRequest request
     ) {
-        operationOutboxRelayService.requeueManualReviewEvent(outboxEventId, operatorId.trim(), request.reason());
-        return ResponseEntity.noContent().build();
+        throw new DirectRequeueApiDeprecatedException(
+                "Direct requeue API is deprecated. Use requeue request approval workflow."
+        );
     }
 
     @GetMapping("/{outboxEventId}/requeue-audits")

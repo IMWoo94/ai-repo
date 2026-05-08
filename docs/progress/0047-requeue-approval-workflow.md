@@ -29,7 +29,7 @@ manual review requeue를 단일 admin 실행에서 요청자/승인자/실행자
 
 ## 남은 일
 
-- 직접 requeue API deprecate 여부를 결정한다.
+- 직접 requeue API는 ADR-0040에서 deprecated로 결정했다.
 - 승인 반려 상태는 0049 단계에서 추가했다.
 - 실제 로그인/OIDC identity와 승인자 권한 scope 연결은 후속 작업으로 남긴다.
 

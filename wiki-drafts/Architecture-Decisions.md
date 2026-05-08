@@ -62,6 +62,7 @@
    - ADR-0037 Operator/Admin Token Split
    - ADR-0038 Requeue Approval Workflow
    - ADR-0039 Dev Rules Automatic Sync Check
+   - ADR-0040 Direct Requeue API Deprecation
 
 ## 중요한 트레이드오프
 
@@ -72,6 +73,7 @@
 | PostgreSQL profile 분리 | 운영 유사 검증을 명시적으로 실행 | 모든 로컬 실행을 DB 필수로 만드는 단순성 |
 | Transactional outbox | 돈 이동과 event 적재 정합성 확보 | 즉시 Kafka/RabbitMQ/SQS에 결합 |
 | Header 기반 운영 인증 | local MVP에서 운영 API 보호 계약 고정 | 실제 OAuth/OIDC 로그인 |
+| 직접 requeue API 비활성화 | 승인 workflow 우회 방지 | 단일 API로 빠르게 재처리하는 편의성 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보

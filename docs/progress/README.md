@@ -65,10 +65,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0047 | [Requeue Approval Workflow](0047-requeue-approval-workflow.md) | 완료 |
 | 0048 | [Dev Rules Automatic Check](0048-dev-rules-automatic-check.md) | 완료 |
 | 0049 | [Requeue Rejection Workflow](0049-requeue-rejection-workflow.md) | 완료 |
+| 0050 | [Direct Requeue API Deprecation](0050-direct-requeue-api-deprecation.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Requeue Rejection Workflow
+- 최신 완료 기능: Direct Requeue API Deprecation
 - 현재 릴리스 후보: `v0.7.0`
 - 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer idempotency, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 실제 identity/role scope 연동

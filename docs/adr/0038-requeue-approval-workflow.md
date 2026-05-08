@@ -49,7 +49,7 @@ API 계약:
 
 - API와 UI 단계가 늘어난다.
 - 로컬 header 기반 identity에서는 실제 사용자 인증과 승인자 자격을 완전히 보장하지 못한다.
-- 기존 직접 requeue API와 신규 workflow API가 일시적으로 공존한다.
+- 기존 직접 requeue API를 비활성화하려면 별도 호환성 정책이 필요하다.
 
 ## 검증 기준
 
@@ -63,6 +63,6 @@ API 계약:
 
 ## 후속 작업
 
-- 기존 직접 requeue API를 deprecate할지 결정한다.
+- 기존 직접 requeue API는 ADR-0040에 따라 deprecated 상태에서 `410 Gone`을 반환한다.
 - 실제 로그인/OIDC 도입 시 requester, approver, executor identity를 인증 주체와 연결한다.
 - 반려 후 재요청 정책을 추가할지 검토한다.

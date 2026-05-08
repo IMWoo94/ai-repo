@@ -236,6 +236,7 @@ X-Operator-Id: local-operator
 - requeue 승인/실행/반려와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
 - requeue 승인/반려는 요청자와 다른 `X-Operator-Id`를 요구한다.
 - requeue 반려는 outbox event를 `MANUAL_REVIEW` 상태로 유지하고 requeue audit을 남기지 않는다.
+- 기존 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`과 `DIRECT_REQUEUE_API_DEPRECATED`를 반환한다.
 - 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.

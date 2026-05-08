@@ -74,6 +74,11 @@ public class WalletApiExceptionHandler {
         return error(HttpStatus.FORBIDDEN, "ADMIN_AUTHORIZATION_DENIED", exception.getMessage());
     }
 
+    @ExceptionHandler(DirectRequeueApiDeprecatedException.class)
+    ResponseEntity<ApiErrorResponse> handleDirectRequeueApiDeprecated(DirectRequeueApiDeprecatedException exception) {
+        return error(HttpStatus.GONE, "DIRECT_REQUEUE_API_DEPRECATED", exception.getMessage());
+    }
+
     private ResponseEntity<ApiErrorResponse> error(HttpStatus status, String code, String message) {
         return ResponseEntity.status(status)
                 .body(new ApiErrorResponse(code, message, Instant.now(clock)));

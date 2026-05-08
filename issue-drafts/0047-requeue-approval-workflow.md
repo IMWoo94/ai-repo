@@ -34,7 +34,7 @@ manual review requeue는 실패 outbox event를 다시 자동 처리 흐름에 �
 ## 제외
 
 - 실제 로그인/OIDC identity
-- 기존 직접 requeue API deprecation
+- 기존 직접 requeue API deprecation은 `0050-direct-requeue-api-deprecation.md`에서 완료
 
 ## 후속 반영
 

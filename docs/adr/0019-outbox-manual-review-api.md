@@ -4,6 +4,10 @@
 
 Accepted
 
+## 대체 결정
+
+재처리 API 정책은 ADR-0040이 대체한다. 기존 `POST /api/v1/outbox-events/{outboxEventId}/requeue`는 더 이상 상태를 변경하지 않고 `410 Gone`을 반환한다.
+
 ## 맥락
 
 ADR-0018에서 outbox event가 최대 3회 실패하면 `MANUAL_REVIEW` 상태로 격리하기로 했다. 이 상태는 자동 claim 대상에서 제외되므로, 운영자가 격리된 event를 확인하고 원인 조치 후 다시 처리 흐름으로 넣을 수 있는 최소 API가 필요하다.
@@ -58,7 +62,7 @@ ADR-0018에서 outbox event가 최대 3회 실패하면 `MANUAL_REVIEW` 상태�
 | 항목 | 결정 |
 | --- | --- |
 | 조회 API | `GET /api/v1/outbox-events/manual-review?limit=50` |
-| 재처리 API | `POST /api/v1/outbox-events/{outboxEventId}/requeue` |
+| 재처리 API | `POST /api/v1/outbox-events/{outboxEventId}/requeue`는 ADR-0040 기준으로 deprecated |
 | 감사 조회 API | `GET /api/v1/outbox-events/{outboxEventId}/requeue-audits` |
 | 조회 대상 | `MANUAL_REVIEW` 상태 event |
 | requeue 가능 대상 | `MANUAL_REVIEW` 상태 event만 허용 |

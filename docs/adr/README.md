@@ -55,3 +55,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0037 | Operator/Admin Token Split | Accepted |
 | ADR-0038 | Requeue Approval Workflow | Accepted |
 | ADR-0039 | Dev Rules Automatic Sync Check | Accepted |
+| ADR-0040 | Direct Requeue API Deprecation | Accepted |
