@@ -86,4 +86,4 @@ publisher port와 fake adapter를 먼저 둔다.
 
 - 실제 broker 후보를 정한 뒤 adapter와 contract test를 추가한다.
 - relay scheduler 또는 worker 실행 정책을 분리 ADR로 결정한다.
-- publisher payload schema version 정책을 추가한다.
+- broker별 payload schema evolution과 compatibility 검증 정책을 추가한다.

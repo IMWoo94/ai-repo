@@ -38,7 +38,12 @@ class HttpOperationOutboxPublisherContractTest {
             assertThat(brokerEndpoint.path()).isEqualTo("/outbox-events");
             assertThat(brokerEndpoint.header("Content-Type")).isEqualTo("application/json");
             assertThat(brokerEndpoint.header("X-Outbox-Event-Id")).isEqualTo("outbox-001");
+            assertThat(brokerEndpoint.header("X-Idempotency-Key")).isEqualTo("outbox-001");
+            assertThat(brokerEndpoint.header("X-Event-Schema-Version")).isEqualTo("1");
+            assertThat(brokerEndpoint.header("X-Event-Type")).isEqualTo("CHARGE_COMPLETED");
             assertThat(brokerEndpoint.body())
+                    .contains("\"schemaVersion\":1")
+                    .contains("\"idempotencyKey\":\"outbox-001\"")
                     .contains("\"outboxEventId\":\"outbox-001\"")
                     .contains("\"operationId\":\"op-001\"")
                     .contains("\"eventType\":\"CHARGE_COMPLETED\"")
@@ -163,6 +168,9 @@ class HttpOperationOutboxPublisherContractTest {
                     exchange.getRequestURI().getPath(),
                     exchange.getRequestHeaders().getFirst("Content-Type"),
                     exchange.getRequestHeaders().getFirst("X-Outbox-Event-Id"),
+                    exchange.getRequestHeaders().getFirst("X-Idempotency-Key"),
+                    exchange.getRequestHeaders().getFirst("X-Event-Schema-Version"),
+                    exchange.getRequestHeaders().getFirst("X-Event-Type"),
                     new String(exchange.getRequestBody().readAllBytes(), StandardCharsets.UTF_8)
             ));
             byte[] responseBody = "{}".getBytes(StandardCharsets.UTF_8);
@@ -177,6 +185,9 @@ class HttpOperationOutboxPublisherContractTest {
             String path,
             String contentType,
             String outboxEventId,
+            String idempotencyKey,
+            String eventSchemaVersion,
+            String eventType,
             String body
     ) {
 
@@ -186,6 +197,15 @@ class HttpOperationOutboxPublisherContractTest {
             }
             if ("X-Outbox-Event-Id".equals(name)) {
                 return outboxEventId;
+            }
+            if ("X-Idempotency-Key".equals(name)) {
+                return idempotencyKey;
+            }
+            if ("X-Event-Schema-Version".equals(name)) {
+                return eventSchemaVersion;
+            }
+            if ("X-Event-Type".equals(name)) {
+                return eventType;
             }
             return null;
         }

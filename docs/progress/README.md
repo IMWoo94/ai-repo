@@ -68,10 +68,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0050 | [Direct Requeue API Deprecation](0050-direct-requeue-api-deprecation.md) | 완료 |
 | 0051 | [Requeue State Transition Atomicity](0051-requeue-state-transition-atomicity.md) | 완료 |
 | 0052 | [Outbox Claim Guarded Result Update](0052-outbox-claim-guarded-result-update.md) | 완료 |
+| 0053 | [Broker Consumer Idempotency](0053-broker-consumer-idempotency.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Outbox Claim Guarded Result Update
+- 최신 완료 기능: Broker Consumer Idempotency
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer idempotency, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 실제 identity/role scope 연동
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer processed-event table, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 실제 identity/role scope 연동

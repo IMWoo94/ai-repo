@@ -32,7 +32,7 @@ relay publish loop의 결과 갱신은 claim 시점의 `claimedAt`, `leaseExpire
 
 - claim timestamp가 결과 갱신 계약의 일부가 되어 repository API가 늘어난다.
 - 완전한 중복 발행 방지는 아니다. 늦은 worker가 이미 외부 broker에 publish한 뒤 DB 갱신만 실패할 수 있다.
-- 장기적으로는 claim owner 또는 event publish idempotency key가 필요하다.
+- broker/consumer idempotency 계약은 ADR-0043에서 별도 처리한다.
 
 ## 검증 기준
 
@@ -45,4 +45,4 @@ relay publish loop의 결과 갱신은 claim 시점의 `claimedAt`, `leaseExpire
 ## 후속 작업
 
 - worker identity 또는 claim token 컬럼을 명시적으로 도입할지 검토한다.
-- broker publish idempotency key와 consumer idempotency를 설계한다.
+- consumer processed-event table과 dedupe 보관 기간을 설계한다.

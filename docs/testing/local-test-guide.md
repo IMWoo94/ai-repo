@@ -62,6 +62,7 @@ npm run e2e
 - controller 오류 매핑
 - repository 영속화 정책
 - rollback, lock timeout, outbox 상태 전이
+- HTTP broker envelope와 idempotency header contract
 
 ### `./gradlew scenarioTest`
 

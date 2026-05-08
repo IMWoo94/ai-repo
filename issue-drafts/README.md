@@ -104,6 +104,7 @@
 - `0050-direct-requeue-api-deprecation.md`: Direct requeue API deprecation 작업 초안
 - `0051-requeue-state-transition-atomicity.md`: Requeue state transition atomicity 작업 초안
 - `0052-outbox-claim-guarded-result-update.md`: Outbox claim guarded result update 작업 초안
+- `0053-broker-consumer-idempotency.md`: Broker consumer idempotency 작업 초안
 
 ## GitHub CLI로 생성
 

@@ -65,6 +65,7 @@
    - ADR-0040 Direct Requeue API Deprecation
    - ADR-0041 Requeue State Transition Atomicity
    - ADR-0042 Outbox Claim Guarded Result Update
+   - ADR-0043 Broker and Consumer Idempotency Contract
 
 ## 중요한 트레이드오프
 
@@ -78,12 +79,13 @@
 | 직접 requeue API 비활성화 | 승인 workflow 우회 방지 | 단일 API로 빠르게 재처리하는 편의성 |
 | Requeue row lock과 update count 검증 | 동시 운영 조치에서 하나의 상태 전이만 허용 | 상태 전이마다 짧은 DB row lock 비용 |
 | Outbox claim 기반 결과 갱신 | 늦은 worker가 재claim된 event 상태를 덮지 못하게 함 | worker identity 없는 최소 방어라 외부 broker 중복 발행은 별도 과제 |
+| Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | 실제 consumer 저장소와 TTL 구현은 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
 
 - broker-specific adapter와 Testcontainers contract
-- consumer idempotency
+- consumer processed-event table과 dedupe TTL
 - pruning 실행 이력 저장과 조회 API
 - external alert channel
 - 실제 운영자 identity와 role scope 분리

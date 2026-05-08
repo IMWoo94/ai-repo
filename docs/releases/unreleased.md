@@ -16,6 +16,7 @@
 - 직접 requeue API deprecation
 - Requeue 상태 전이 원자화
 - Outbox stale writer 방지
+- Broker/consumer idempotency 계약
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -28,6 +29,7 @@
 - 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`으로 실패한다.
 - Requeue approve/reject/execute 경합은 PostgreSQL Testcontainers에서 하나의 전이만 성공하는지 검증한다.
 - Outbox publish 결과 갱신은 claim lease가 일치할 때만 성공해 늦은 worker가 재claim 상태를 덮지 못한다.
+- Broker publish envelope는 schema version과 idempotency key를 포함하고, consumer는 같은 key를 unique 처리 기준으로 삼는다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
@@ -65,6 +67,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 - external alert channel은 아직 없다.
 - token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
+- 실제 consumer processed-event table은 아직 없다.
 - GitHub Wiki 동기화는 아직 수동 후보 문서 수준이다.
 
 ## 출시 전 blocker
@@ -76,6 +79,6 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 ## 후속 후보
 
 - broker-specific Testcontainers contract
-- consumer idempotency
+- consumer processed-event table과 dedupe TTL
 - external alert channel
 - 실제 identity/role scope 연동
