@@ -438,5 +438,6 @@
 - requeue 대상은 `MANUAL_REVIEW` 상태 event로 제한한다.
 - execute 결과는 `PENDING`, `attemptCount = 0`, retry/lease/publish/error 필드 초기화다.
 - reject 결과는 기존 outbox event를 `MANUAL_REVIEW` 상태로 유지한다.
+- approve/reject/execute는 DB row lock과 update count 검증으로 하나의 상태 전이만 성공해야 한다.
 - 인증/인가는 operator/admin token 기반이며, 실제 로그인 identity 연결은 후속 작업으로 남긴다.
 - 기준 결정은 ADR-0019를 따른다.

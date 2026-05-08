@@ -102,6 +102,7 @@
 - `0048-dev-rules-automatic-check.md`: Dev rules automatic check 작업 초안
 - `0049-requeue-rejection-workflow.md`: Requeue rejection workflow 작업 초안
 - `0050-direct-requeue-api-deprecation.md`: Direct requeue API deprecation 작업 초안
+- `0051-requeue-state-transition-atomicity.md`: Requeue state transition atomicity 작업 초안
 
 ## GitHub CLI로 생성
 

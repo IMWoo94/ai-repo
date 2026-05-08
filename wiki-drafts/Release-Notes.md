@@ -19,6 +19,7 @@
 - Requeue approval workflow
 - Requeue rejection workflow
 - Direct requeue API deprecation
+- Requeue state transition atomicity
 - Dev rules automatic sync check
 - 운영자 console E2E smoke
 - 운영 API 인증/인가와 Spring Security role model
