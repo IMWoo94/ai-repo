@@ -423,6 +423,7 @@
 - 3회 실패 event는 `MANUAL_REVIEW` 상태로 전이한다.
 - `MANUAL_REVIEW` event는 자동 claim 대상이 아니다.
 - `MANUAL_REVIEW` event는 `lastError`와 `attemptCount`를 유지한다.
+- publish 결과 갱신은 claim된 `claimedAt`, `leaseExpiresAt`이 현재 row와 일치할 때만 성공한다.
 - 기준 결정은 ADR-0018을 따른다.
 
 ### Issue #33 구현 기준

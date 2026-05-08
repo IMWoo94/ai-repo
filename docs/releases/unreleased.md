@@ -15,6 +15,7 @@
 - Requeue 반려 워크플로우
 - 직접 requeue API deprecation
 - Requeue 상태 전이 원자화
+- Outbox stale writer 방지
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -26,6 +27,7 @@
 - 운영자는 manual review outbox, requeue 요청/승인/실행/반려, relay health, relay run, pruning 결과를 화면에서 확인할 수 있다.
 - 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`으로 실패한다.
 - Requeue approve/reject/execute 경합은 PostgreSQL Testcontainers에서 하나의 전이만 성공하는지 검증한다.
+- Outbox publish 결과 갱신은 claim lease가 일치할 때만 성공해 늦은 worker가 재claim 상태를 덮지 못한다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.

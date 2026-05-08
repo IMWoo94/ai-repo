@@ -18,6 +18,7 @@
 | 운영자 requeue 반려 | manual review event requeue를 요청, 반려하면 event는 manual review에 남고 audit은 생기지 않는다 | Frontend unit, E2E, API test |
 | 직접 requeue API 비활성화 | 기존 직접 requeue API는 `410 Gone`으로 실패하고 event/audit을 변경하지 않는다 | API test |
 | Requeue 전이 경합 | approve/reject/execute 동시 호출에서 하나의 상태 전이만 성공하고 audit은 중복되지 않는다 | PostgreSQL scenario CI |
+| Outbox stale writer 방지 | lease 만료 후 늦은 worker의 success/failure update가 재claim된 event를 덮지 못한다 | JDBC test, PostgreSQL scenario CI |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
 

@@ -269,6 +269,40 @@ class OperationOutboxRelayServiceTest {
     }
 
     @Test
+    void rejectsStalePublisherAfterLeaseRecovery() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        OperationOutboxPublisher slowPublisher = outboxEvent -> {
+            OperationOutboxRelayService laterRelayService = new OperationOutboxRelayService(
+                    Clock.fixed(Instant.parse("2026-05-01T00:02:00Z"), ZoneOffset.UTC),
+                    repository,
+                    publisher
+            );
+            assertThat(laterRelayService.claimReadyEvents(10))
+                    .singleElement()
+                    .satisfies(reclaimedEvent -> {
+                        assertThat(reclaimedEvent.outboxEventId()).isEqualTo(outboxEvent.outboxEventId());
+                        assertThat(reclaimedEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
+                    });
+        };
+        OperationOutboxRelayService slowRelayService = new OperationOutboxRelayService(
+                Clock.fixed(Instant.parse("2026-05-01T00:01:00Z"), ZoneOffset.UTC),
+                repository,
+                slowPublisher
+        );
+
+        assertThatThrownBy(() -> slowRelayService.publishReadyEvents(10))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outbox event claim is no longer active: outbox-001");
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+    }
+
+    @Test
     void returnsAndRequeuesManualReviewEvents() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");

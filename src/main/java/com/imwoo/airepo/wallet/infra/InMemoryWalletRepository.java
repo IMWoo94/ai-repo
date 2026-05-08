@@ -324,6 +324,34 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized void markClaimedOutboxEventPublished(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            Instant publishedAt
+    ) {
+        replaceOutboxEvent(outboxEventId, event -> {
+            requireActiveClaim(event, claimedAt, leaseExpiresAt);
+            return new OperationOutboxEvent(
+                    event.outboxEventId(),
+                    event.operationId(),
+                    event.eventType(),
+                    event.aggregateType(),
+                    event.aggregateId(),
+                    event.payload(),
+                    OperationOutboxStatus.PUBLISHED,
+                    event.occurredAt(),
+                    event.attemptCount(),
+                    null,
+                    null,
+                    null,
+                    publishedAt,
+                    null
+            );
+        });
+    }
+
+    @Override
     public synchronized void markOutboxEventFailed(
             String outboxEventId,
             String lastError,
@@ -346,6 +374,36 @@ public class InMemoryWalletRepository implements
                 null,
                 lastError
         ));
+    }
+
+    @Override
+    public synchronized void markClaimedOutboxEventFailed(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            String lastError,
+            Instant nextRetryAt,
+            int maxAttempts
+    ) {
+        replaceOutboxEvent(outboxEventId, event -> {
+            requireActiveClaim(event, claimedAt, leaseExpiresAt);
+            return new OperationOutboxEvent(
+                    event.outboxEventId(),
+                    event.operationId(),
+                    event.eventType(),
+                    event.aggregateType(),
+                    event.aggregateId(),
+                    event.payload(),
+                    failedStatus(event, maxAttempts),
+                    event.occurredAt(),
+                    event.attemptCount() + 1,
+                    failedNextRetryAt(event, nextRetryAt, maxAttempts),
+                    null,
+                    null,
+                    null,
+                    lastError
+            );
+        });
     }
 
     @Override
@@ -730,6 +788,14 @@ public class InMemoryWalletRepository implements
             return OperationOutboxStatus.MANUAL_REVIEW;
         }
         return OperationOutboxStatus.FAILED;
+    }
+
+    private void requireActiveClaim(OperationOutboxEvent event, Instant claimedAt, Instant leaseExpiresAt) {
+        if (event.status() != OperationOutboxStatus.PROCESSING
+                || !claimedAt.equals(event.claimedAt())
+                || !leaseExpiresAt.equals(event.leaseExpiresAt())) {
+            throw new InvalidWalletOperationException("outbox event claim is no longer active: " + event.outboxEventId());
+        }
     }
 
     private Instant failedNextRetryAt(OperationOutboxEvent event, Instant nextRetryAt, int maxAttempts) {

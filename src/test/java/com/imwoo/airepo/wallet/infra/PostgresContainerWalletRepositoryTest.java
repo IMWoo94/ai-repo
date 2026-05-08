@@ -271,6 +271,39 @@ class PostgresContainerWalletRepositoryTest {
     }
 
     @Test
+    void staleOutboxWriterCannotOverwriteReclaimedEventInRealPostgres() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "postgres-stale-outbox-001", "PostgreSQL stale outbox 충전"));
+        var firstClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ).getFirst();
+        var secondClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ).getFirst();
+
+        assertThatThrownBy(() -> repository.markClaimedOutboxEventPublished(
+                firstClaim.outboxEventId(),
+                firstClaim.claimedAt(),
+                firstClaim.leaseExpiresAt(),
+                Instant.parse("2026-05-01T00:02:01Z")
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outbox event claim is no longer active: outbox-001");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(secondClaim.claimedAt());
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(secondClaim.leaseExpiresAt());
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+    }
+
+    @Test
     void concurrentRequeueApproveAndRejectOnlyOneTransitionWinsInRealPostgres() throws Exception {
         makeManualReviewOutboxEvent();
         var requested = repository.requestManualReviewRequeue(

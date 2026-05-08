@@ -70,11 +70,11 @@ public class OperationOutboxRelayService {
             try {
                 operationOutboxPublisher.publish(claimedEvent);
             } catch (RuntimeException exception) {
-                markFailed(claimedEvent.outboxEventId(), publisherFailureMessage(exception));
+                markClaimedEventFailed(claimedEvent, publisherFailureMessage(exception));
                 failedCount++;
                 continue;
             }
-            markPublished(claimedEvent.outboxEventId());
+            markClaimedEventPublished(claimedEvent);
             publishedCount++;
         }
         return new OperationOutboxPublishBatchResult(claimedEvents.size(), publishedCount, failedCount);
@@ -85,6 +85,15 @@ public class OperationOutboxRelayService {
         operationOutboxRelayRepository.markOutboxEventPublished(outboxEventId, Instant.now(clock));
     }
 
+    private void markClaimedEventPublished(OperationOutboxEvent claimedEvent) {
+        operationOutboxRelayRepository.markClaimedOutboxEventPublished(
+                claimedEvent.outboxEventId(),
+                claimedEvent.claimedAt(),
+                claimedEvent.leaseExpiresAt(),
+                Instant.now(clock)
+        );
+    }
+
     public void markFailed(String outboxEventId, String lastError) {
         validateOutboxEventId(outboxEventId);
         if (lastError == null || lastError.isBlank()) {
@@ -92,6 +101,17 @@ public class OperationOutboxRelayService {
         }
         operationOutboxRelayRepository.markOutboxEventFailed(
                 outboxEventId,
+                lastError,
+                Instant.now(clock).plus(RETRY_BACKOFF),
+                MAX_ATTEMPTS
+        );
+    }
+
+    private void markClaimedEventFailed(OperationOutboxEvent claimedEvent, String lastError) {
+        operationOutboxRelayRepository.markClaimedOutboxEventFailed(
+                claimedEvent.outboxEventId(),
+                claimedEvent.claimedAt(),
+                claimedEvent.leaseExpiresAt(),
                 lastError,
                 Instant.now(clock).plus(RETRY_BACKOFF),
                 MAX_ATTEMPTS

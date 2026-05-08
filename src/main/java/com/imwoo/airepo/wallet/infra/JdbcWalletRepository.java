@@ -296,6 +296,35 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public void markClaimedOutboxEventPublished(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            Instant publishedAt
+    ) {
+        requireSingleRowUpdate(
+                jdbcTemplate.update(
+                        """
+                                update operation_outbox_events
+                                set status = ?, next_retry_at = null, claimed_at = null,
+                                    lease_expires_at = null, published_at = ?, last_error = null
+                                where outbox_event_id = ?
+                                  and status = ?
+                                  and claimed_at = ?
+                                  and lease_expires_at = ?
+                                """,
+                        OperationOutboxStatus.PUBLISHED.name(),
+                        timestamp(publishedAt),
+                        outboxEventId,
+                        OperationOutboxStatus.PROCESSING.name(),
+                        timestamp(claimedAt),
+                        timestamp(leaseExpiresAt)
+                ),
+                "outbox event claim is no longer active: " + outboxEventId
+        );
+    }
+
+    @Override
     public void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt, int maxAttempts) {
         jdbcTemplate.update(
                 """
@@ -319,6 +348,49 @@ public class JdbcWalletRepository implements
                 timestamp(nextRetryAt),
                 lastError,
                 outboxEventId
+        );
+    }
+
+    @Override
+    public void markClaimedOutboxEventFailed(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            String lastError,
+            Instant nextRetryAt,
+            int maxAttempts
+    ) {
+        requireSingleRowUpdate(
+                jdbcTemplate.update(
+                        """
+                                update operation_outbox_events
+                                set status = case
+                                        when attempt_count + 1 >= ? then ?
+                                        else ?
+                                    end,
+                                    attempt_count = attempt_count + 1,
+                                    next_retry_at = case
+                                        when attempt_count + 1 >= ? then null
+                                        else cast(? as timestamp)
+                                    end,
+                                    claimed_at = null, lease_expires_at = null, published_at = null, last_error = ?
+                                where outbox_event_id = ?
+                                  and status = ?
+                                  and claimed_at = ?
+                                  and lease_expires_at = ?
+                                """,
+                        maxAttempts,
+                        OperationOutboxStatus.MANUAL_REVIEW.name(),
+                        OperationOutboxStatus.FAILED.name(),
+                        maxAttempts,
+                        timestamp(nextRetryAt),
+                        lastError,
+                        outboxEventId,
+                        OperationOutboxStatus.PROCESSING.name(),
+                        timestamp(claimedAt),
+                        timestamp(leaseExpiresAt)
+                ),
+                "outbox event claim is no longer active: " + outboxEventId
         );
     }
 

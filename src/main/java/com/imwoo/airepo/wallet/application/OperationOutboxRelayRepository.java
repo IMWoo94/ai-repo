@@ -20,7 +20,18 @@ public interface OperationOutboxRelayRepository {
 
     void markOutboxEventPublished(String outboxEventId, Instant publishedAt);
 
+    void markClaimedOutboxEventPublished(String outboxEventId, Instant claimedAt, Instant leaseExpiresAt, Instant publishedAt);
+
     void markOutboxEventFailed(String outboxEventId, String lastError, Instant nextRetryAt, int maxAttempts);
+
+    void markClaimedOutboxEventFailed(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            String lastError,
+            Instant nextRetryAt,
+            int maxAttempts
+    );
 
     void requeueManualReviewOutboxEvent(String outboxEventId, Instant requeuedAt, String operator, String reason);
 

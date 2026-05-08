@@ -238,6 +238,7 @@ X-Operator-Id: local-operator
 - requeue 반려는 outbox event를 `MANUAL_REVIEW` 상태로 유지하고 requeue audit을 남기지 않는다.
 - 기존 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`과 `DIRECT_REQUEUE_API_DEPRECATED`를 반환한다.
 - PostgreSQL Testcontainers는 requeue approve/reject/execute 동시 호출에서 하나의 상태 전이만 성공하는지 검증한다.
+- PostgreSQL Testcontainers는 lease 만료 후 늦은 outbox worker가 재claim된 event를 덮어쓰지 못하는지 검증한다.
 - 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.

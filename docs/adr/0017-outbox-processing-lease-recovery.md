@@ -4,6 +4,10 @@
 
 Accepted
 
+## 대체/보강 결정
+
+발행 결과 갱신의 stale writer 방지는 ADR-0042가 보강한다. `publishReadyEvents` 경로는 claim 시점의 `claimedAt`, `leaseExpiresAt`이 일치할 때만 `PUBLISHED` 또는 `FAILED`로 갱신한다.
+
 ## 맥락
 
 ADR-0016에서 outbox event를 claim할 때 `PROCESSING` 상태로 전이하고, PostgreSQL에서는 `FOR UPDATE SKIP LOCKED`를 사용하기로 했다.

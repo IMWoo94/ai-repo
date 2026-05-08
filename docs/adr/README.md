@@ -57,3 +57,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0039 | Dev Rules Automatic Sync Check | Accepted |
 | ADR-0040 | Direct Requeue API Deprecation | Accepted |
 | ADR-0041 | Requeue State Transition Atomicity | Accepted |
+| ADR-0042 | Outbox Claim Guarded Result Update | Accepted |
