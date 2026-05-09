@@ -621,6 +621,31 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void consumerProcessedEventDedupeRecordsOnlyFirstEvent() {
+        boolean firstRecorded = repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:05:00Z")
+        );
+        boolean duplicateRecorded = repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:06:00Z")
+        );
+
+        assertThat(firstRecorded).isTrue();
+        assertThat(duplicateRecorded).isFalse();
+        assertThat(repository.findProcessedEvent("outbox-001"))
+                .hasValueSatisfying(processedEvent -> {
+                    assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(processedEvent.processedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                });
+    }
+
+    @Test
     void sameIdempotencyKeyWithDifferentRequestFails() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 

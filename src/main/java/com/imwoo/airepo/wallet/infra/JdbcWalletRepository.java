@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.infra;
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
@@ -19,6 +20,7 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerProcessedEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
@@ -47,6 +49,7 @@ import java.util.function.Supplier;
 import org.springframework.context.annotation.Profile;
 import org.springframework.dao.CannotAcquireLockException;
 import org.springframework.dao.DataAccessException;
+import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.BadSqlGrammarException;
 import org.springframework.jdbc.core.JdbcTemplate;
@@ -61,6 +64,7 @@ public class JdbcWalletRepository implements
         WalletLedgerQueryRepository,
         OperationOutboxRelayRepository,
         OperationOutboxRelayRunRepository,
+        OperationOutboxConsumerIdempotencyRepository,
         AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
@@ -717,6 +721,44 @@ public class JdbcWalletRepository implements
         return jdbcTemplate.update(
                 "delete from admin_api_access_audits where occurred_at < ?",
                 timestamp(cutoff)
+        );
+    }
+
+    @Override
+    public boolean recordProcessedEvent(
+            String idempotencyKey,
+            String outboxEventId,
+            String eventType,
+            Instant processedAt
+    ) {
+        try {
+            return jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_consumer_processed_events (
+                                idempotency_key, outbox_event_id, event_type, processed_at
+                            )
+                            values (?, ?, ?, ?)
+                            """,
+                    idempotencyKey,
+                    outboxEventId,
+                    eventType,
+                    timestamp(processedAt)
+            ) == 1;
+        } catch (DuplicateKeyException exception) {
+            return false;
+        }
+    }
+
+    @Override
+    public Optional<OperationOutboxConsumerProcessedEvent> findProcessedEvent(String idempotencyKey) {
+        return queryOptional(
+                """
+                        select idempotency_key, outbox_event_id, event_type, processed_at
+                        from operation_outbox_consumer_processed_events
+                        where idempotency_key = ?
+                        """,
+                operationOutboxConsumerProcessedEventMapper(),
+                idempotencyKey
         );
     }
 
@@ -1516,6 +1558,15 @@ public class JdbcWalletRepository implements
                 resultSet.getString("operator_id"),
                 resultSet.getInt("status_code"),
                 AdminApiAccessOutcome.valueOf(resultSet.getString("outcome"))
+        );
+    }
+
+    private RowMapper<OperationOutboxConsumerProcessedEvent> operationOutboxConsumerProcessedEventMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxConsumerProcessedEvent(
+                resultSet.getString("idempotency_key"),
+                resultSet.getString("outbox_event_id"),
+                resultSet.getString("event_type"),
+                instant(resultSet, "processed_at")
         );
     }
 

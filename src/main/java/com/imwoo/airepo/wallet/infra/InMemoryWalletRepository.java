@@ -1,6 +1,7 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
@@ -15,6 +16,7 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerProcessedEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
@@ -47,6 +49,7 @@ public class InMemoryWalletRepository implements
         WalletLedgerQueryRepository,
         OperationOutboxRelayRepository,
         OperationOutboxRelayRunRepository,
+        OperationOutboxConsumerIdempotencyRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -63,6 +66,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationOutboxRequeueRequestRecord>> outboxRequeueRequests = new HashMap<>();
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
+    private final Map<String, OperationOutboxConsumerProcessedEvent> outboxConsumerProcessedEvents = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -286,6 +290,28 @@ public class InMemoryWalletRepository implements
         int beforeSize = adminApiAccessAudits.size();
         adminApiAccessAudits.removeIf(accessAudit -> accessAudit.occurredAt().isBefore(cutoff));
         return beforeSize - adminApiAccessAudits.size();
+    }
+
+    @Override
+    public synchronized boolean recordProcessedEvent(
+            String idempotencyKey,
+            String outboxEventId,
+            String eventType,
+            Instant processedAt
+    ) {
+        if (outboxConsumerProcessedEvents.containsKey(idempotencyKey)) {
+            return false;
+        }
+        outboxConsumerProcessedEvents.put(
+                idempotencyKey,
+                new OperationOutboxConsumerProcessedEvent(idempotencyKey, outboxEventId, eventType, processedAt)
+        );
+        return true;
+    }
+
+    @Override
+    public synchronized Optional<OperationOutboxConsumerProcessedEvent> findProcessedEvent(String idempotencyKey) {
+        return Optional.ofNullable(outboxConsumerProcessedEvents.get(idempotencyKey));
     }
 
     @Override

@@ -45,4 +45,4 @@ relay publish loop의 결과 갱신은 claim 시점의 `claimedAt`, `leaseExpire
 ## 후속 작업
 
 - worker identity 또는 claim token 컬럼을 명시적으로 도입할지 검토한다.
-- consumer processed-event table과 dedupe 보관 기간을 설계한다.
+- consumer side effect transaction 통합과 dedupe 보관 기간을 설계한다.

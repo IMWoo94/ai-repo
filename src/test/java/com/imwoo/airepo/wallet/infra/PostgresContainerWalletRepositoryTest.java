@@ -351,6 +351,40 @@ class PostgresContainerWalletRepositoryTest {
         }
     }
 
+    @Test
+    void concurrentConsumerProcessedEventDedupeOnlyRecordsOnceInRealPostgres() throws Exception {
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<ConsumerProcessedAttempt> firstAttempt = executorService.submit(() -> recordConsumerProcessedEventConcurrently(
+                    startLatch,
+                    Instant.parse("2026-05-01T00:05:00Z")
+            ));
+            Future<ConsumerProcessedAttempt> secondAttempt = executorService.submit(() -> recordConsumerProcessedEventConcurrently(
+                    startLatch,
+                    Instant.parse("2026-05-01T00:06:00Z")
+            ));
+
+            startLatch.countDown();
+
+            List<ConsumerProcessedAttempt> attempts = List.of(
+                    firstAttempt.get(10, TimeUnit.SECONDS),
+                    secondAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(ConsumerProcessedAttempt::recorded).hasSize(1);
+            assertThat(attempts).filteredOn(attempt -> !attempt.recorded()).hasSize(1);
+            assertThat(repository.findProcessedEvent("outbox-001"))
+                    .hasValueSatisfying(processedEvent -> {
+                        assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
+                        assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    });
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
     private Void holdWalletBalanceLock(CountDownLatch lockedLatch, CountDownLatch releaseLatch) {
         TransactionTemplate lockTransaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         lockTransaction.execute(status -> {
@@ -465,6 +499,20 @@ class PostgresContainerWalletRepositoryTest {
         }
     }
 
+    private ConsumerProcessedAttempt recordConsumerProcessedEventConcurrently(
+            CountDownLatch startLatch,
+            Instant processedAt
+    ) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        return new ConsumerProcessedAttempt(repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                processedAt
+        ));
+    }
+
     private void awaitConcurrentStart(CountDownLatch startLatch) throws InterruptedException {
         if (!startLatch.await(5, TimeUnit.SECONDS)) {
             throw new IllegalStateException("Timed out waiting for concurrent start");
@@ -506,5 +554,8 @@ class PostgresContainerWalletRepositoryTest {
         private static RequeueAttempt failure(RuntimeException exception) {
             return new RequeueAttempt(false, exception);
         }
+    }
+
+    private record ConsumerProcessedAttempt(boolean recorded) {
     }
 }

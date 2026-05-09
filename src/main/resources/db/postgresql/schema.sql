@@ -137,6 +137,13 @@ CREATE TABLE IF NOT EXISTS operation_outbox_relay_runs (
     error_message VARCHAR(255)
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_processed_events (
+    idempotency_key VARCHAR(128) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     audit_id VARCHAR(64) PRIMARY KEY,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
