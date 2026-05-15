@@ -109,6 +109,7 @@
 - `0055-http-outbox-consumer-adapter.md`: HTTP outbox consumer adapter 작업 초안
 - `0056-http-publish-consume-loop.md`: HTTP publish consume loop 작업 초안
 - `0057-consumer-monitoring-admin-api.md`: Consumer monitoring admin API 작업 초안
+- `0058-consumer-processed-event-pruning.md`: Consumer processed event pruning 작업 초안
 
 ## GitHub CLI로 생성
 

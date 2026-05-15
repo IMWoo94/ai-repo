@@ -52,4 +52,4 @@ Consumer 처리 흐름은 다음과 같다.
 
 - broker별 consumer adapter와 ack/nack 정책을 설계한다.
 - consumer receipt를 운영 조회 API와 metric으로 노출한다.
-- processed-event와 receipt pruning 정책을 추가한다.
+- broker replay window별 consumer retention 권장값을 정의한다.

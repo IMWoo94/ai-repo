@@ -6,6 +6,7 @@ import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerPruningRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
@@ -72,6 +73,7 @@ public class JdbcWalletRepository implements
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
         OperationOutboxConsumerMonitoringRepository,
+        OperationOutboxConsumerPruningRepository,
         AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
@@ -870,6 +872,22 @@ public class JdbcWalletRepository implements
                         """,
                 operationOutboxConsumerReceiptMapper(),
                 limit
+        );
+    }
+
+    @Override
+    public int deleteConsumerProcessedEventsProcessedBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from operation_outbox_consumer_processed_events where processed_at < ?",
+                timestamp(cutoff)
+        );
+    }
+
+    @Override
+    public int deleteConsumerReceiptsReceivedBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from operation_outbox_consumer_receipts where received_at < ?",
+                timestamp(cutoff)
         );
     }
 

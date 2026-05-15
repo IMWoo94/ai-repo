@@ -241,6 +241,7 @@ X-Operator-Id: local-operator
 - 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있다.
 - requeue 요청은 operator token으로 가능하다.
 - requeue 승인/실행/반려와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
+- consumer pruning도 dedupe/receipt 기록을 삭제하는 변경성 운영 조치이므로 admin token을 요구한다.
 - requeue 승인/반려는 요청자와 다른 `X-Operator-Id`를 요구한다.
 - requeue 반려는 outbox event를 `MANUAL_REVIEW` 상태로 유지하고 requeue audit을 남기지 않는다.
 - 기존 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`과 `DIRECT_REQUEUE_API_DEPRECATED`를 반환한다.
@@ -249,6 +250,7 @@ X-Operator-Id: local-operator
 - 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
 - consumer 처리 지표는 `GET /api/v1/outbox-consumer/metrics`, 최근 receipt는 `GET /api/v1/outbox-consumer/receipts?limit=10`에서 조회한다.
+- consumer dedupe/receipt pruning은 `POST /api/v1/outbox-consumer/pruning-runs`로 수동 실행한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.
 

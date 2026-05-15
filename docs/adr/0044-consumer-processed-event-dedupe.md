@@ -51,5 +51,5 @@ Consumer 구현 기준은 다음과 같다.
 ## 후속 작업
 
 - Kafka/RabbitMQ/SQS consumer adapter를 추가하고 ack/nack과 dedupe boundary를 검증한다.
-- processed-event TTL/pruning 정책을 정의한다.
+- broker replay window별 processed-event retention 권장값을 정의한다.
 - broker별 replay와 DLQ 재처리 정책을 설계한다.

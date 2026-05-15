@@ -70,6 +70,7 @@
    - ADR-0045 HTTP Outbox Consumer Adapter
    - ADR-0046 HTTP Publish Consume Loop Verification
    - ADR-0047 Consumer Monitoring Admin API
+   - ADR-0048 Consumer Processed Event Pruning
 
 ## 중요한 트레이드오프
 
@@ -84,16 +85,17 @@
 | Requeue row lock과 update count 검증 | 동시 운영 조치에서 하나의 상태 전이만 허용 | 상태 전이마다 짧은 DB row lock 비용 |
 | Outbox claim 기반 결과 갱신 | 늦은 worker가 재claim된 event 상태를 덮지 못하게 함 | worker identity 없는 최소 방어라 외부 broker 중복 발행은 별도 과제 |
 | Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | broker-specific consumer adapter는 후속 과제 |
-| Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | TTL/pruning은 후속 과제 |
+| Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | broker별 replay window 권장값은 후속 과제 |
 | HTTP consumer adapter | 실제 endpoint에서 duplicate를 성공 no-op으로 처리하고 receipt side effect를 1회만 저장 | Kafka/RabbitMQ/SQS ack/nack 모델은 후속 과제 |
 | HTTP publish→consume loop | relay가 실제 HTTP publisher로 consumer endpoint에 보내는 흐름 검증 | durable broker semantics는 후속 과제 |
-| Consumer monitoring admin API | 처리 성공, duplicate no-op, receipt를 운영자가 조회 | duplicate payload 상세 이력과 TTL/pruning은 후속 과제 |
+| Consumer monitoring admin API | 처리 성공, duplicate no-op, receipt를 운영자가 조회 | duplicate payload 상세 이력은 후속 과제 |
+| Consumer processed-event pruning | dedupe/receipt 저장소를 보존 기간 기준으로 정리 | broker replay window보다 짧은 retention은 위험하므로 운영 설정 책임이 남음 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
 
 - broker-specific adapter와 Testcontainers contract
-- processed-event TTL/pruning
+- broker replay window별 retention 권장값
 - consumer duplicate spike alert
 - pruning 실행 이력 저장과 조회 API
 - external alert channel

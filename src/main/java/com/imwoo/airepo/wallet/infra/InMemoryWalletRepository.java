@@ -4,6 +4,7 @@ import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerPruningRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
@@ -57,6 +58,7 @@ public class InMemoryWalletRepository implements
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
         OperationOutboxConsumerMonitoringRepository,
+        OperationOutboxConsumerPruningRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -373,6 +375,20 @@ public class InMemoryWalletRepository implements
                         .reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    @Override
+    public synchronized int deleteConsumerProcessedEventsProcessedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerProcessedEvents.size();
+        outboxConsumerProcessedEvents.values().removeIf(processedEvent -> processedEvent.processedAt().isBefore(cutoff));
+        return beforeSize - outboxConsumerProcessedEvents.size();
+    }
+
+    @Override
+    public synchronized int deleteConsumerReceiptsReceivedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerReceipts.size();
+        outboxConsumerReceipts.values().removeIf(receipt -> receipt.receivedAt().isBefore(cutoff));
+        return beforeSize - outboxConsumerReceipts.size();
     }
 
     @Override

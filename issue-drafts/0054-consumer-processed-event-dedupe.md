@@ -26,5 +26,5 @@ Outbox relay는 최소 1회 발행 모델이므로 같은 event가 중복 전달
 ## 제외
 
 - Kafka/RabbitMQ/SQS broker-specific consumer adapter
-- processed-event TTL/pruning
+- broker replay window별 retention 권장값
 - 외부 시스템 side effect transaction 통합

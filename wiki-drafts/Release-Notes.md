@@ -30,6 +30,7 @@
 - HTTP outbox broker adapter와 contract test
 - HTTP outbox consumer adapter와 publish→consume loop
 - Consumer monitoring admin API
+- Consumer processed-event pruning
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
@@ -57,6 +58,6 @@
 ## 다음 후보
 
 - broker-specific Testcontainers contract
-- processed-event TTL/pruning
+- broker replay window별 retention 권장값
 - consumer duplicate spike alert
 - external alert channel

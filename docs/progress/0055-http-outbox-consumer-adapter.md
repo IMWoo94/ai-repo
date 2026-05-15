@@ -22,7 +22,7 @@ Broker event를 실제 HTTP endpoint로 받아 processed-event 기록과 consume
 
 - Kafka/RabbitMQ/SQS consumer adapter
 - consumer 처리 metric/admin API
-- processed-event와 receipt TTL/pruning
+- broker replay window별 consumer retention 권장값
 
 ## 관련 문서
 

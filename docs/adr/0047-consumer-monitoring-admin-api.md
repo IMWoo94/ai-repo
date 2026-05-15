@@ -34,7 +34,7 @@ consumer processed-event 저장소에 `duplicate_count`를 추가하고, 운영 
 
 - processed-event row에 duplicate count update가 추가되어 중복 이벤트마다 작은 write 비용이 생긴다.
 - duplicate payload의 상세 이력은 저장하지 않는다. 현재 단계에서는 count 중심 관측으로 제한한다.
-- processed-event TTL/pruning은 아직 별도 후속 과제다.
+- broker replay window별 retention 권장값은 아직 별도 후속 과제다.
 
 ## 검증 기준
 
@@ -45,6 +45,6 @@ consumer processed-event 저장소에 `duplicate_count`를 추가하고, 운영 
 
 ## 후속 작업
 
-- processed-event TTL/pruning 정책을 추가한다.
+- broker replay window별 retention 권장값을 문서화한다.
 - consumer duplicate spike alert를 relay health와 같은 운영 health summary로 연결한다.
 - broker-specific consumer adapter에도 같은 metric 계약을 적용한다.

@@ -684,6 +684,54 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void deletesConsumerProcessedEventsAndReceiptsBeforeCutoff() {
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-04-30T23:59:59Z")
+        );
+        repository.recordProcessedEvent(
+                "outbox-002",
+                "outbox-002",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-001",
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                Instant.parse("2026-04-30T23:59:59Z")
+        ));
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-002",
+                "outbox-002",
+                "op-002",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-002",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+
+        int deletedReceiptCount = repository.deleteConsumerReceiptsReceivedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+        int deletedProcessedEventCount = repository.deleteConsumerProcessedEventsProcessedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(deletedReceiptCount).isEqualTo(1);
+        assertThat(deletedProcessedEventCount).isEqualTo(1);
+        assertThat(repository.findConsumerReceipt("outbox-001")).isEmpty();
+        assertThat(repository.findConsumerReceipt("outbox-002")).isPresent();
+        assertThat(repository.findProcessedEvent("outbox-001")).isEmpty();
+        assertThat(repository.findProcessedEvent("outbox-002")).isPresent();
+    }
+
+    @Test
     void sameIdempotencyKeyWithDifferentRequestFails() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 

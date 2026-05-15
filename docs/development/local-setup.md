@@ -158,6 +158,26 @@ AI_REPO_OPERATIONAL_LOG_PRUNING_FIXED_DELAY_MS=86400000 \
 ./gradlew bootRun
 ```
 
+Consumer dedupe/receipt pruning은 processed-event 30일, receipt 30일을 기본 보존 기간으로 사용합니다. 수동 실행은 admin header와 함께 호출합니다.
+
+```bash
+curl -X POST \
+  -H "X-Admin-Token: local-ops-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-consumer/pruning-runs"
+```
+
+자동 consumer pruning scheduler도 기본 비활성화입니다.
+
+```bash
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_ENABLED=true \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_PROCESSED_EVENT_RETENTION_DAYS=30 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_RECEIPT_RETENTION_DAYS=30 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_INITIAL_DELAY_MS=60000 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_FIXED_DELAY_MS=86400000 \
+./gradlew bootRun
+```
+
 ## 의존성 관리
 
 Spring Boot Gradle plugin만 적용하면 버전 없는 starter 의존성의 버전 관리가 자동으로 적용되지 않을 수 있습니다. 이 프로젝트는 Spring Boot 공식 Gradle 문서의 dependency management plugin 방식을 사용합니다.
