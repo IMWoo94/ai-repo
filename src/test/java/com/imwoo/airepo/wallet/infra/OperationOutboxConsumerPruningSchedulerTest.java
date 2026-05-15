@@ -17,15 +17,18 @@ class OperationOutboxConsumerPruningSchedulerTest {
     @Test
     void runsPruningWithConfiguredRetention() {
         OperationOutboxConsumerPruningService pruningService = mock(OperationOutboxConsumerPruningService.class);
-        OperationOutboxConsumerPruningPolicy pruningPolicy = new OperationOutboxConsumerPruningPolicy(30, 45);
+        OperationOutboxConsumerPruningPolicy pruningPolicy = new OperationOutboxConsumerPruningPolicy(30, 45, 7);
         OperationOutboxConsumerPruningResult expectedResult = new OperationOutboxConsumerPruningResult(
                 Instant.parse("2026-05-02T00:00:00Z"),
                 Instant.parse("2026-04-02T00:00:00Z"),
                 Instant.parse("2026-03-18T00:00:00Z"),
+                Instant.parse("2026-04-25T00:00:00Z"),
                 2,
-                3
+                3,
+                4
         );
-        when(pruningService.prune(Duration.ofDays(30), Duration.ofDays(45))).thenReturn(expectedResult);
+        when(pruningService.prune(Duration.ofDays(30), Duration.ofDays(45), Duration.ofDays(7)))
+                .thenReturn(expectedResult);
         OperationOutboxConsumerPruningScheduler scheduler = new OperationOutboxConsumerPruningScheduler(
                 pruningService,
                 pruningPolicy
@@ -34,6 +37,6 @@ class OperationOutboxConsumerPruningSchedulerTest {
         OperationOutboxConsumerPruningResult result = scheduler.runOnce();
 
         assertThat(result).isEqualTo(expectedResult);
-        verify(pruningService).prune(Duration.ofDays(30), Duration.ofDays(45));
+        verify(pruningService).prune(Duration.ofDays(30), Duration.ofDays(45), Duration.ofDays(7));
     }
 }

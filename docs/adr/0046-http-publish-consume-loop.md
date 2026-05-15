@@ -46,5 +46,5 @@ Spring Boot random port 서버를 띄우고 `HttpOperationOutboxPublisher`를 �
 ## 후속 작업
 
 - broker-specific Testcontainers contract에서 publish→consume loop를 재현한다.
-- delivery metric bucket pruning 정책을 추가한다.
+- pruning 실행 이력을 별도 운영 이력으로 저장한다.
 - local smoke에 HTTP consumer duplicate no-op 확인을 추가한다.

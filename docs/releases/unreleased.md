@@ -24,6 +24,7 @@
 - Consumer processed-event pruning
 - Consumer duplicate spike alert
 - Consumer duplicate time bucket metric
+- Consumer delivery metric pruning
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -41,7 +42,7 @@
 - HTTP consumer endpoint는 duplicate event를 성공 no-op으로 처리하고 receipt side effect를 한 번만 저장한다.
 - Outbox relay는 실제 HTTP publisher로 local consumer endpoint에 event를 보내고 receipt와 `PUBLISHED` 상태를 남기는 loop test를 가진다.
 - 운영자는 consumer processed count, duplicate count, receipt count와 최근 receipt를 조회할 수 있다.
-- 운영자는 오래된 consumer processed-event와 receipt를 보존 기간 기준으로 pruning할 수 있다.
+- 운영자는 오래된 consumer processed-event, receipt, delivery metric bucket을 보존 기간 기준으로 pruning할 수 있다.
 - 운영자는 consumer duplicate delivery rate 기준의 `OK`, `WARNING`, `CRITICAL`, `NO_DATA` health를 최근 window 기준으로 조회할 수 있다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
@@ -92,6 +93,6 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
-- delivery metric bucket pruning
+- pruning 실행 이력 저장과 조회 API
 - external alert channel
 - 실제 identity/role scope 연동

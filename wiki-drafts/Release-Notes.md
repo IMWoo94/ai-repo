@@ -33,6 +33,7 @@
 - Consumer processed-event pruning
 - Consumer duplicate spike alert
 - Consumer duplicate time bucket metric
+- Consumer delivery metric pruning
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
@@ -61,5 +62,5 @@
 
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
-- delivery metric bucket pruning
+- pruning 실행 이력 저장과 조회 API
 - external alert channel

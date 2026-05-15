@@ -734,6 +734,8 @@ class JdbcWalletRepositoryTest {
                 "op-002",
                 Instant.parse("2026-05-01T00:00:00Z")
         ));
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-04-30T23:59:00Z"), false);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:00:00Z"), true);
 
         int deletedReceiptCount = repository.deleteConsumerReceiptsReceivedBefore(
                 Instant.parse("2026-05-01T00:00:00Z")
@@ -741,13 +743,25 @@ class JdbcWalletRepositoryTest {
         int deletedProcessedEventCount = repository.deleteConsumerProcessedEventsProcessedBefore(
                 Instant.parse("2026-05-01T00:00:00Z")
         );
+        int deletedDeliveryMetricBucketCount = repository.deleteConsumerDeliveryMetricsBucketStartedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
 
         assertThat(deletedReceiptCount).isEqualTo(1);
         assertThat(deletedProcessedEventCount).isEqualTo(1);
+        assertThat(deletedDeliveryMetricBucketCount).isEqualTo(1);
         assertThat(repository.findConsumerReceipt("outbox-001")).isEmpty();
         assertThat(repository.findConsumerReceipt("outbox-002")).isPresent();
         assertThat(repository.findProcessedEvent("outbox-001")).isEmpty();
         assertThat(repository.findProcessedEvent("outbox-002")).isPresent();
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-04-30T23:59:00Z"),
+                Instant.parse("2026-05-01T00:01:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isZero();
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(1);
+                });
     }
 
     @Test

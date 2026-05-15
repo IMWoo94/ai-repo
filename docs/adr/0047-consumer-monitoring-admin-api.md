@@ -46,5 +46,5 @@ consumer processed-event 저장소에 `duplicate_count`를 추가하고, 운영 
 ## 후속 작업
 
 - broker replay window별 retention 권장값을 문서화한다.
-- delivery metric bucket pruning 정책을 추가한다.
+- pruning 실행 이력을 별도 운영 이력으로 저장한다.
 - broker-specific consumer adapter에도 같은 metric 계약을 적용한다.

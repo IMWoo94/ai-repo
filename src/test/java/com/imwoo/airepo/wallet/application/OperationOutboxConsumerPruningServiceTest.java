@@ -35,28 +35,47 @@ class OperationOutboxConsumerPruningServiceTest {
         );
         repository.saveConsumerReceipt(receipt("outbox-001", "2026-04-30T23:59:59Z"));
         repository.saveConsumerReceipt(receipt("outbox-002", "2026-05-01T00:00:00Z"));
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-04-30T23:59:00Z"), false);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:00:00Z"), true);
 
-        OperationOutboxConsumerPruningResult result = pruningService.prune(Duration.ofDays(1), Duration.ofDays(1));
+        OperationOutboxConsumerPruningResult result = pruningService.prune(
+                Duration.ofDays(1),
+                Duration.ofDays(1),
+                Duration.ofDays(1)
+        );
 
         assertThat(result.prunedAt()).isEqualTo(Instant.parse("2026-05-02T00:00:00Z"));
         assertThat(result.processedEventCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
         assertThat(result.receiptCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
+        assertThat(result.deliveryMetricCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
         assertThat(result.deletedProcessedEventCount()).isEqualTo(1);
         assertThat(result.deletedReceiptCount()).isEqualTo(1);
+        assertThat(result.deletedDeliveryMetricBucketCount()).isEqualTo(1);
         assertThat(repository.findProcessedEvent("outbox-001")).isEmpty();
         assertThat(repository.findProcessedEvent("outbox-002")).isPresent();
         assertThat(repository.findConsumerReceipt("outbox-001")).isEmpty();
         assertThat(repository.findConsumerReceipt("outbox-002")).isPresent();
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-04-30T23:59:00Z"),
+                Instant.parse("2026-05-01T00:01:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isZero();
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(1);
+                });
     }
 
     @Test
     void rejectsInvalidRetention() {
-        assertThatThrownBy(() -> pruningService.prune(Duration.ZERO, Duration.ofDays(1)))
+        assertThatThrownBy(() -> pruningService.prune(Duration.ZERO, Duration.ofDays(1), Duration.ofDays(1)))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("processedEventRetention must be positive");
-        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ZERO))
+        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ZERO, Duration.ofDays(1)))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("receiptRetention must be positive");
+        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ofDays(1), Duration.ZERO))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("deliveryMetricRetention must be positive");
     }
 
     private OperationOutboxConsumerReceipt receipt(String idempotencyKey, String receivedAt) {

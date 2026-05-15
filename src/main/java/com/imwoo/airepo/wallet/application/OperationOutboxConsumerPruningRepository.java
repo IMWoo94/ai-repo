@@ -7,4 +7,6 @@ public interface OperationOutboxConsumerPruningRepository {
     int deleteConsumerProcessedEventsProcessedBefore(Instant cutoff);
 
     int deleteConsumerReceiptsReceivedBefore(Instant cutoff);
+
+    int deleteConsumerDeliveryMetricsBucketStartedBefore(Instant cutoff);
 }

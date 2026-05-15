@@ -38,7 +38,7 @@ Consumer delivery를 분 단위 bucket으로 집계하고, health summary는 기
 
 - consumer delivery마다 metric upsert write가 1회 추가된다.
 - 분 단위 bucket은 초 단위 spike를 세밀하게 표현하지 못한다.
-- bucket retention과 pruning 실행 이력은 별도 후속 과제로 남긴다.
+- bucket pruning은 ADR-0051에서 기존 consumer pruning run에 통합한다.
 
 ## 검증 기준
 
@@ -49,6 +49,6 @@ Consumer delivery를 분 단위 bucket으로 집계하고, health summary는 기
 
 ## 후속 작업
 
-- delivery metric bucket retention/pruning 정책을 추가한다.
+- pruning run 실행 이력을 저장한다.
 - external alert channel을 연결한다.
 - broker-specific adapter별 duplicate baseline을 문서화한다.

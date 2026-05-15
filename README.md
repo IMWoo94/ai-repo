@@ -168,7 +168,7 @@ Outbox relay scheduler는 기본 비활성화입니다. 자동 발행을 로컬�
 
 Operational log pruning scheduler도 기본 비활성화입니다. 자동 pruning을 로컬에서 확인하려면 `AI_REPO_OPERATIONAL_LOG_PRUNING_SCHEDULER_ENABLED=true`를 설정합니다. Relay run 기본 보존 기간은 30일, admin access audit 기본 보존 기간은 180일입니다.
 
-Consumer pruning scheduler도 기본 비활성화입니다. 자동 pruning을 로컬에서 확인하려면 `AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_ENABLED=true`를 설정합니다. Processed-event와 receipt 기본 보존 기간은 각각 30일입니다. 실제 broker를 연결할 때는 이 보존 기간을 broker replay 가능 기간보다 길게 잡아야 합니다.
+Consumer pruning scheduler도 기본 비활성화입니다. 자동 pruning을 로컬에서 확인하려면 `AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_ENABLED=true`를 설정합니다. Processed-event, receipt, delivery metric bucket 기본 보존 기간은 각각 30일입니다. 실제 broker를 연결할 때는 dedupe 보존 기간을 broker replay 가능 기간보다 길게 잡아야 합니다.
 
 충전/송금은 `KRW` 단일 통화와 멱등키를 사용합니다. 원장/감사 로그는 Issue #7 기준으로 확장 중이며, 1차 범위에서는 인메모리 조회 API로 검증합니다.
 

@@ -27,7 +27,8 @@ public class OperationOutboxConsumerPruningController {
     public ResponseEntity<OperationOutboxConsumerPruningResult> prune() {
         return ResponseEntity.ok(pruningService.prune(
                 pruningPolicy.processedEventRetention(),
-                pruningPolicy.receiptRetention()
+                pruningPolicy.receiptRetention(),
+                pruningPolicy.deliveryMetricRetention()
         ));
     }
 }

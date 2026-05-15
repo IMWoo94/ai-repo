@@ -428,6 +428,13 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized int deleteConsumerDeliveryMetricsBucketStartedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerDeliveryBuckets.size();
+        outboxConsumerDeliveryBuckets.keySet().removeIf(bucketStartedAt -> bucketStartedAt.isBefore(cutoff));
+        return beforeSize - outboxConsumerDeliveryBuckets.size();
+    }
+
+    @Override
     public synchronized List<OperationOutboxEvent> claimReadyOutboxEvents(int limit, Instant now, Instant leaseExpiresAt) {
         List<OperationOutboxEvent> claimedEvents = operationOutboxEvents.values().stream()
                 .flatMap(List::stream)

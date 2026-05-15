@@ -6,7 +6,9 @@ public record OperationOutboxConsumerPruningResult(
         Instant prunedAt,
         Instant processedEventCutoff,
         Instant receiptCutoff,
+        Instant deliveryMetricCutoff,
         int deletedProcessedEventCount,
-        int deletedReceiptCount
+        int deletedReceiptCount,
+        int deletedDeliveryMetricBucketCount
 ) {
 }

@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.imwoo.airepo.AiRepoApplication;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerDeliveryMetricRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
@@ -27,7 +28,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(properties = {
         "ai-repo.outbox-consumer-pruning.processed-event-retention-days=1",
-        "ai-repo.outbox-consumer-pruning.receipt-retention-days=1"
+        "ai-repo.outbox-consumer-pruning.receipt-retention-days=1",
+        "ai-repo.outbox-consumer-pruning.delivery-metric-retention-days=1"
 })
 class OperationOutboxConsumerPruningControllerTest {
 
@@ -38,16 +40,19 @@ class OperationOutboxConsumerPruningControllerTest {
     private final MockMvc mockMvc;
     private final OperationOutboxConsumerIdempotencyRepository idempotencyRepository;
     private final OperationOutboxConsumerReceiptRepository receiptRepository;
+    private final OperationOutboxConsumerDeliveryMetricRepository deliveryMetricRepository;
 
     @Autowired
     OperationOutboxConsumerPruningControllerTest(
             MockMvc mockMvc,
             OperationOutboxConsumerIdempotencyRepository idempotencyRepository,
-            OperationOutboxConsumerReceiptRepository receiptRepository
+            OperationOutboxConsumerReceiptRepository receiptRepository,
+            OperationOutboxConsumerDeliveryMetricRepository deliveryMetricRepository
     ) {
         this.mockMvc = mockMvc;
         this.idempotencyRepository = idempotencyRepository;
         this.receiptRepository = receiptRepository;
+        this.deliveryMetricRepository = deliveryMetricRepository;
     }
 
     @Test
@@ -66,6 +71,8 @@ class OperationOutboxConsumerPruningControllerTest {
         );
         receiptRepository.saveConsumerReceipt(receipt("outbox-001", "2026-04-30T23:59:59Z"));
         receiptRepository.saveConsumerReceipt(receipt("outbox-002", "2026-05-01T00:00:00Z"));
+        deliveryMetricRepository.recordConsumerDeliveryMetric(Instant.parse("2026-04-30T23:59:00Z"), false);
+        deliveryMetricRepository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:00:00Z"), true);
 
         mockMvc.perform(post("/api/v1/outbox-consumer/pruning-runs")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
@@ -73,8 +80,10 @@ class OperationOutboxConsumerPruningControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.processedEventCutoff").value("2026-05-01T00:00:00Z"))
                 .andExpect(jsonPath("$.receiptCutoff").value("2026-05-01T00:00:00Z"))
+                .andExpect(jsonPath("$.deliveryMetricCutoff").value("2026-05-01T00:00:00Z"))
                 .andExpect(jsonPath("$.deletedProcessedEventCount").value(1))
-                .andExpect(jsonPath("$.deletedReceiptCount").value(1));
+                .andExpect(jsonPath("$.deletedReceiptCount").value(1))
+                .andExpect(jsonPath("$.deletedDeliveryMetricBucketCount").value(1));
     }
 
     @Test

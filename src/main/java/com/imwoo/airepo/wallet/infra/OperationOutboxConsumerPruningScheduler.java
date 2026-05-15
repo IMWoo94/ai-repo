@@ -37,7 +37,8 @@ public class OperationOutboxConsumerPruningScheduler {
     public OperationOutboxConsumerPruningResult runOnce() {
         return pruningService.prune(
                 pruningPolicy.processedEventRetention(),
-                pruningPolicy.receiptRetention()
+                pruningPolicy.receiptRetention(),
+                pruningPolicy.deliveryMetricRetention()
         );
     }
 }

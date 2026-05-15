@@ -988,6 +988,14 @@ public class JdbcWalletRepository implements
         );
     }
 
+    @Override
+    public int deleteConsumerDeliveryMetricsBucketStartedBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from operation_outbox_consumer_delivery_metrics where bucket_started_at < ?",
+                timestamp(cutoff)
+        );
+    }
+
     private List<String> claimReadyOutboxEventIds(int limit, Instant now) {
         try {
             return jdbcTemplate.queryForList(

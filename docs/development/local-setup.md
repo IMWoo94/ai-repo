@@ -158,7 +158,7 @@ AI_REPO_OPERATIONAL_LOG_PRUNING_FIXED_DELAY_MS=86400000 \
 ./gradlew bootRun
 ```
 
-Consumer dedupe/receipt pruning은 processed-event 30일, receipt 30일을 기본 보존 기간으로 사용합니다. 수동 실행은 admin header와 함께 호출합니다.
+Consumer dedupe/receipt/delivery metric pruning은 processed-event 30일, receipt 30일, delivery metric bucket 30일을 기본 보존 기간으로 사용합니다. 수동 실행은 admin header와 함께 호출합니다.
 
 Consumer duplicate health는 기본적으로 최근 5분 window에서 duplicate 5건 이상, duplicate delivery rate 20% 이상이면 `WARNING`, 50% 이상이면 `CRITICAL`로 판정합니다. 수동 조회는 operator header와 함께 호출합니다.
 

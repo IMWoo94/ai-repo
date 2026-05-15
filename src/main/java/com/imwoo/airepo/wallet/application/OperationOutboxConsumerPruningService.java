@@ -21,23 +21,31 @@ public class OperationOutboxConsumerPruningService {
 
     public OperationOutboxConsumerPruningResult prune(
             Duration processedEventRetention,
-            Duration receiptRetention
+            Duration receiptRetention,
+            Duration deliveryMetricRetention
     ) {
         validateRetention("processedEventRetention", processedEventRetention);
         validateRetention("receiptRetention", receiptRetention);
+        validateRetention("deliveryMetricRetention", deliveryMetricRetention);
         Instant prunedAt = Instant.now(clock);
         Instant processedEventCutoff = prunedAt.minus(processedEventRetention);
         Instant receiptCutoff = prunedAt.minus(receiptRetention);
+        Instant deliveryMetricCutoff = prunedAt.minus(deliveryMetricRetention);
         int deletedReceiptCount = pruningRepository.deleteConsumerReceiptsReceivedBefore(receiptCutoff);
         int deletedProcessedEventCount = pruningRepository.deleteConsumerProcessedEventsProcessedBefore(
                 processedEventCutoff
+        );
+        int deletedDeliveryMetricBucketCount = pruningRepository.deleteConsumerDeliveryMetricsBucketStartedBefore(
+                deliveryMetricCutoff
         );
         return new OperationOutboxConsumerPruningResult(
                 prunedAt,
                 processedEventCutoff,
                 receiptCutoff,
+                deliveryMetricCutoff,
                 deletedProcessedEventCount,
-                deletedReceiptCount
+                deletedReceiptCount,
+                deletedDeliveryMetricBucketCount
         );
     }
 

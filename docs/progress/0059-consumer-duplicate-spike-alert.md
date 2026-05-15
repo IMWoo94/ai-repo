@@ -19,7 +19,7 @@ Consumer duplicate delivery가 운영상 이상 징후인지 판단할 수 있�
 
 ## 남은 일
 
-- delivery metric bucket pruning
+- pruning 실행 이력 저장
 - external alert channel
 - broker-specific duplicate baseline
 
