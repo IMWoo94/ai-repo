@@ -4,6 +4,8 @@ import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
@@ -54,6 +56,7 @@ import org.springframework.dao.DataAccessException;
 import org.springframework.dao.DuplicateKeyException;
 import org.springframework.dao.EmptyResultDataAccessException;
 import org.springframework.jdbc.BadSqlGrammarException;
+import org.springframework.jdbc.core.ConnectionCallback;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.core.RowMapper;
 import org.springframework.stereotype.Repository;
@@ -68,6 +71,7 @@ public class JdbcWalletRepository implements
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
+        OperationOutboxConsumerMonitoringRepository,
         AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
@@ -734,6 +738,37 @@ public class JdbcWalletRepository implements
             String eventType,
             Instant processedAt
     ) {
+        if (isPostgresDatabase()) {
+            Boolean inserted = jdbcTemplate.queryForObject(
+                    """
+                            insert into operation_outbox_consumer_processed_events (
+                                idempotency_key, outbox_event_id, event_type, processed_at
+                            )
+                            values (?, ?, ?, ?)
+                            on conflict (idempotency_key) do update
+                            set duplicate_count =
+                                operation_outbox_consumer_processed_events.duplicate_count + 1
+                            returning (xmax = 0) as inserted
+                            """,
+                    Boolean.class,
+                    idempotencyKey,
+                    outboxEventId,
+                    eventType,
+                    timestamp(processedAt)
+            );
+            return Boolean.TRUE.equals(inserted);
+        }
+        int duplicateRows = jdbcTemplate.update(
+                """
+                        update operation_outbox_consumer_processed_events
+                        set duplicate_count = duplicate_count + 1
+                        where idempotency_key = ?
+                        """,
+                idempotencyKey
+        );
+        if (duplicateRows == 1) {
+            return false;
+        }
         try {
             return jdbcTemplate.update(
                     """
@@ -756,7 +791,7 @@ public class JdbcWalletRepository implements
     public Optional<OperationOutboxConsumerProcessedEvent> findProcessedEvent(String idempotencyKey) {
         return queryOptional(
                 """
-                        select idempotency_key, outbox_event_id, event_type, processed_at
+                        select idempotency_key, outbox_event_id, event_type, processed_at, duplicate_count
                         from operation_outbox_consumer_processed_events
                         where idempotency_key = ?
                         """,
@@ -796,6 +831,45 @@ public class JdbcWalletRepository implements
                         """,
                 operationOutboxConsumerReceiptMapper(),
                 idempotencyKey
+        );
+    }
+
+    @Override
+    public OperationOutboxConsumerMetrics getConsumerMetrics() {
+        return jdbcTemplate.queryForObject(
+                """
+                        select
+                            (select count(*) from operation_outbox_consumer_processed_events) as processed_event_count,
+                            (select coalesce(sum(duplicate_count), 0)
+                             from operation_outbox_consumer_processed_events) as duplicate_event_count,
+                            (select count(*) from operation_outbox_consumer_receipts) as receipt_count,
+                            (select max(processed_at)
+                             from operation_outbox_consumer_processed_events) as last_processed_at,
+                            (select max(received_at)
+                             from operation_outbox_consumer_receipts) as last_received_at
+                        """,
+                (resultSet, rowNumber) -> new OperationOutboxConsumerMetrics(
+                        resultSet.getLong("processed_event_count"),
+                        resultSet.getLong("duplicate_event_count"),
+                        resultSet.getLong("receipt_count"),
+                        nullableInstant(resultSet, "last_processed_at"),
+                        nullableInstant(resultSet, "last_received_at")
+                )
+        );
+    }
+
+    @Override
+    public List<OperationOutboxConsumerReceipt> findRecentConsumerReceipts(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select idempotency_key, outbox_event_id, operation_id, event_type,
+                               aggregate_type, aggregate_id, received_at
+                        from operation_outbox_consumer_receipts
+                        order by received_at desc, idempotency_key desc
+                        limit ?
+                        """,
+                operationOutboxConsumerReceiptMapper(),
+                limit
         );
     }
 
@@ -1603,7 +1677,8 @@ public class JdbcWalletRepository implements
                 resultSet.getString("idempotency_key"),
                 resultSet.getString("outbox_event_id"),
                 resultSet.getString("event_type"),
-                instant(resultSet, "processed_at")
+                instant(resultSet, "processed_at"),
+                resultSet.getInt("duplicate_count")
         );
     }
 
@@ -1654,6 +1729,11 @@ public class JdbcWalletRepository implements
             return null;
         }
         return Timestamp.from(instant);
+    }
+
+    private boolean isPostgresDatabase() {
+        return Boolean.TRUE.equals(jdbcTemplate.execute((ConnectionCallback<Boolean>) connection ->
+                "PostgreSQL".equals(connection.getMetaData().getDatabaseProductName())));
     }
 
     private Instant instant(ResultSet resultSet, String columnName) throws SQLException {

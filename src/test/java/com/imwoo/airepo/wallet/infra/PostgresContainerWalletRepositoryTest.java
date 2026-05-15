@@ -377,9 +377,10 @@ class PostgresContainerWalletRepositoryTest {
             assertThat(attempts).filteredOn(attempt -> !attempt.recorded()).hasSize(1);
             assertThat(repository.findProcessedEvent("outbox-001"))
                     .hasValueSatisfying(processedEvent -> {
-                        assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
-                        assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
-                    });
+                    assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(processedEvent.duplicateCount()).isEqualTo(1);
+                });
         } finally {
             executorService.shutdownNow();
         }

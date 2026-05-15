@@ -28,6 +28,8 @@
 - Admin API access audit
 - Operational log pruning
 - HTTP outbox broker adapter와 contract test
+- HTTP outbox consumer adapter와 publish→consume loop
+- Consumer monitoring admin API
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
@@ -50,12 +52,11 @@
 - external alert channel은 아직 없다.
 - token과 operator identity는 local header 기반이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
-- consumer 처리 metric/admin API는 아직 없다.
 - GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
 
 ## 다음 후보
 
 - broker-specific Testcontainers contract
 - processed-event TTL/pruning
-- consumer metric/admin API
+- consumer duplicate spike alert
 - external alert channel

@@ -2,6 +2,8 @@ package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
@@ -37,6 +39,7 @@ import com.imwoo.airepo.wallet.domain.WalletBalance;
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -53,6 +56,7 @@ public class InMemoryWalletRepository implements
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
+        OperationOutboxConsumerMonitoringRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -304,11 +308,22 @@ public class InMemoryWalletRepository implements
             Instant processedAt
     ) {
         if (outboxConsumerProcessedEvents.containsKey(idempotencyKey)) {
+            OperationOutboxConsumerProcessedEvent existing = outboxConsumerProcessedEvents.get(idempotencyKey);
+            outboxConsumerProcessedEvents.put(
+                    idempotencyKey,
+                    new OperationOutboxConsumerProcessedEvent(
+                            existing.idempotencyKey(),
+                            existing.outboxEventId(),
+                            existing.eventType(),
+                            existing.processedAt(),
+                            existing.duplicateCount() + 1
+                    )
+            );
             return false;
         }
         outboxConsumerProcessedEvents.put(
                 idempotencyKey,
-                new OperationOutboxConsumerProcessedEvent(idempotencyKey, outboxEventId, eventType, processedAt)
+                new OperationOutboxConsumerProcessedEvent(idempotencyKey, outboxEventId, eventType, processedAt, 0)
         );
         return true;
     }
@@ -326,6 +341,38 @@ public class InMemoryWalletRepository implements
     @Override
     public synchronized Optional<OperationOutboxConsumerReceipt> findConsumerReceipt(String idempotencyKey) {
         return Optional.ofNullable(outboxConsumerReceipts.get(idempotencyKey));
+    }
+
+    @Override
+    public synchronized OperationOutboxConsumerMetrics getConsumerMetrics() {
+        Instant lastProcessedAt = outboxConsumerProcessedEvents.values().stream()
+                .map(OperationOutboxConsumerProcessedEvent::processedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        Instant lastReceivedAt = outboxConsumerReceipts.values().stream()
+                .map(OperationOutboxConsumerReceipt::receivedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        long duplicateEventCount = outboxConsumerProcessedEvents.values().stream()
+                .mapToLong(OperationOutboxConsumerProcessedEvent::duplicateCount)
+                .sum();
+        return new OperationOutboxConsumerMetrics(
+                outboxConsumerProcessedEvents.size(),
+                duplicateEventCount,
+                outboxConsumerReceipts.size(),
+                lastProcessedAt,
+                lastReceivedAt
+        );
+    }
+
+    @Override
+    public synchronized List<OperationOutboxConsumerReceipt> findRecentConsumerReceipts(int limit) {
+        return outboxConsumerReceipts.values().stream()
+                .sorted(Comparator.comparing(OperationOutboxConsumerReceipt::receivedAt)
+                        .thenComparing(OperationOutboxConsumerReceipt::idempotencyKey)
+                        .reversed())
+                .limit(limit)
+                .toList();
     }
 
     @Override

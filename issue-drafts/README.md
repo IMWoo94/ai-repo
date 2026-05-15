@@ -108,6 +108,7 @@
 - `0054-consumer-processed-event-dedupe.md`: Consumer processed event dedupe 작업 초안
 - `0055-http-outbox-consumer-adapter.md`: HTTP outbox consumer adapter 작업 초안
 - `0056-http-publish-consume-loop.md`: HTTP publish consume loop 작업 초안
+- `0057-consumer-monitoring-admin-api.md`: Consumer monitoring admin API 작업 초안
 
 ## GitHub CLI로 생성
 

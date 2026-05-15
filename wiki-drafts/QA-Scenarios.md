@@ -23,6 +23,7 @@
 | Consumer dedupe 저장소 | 같은 idempotency key의 duplicate 기록은 하나만 성공한다 | JDBC test, PostgreSQL scenario CI |
 | HTTP consumer duplicate no-op | 같은 broker event를 두 번 받아도 receipt side effect는 한 번만 저장된다 | API test, PostgreSQL scenario CI |
 | HTTP publish→consume loop | relay가 HTTP publisher로 consumer endpoint에 event를 보내고 receipt와 published 상태를 남긴다 | Spring Boot random port test |
+| Consumer monitoring API | processed, duplicate, receipt count와 최근 receipt를 operator 권한으로 조회한다 | API test, JDBC test |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
 
@@ -58,3 +59,4 @@
 - external alert channel E2E
 - release smoke script 또는 actuator health check
 - broker-specific Testcontainers contract scenario
+- consumer duplicate spike alert scenario

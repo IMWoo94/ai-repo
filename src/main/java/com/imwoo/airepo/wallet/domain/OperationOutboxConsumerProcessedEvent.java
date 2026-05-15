@@ -7,7 +7,8 @@ public record OperationOutboxConsumerProcessedEvent(
         String idempotencyKey,
         String outboxEventId,
         String eventType,
-        Instant processedAt
+        Instant processedAt,
+        int duplicateCount
 ) {
 
     public OperationOutboxConsumerProcessedEvent {
@@ -23,6 +24,9 @@ public record OperationOutboxConsumerProcessedEvent(
         }
         if (eventType.isBlank()) {
             throw new IllegalArgumentException("eventType must not be blank");
+        }
+        if (duplicateCount < 0) {
+            throw new IllegalArgumentException("duplicateCount must not be negative");
         }
     }
 }

@@ -46,5 +46,5 @@ Spring Boot random port 서버를 띄우고 `HttpOperationOutboxPublisher`를 �
 ## 후속 작업
 
 - broker-specific Testcontainers contract에서 publish→consume loop를 재현한다.
-- consumer metric/admin API로 loop 결과를 운영 화면에서 확인한다.
+- consumer duplicate spike alert로 loop 결과 이상 징후를 운영 health에 연결한다.
 - local smoke에 HTTP consumer duplicate no-op 확인을 추가한다.

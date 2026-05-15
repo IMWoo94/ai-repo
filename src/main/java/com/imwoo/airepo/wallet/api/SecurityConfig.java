@@ -40,6 +40,7 @@ public class SecurityConfig {
                         .hasRole(AdminSecurityRole.ADMIN.name())
                         .requestMatchers(
                                 "/api/v1/outbox-events/**",
+                                "/api/v1/outbox-consumer/**",
                                 "/api/v1/outbox-relay-runs/**",
                                 "/api/v1/admin-api-access-audits/**"
                         )

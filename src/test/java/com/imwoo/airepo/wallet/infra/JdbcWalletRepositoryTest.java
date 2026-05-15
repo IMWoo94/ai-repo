@@ -642,7 +642,45 @@ class JdbcWalletRepositoryTest {
                     assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
                     assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
                     assertThat(processedEvent.processedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                    assertThat(processedEvent.duplicateCount()).isEqualTo(1);
                 });
+    }
+
+    @Test
+    void consumerMonitoringMetricsCountsProcessedDuplicatesAndReceipts() {
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:05:00Z")
+        );
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:06:00Z")
+        );
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-001",
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                Instant.parse("2026-05-01T00:05:30Z")
+        ));
+
+        assertThat(repository.getConsumerMetrics())
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedEventCount()).isEqualTo(1);
+                    assertThat(metrics.duplicateEventCount()).isEqualTo(1);
+                    assertThat(metrics.receiptCount()).isEqualTo(1);
+                    assertThat(metrics.lastProcessedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                    assertThat(metrics.lastReceivedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:30Z"));
+                });
+        assertThat(repository.findRecentConsumerReceipts(10))
+                .singleElement()
+                .satisfies(receipt -> assertThat(receipt.idempotencyKey()).isEqualTo("outbox-001"));
     }
 
     @Test

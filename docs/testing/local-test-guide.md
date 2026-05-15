@@ -66,6 +66,7 @@ npm run e2e
 - consumer processed-event dedupe 저장소
 - HTTP consumer adapter duplicate no-op과 receipt side effect
 - HTTP publisher에서 consumer endpoint로 이어지는 publish→consume loop
+- consumer monitoring admin API의 processed, duplicate, receipt count
 
 ### `./gradlew scenarioTest`
 
@@ -247,6 +248,7 @@ X-Operator-Id: local-operator
 - PostgreSQL Testcontainers는 lease 만료 후 늦은 outbox worker가 재claim된 event를 덮어쓰지 못하는지 검증한다.
 - 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
+- consumer 처리 지표는 `GET /api/v1/outbox-consumer/metrics`, 최근 receipt는 `GET /api/v1/outbox-consumer/receipts?limit=10`에서 조회한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.
 

@@ -72,10 +72,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0054 | [Consumer Processed Event Dedupe](0054-consumer-processed-event-dedupe.md) | 완료 |
 | 0055 | [HTTP Outbox Consumer Adapter](0055-http-outbox-consumer-adapter.md) | 완료 |
 | 0056 | [HTTP Publish Consume Loop](0056-http-publish-consume-loop.md) | 완료 |
+| 0057 | [Consumer Monitoring Admin API](0057-consumer-monitoring-admin-api.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: HTTP Publish Consume Loop
+- 최신 완료 기능: Consumer Monitoring Admin API
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, consumer metric/admin API, processed-event TTL/pruning, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 실제 identity/role scope 연동
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, processed-event TTL/pruning, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, 실제 identity/role scope 연동
