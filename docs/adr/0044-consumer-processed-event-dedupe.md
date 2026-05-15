@@ -26,7 +26,7 @@ Consumer 구현 기준은 다음과 같다.
 
 - consumer는 같은 DB 안에서 business side effect와 processed-event 기록을 하나의 트랜잭션으로 묶어야 한다.
 - duplicate이면 side effect를 실행하지 않고 성공 처리된 중복 메시지로 간주한다.
-- 현재 단계는 실제 broker consumer가 없으므로 저장소 포트와 동시성 검증까지만 구현한다.
+- HTTP broker consumer adapter는 ADR-0045에서 실제 endpoint와 receipt side effect까지 연결한다.
 
 ## 트레이드오프
 
@@ -50,6 +50,6 @@ Consumer 구현 기준은 다음과 같다.
 
 ## 후속 작업
 
-- 실제 consumer adapter를 추가하고 business side effect와 dedupe record를 같은 transaction boundary로 묶는다.
+- Kafka/RabbitMQ/SQS consumer adapter를 추가하고 ack/nack과 dedupe boundary를 검증한다.
 - processed-event TTL/pruning 정책을 정의한다.
 - broker별 replay와 DLQ 재처리 정책을 설계한다.

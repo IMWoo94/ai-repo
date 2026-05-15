@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.imwoo.airepo.AiRepoApplication;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayService;
 import java.time.Clock;
 import java.time.Instant;
@@ -46,11 +47,17 @@ class PostgresWalletScenarioFlowTest {
 
     private final MockMvc mockMvc;
     private final OperationOutboxRelayService operationOutboxRelayService;
+    private final OperationOutboxConsumerReceiptRepository receiptRepository;
 
     @Autowired
-    PostgresWalletScenarioFlowTest(MockMvc mockMvc, OperationOutboxRelayService operationOutboxRelayService) {
+    PostgresWalletScenarioFlowTest(
+            MockMvc mockMvc,
+            OperationOutboxRelayService operationOutboxRelayService,
+            OperationOutboxConsumerReceiptRepository receiptRepository
+    ) {
         this.mockMvc = mockMvc;
         this.operationOutboxRelayService = operationOutboxRelayService;
+        this.receiptRepository = receiptRepository;
     }
 
     @DynamicPropertySource
@@ -141,6 +148,49 @@ class PostgresWalletScenarioFlowTest {
         mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
+    }
+
+    @Test
+    void postgresProfileConsumesBrokerEventOnceWithTransactionalDedupe() throws Exception {
+        consumeBrokerEvent()
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.processed").value(true));
+
+        consumeBrokerEvent()
+                .andExpect(status().isAccepted())
+                .andExpect(jsonPath("$.processed").value(false));
+
+        assertThat(receiptRepository.findConsumerReceipt("outbox-001"))
+                .hasValueSatisfying(receipt -> {
+                    assertThat(receipt.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(receipt.operationId()).isEqualTo("op-001");
+                    assertThat(receipt.eventType()).isEqualTo("CHARGE_COMPLETED");
+                });
+    }
+
+    private org.springframework.test.web.servlet.ResultActions consumeBrokerEvent() throws Exception {
+        return mockMvc.perform(post("/internal/broker/outbox-events")
+                .contentType("application/json")
+                .header("X-Outbox-Event-Id", "outbox-001")
+                .header("X-Idempotency-Key", "outbox-001")
+                .header("X-Event-Schema-Version", "1")
+                .header("X-Event-Type", "CHARGE_COMPLETED")
+                .content("""
+                        {
+                          "schemaVersion": 1,
+                          "idempotencyKey": "outbox-001",
+                          "outboxEventId": "outbox-001",
+                          "operationId": "op-001",
+                          "eventType": "CHARGE_COMPLETED",
+                          "aggregateType": "WALLET_OPERATION",
+                          "aggregateId": "op-001",
+                          "occurredAt": "2026-05-01T00:00:00Z",
+                          "payload": {
+                            "operationId": "op-001",
+                            "walletId": "wallet-001"
+                          }
+                        }
+                        """));
     }
 
     @TestConfiguration

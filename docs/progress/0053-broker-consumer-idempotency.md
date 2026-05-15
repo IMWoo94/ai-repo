@@ -24,7 +24,7 @@ Outbox event가 broker로 중복 발행될 수 있는 현실을 인정하고, co
 
 ## 남은 일
 
-- 실제 broker consumer adapter 구현
+- Kafka/RabbitMQ/SQS broker-specific consumer adapter 구현
 - broker별 partition/routing key contract test
 - dedupe 보관 기간과 replay 운영 정책
 

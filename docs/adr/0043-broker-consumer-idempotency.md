@@ -45,7 +45,7 @@ Consumer 구현 기준은 다음과 같다.
 
 ### 비용
 
-- 실제 consumer adapter와 side effect transaction 통합은 아직 구현하지 않는다.
+- Kafka/RabbitMQ/SQS 같은 broker-specific consumer adapter는 아직 구현하지 않는다.
 - consumer 저장소 장애, dedupe TTL, replay 정책은 별도 설계가 필요하다.
 - `outboxEventId`를 idempotency key로 사용하므로 같은 business operation의 새 event는 별도 처리 단위가 된다.
 
@@ -58,6 +58,6 @@ Consumer 구현 기준은 다음과 같다.
 
 ## 후속 작업
 
-- 실제 consumer adapter를 추가할 때 business side effect와 processed-event 기록을 같은 transaction boundary로 묶는다.
+- broker-specific consumer adapter를 추가할 때 ack/nack과 replay 정책을 함께 정의한다.
 - Kafka/RabbitMQ/SQS adapter별 partition/routing key와 idempotency key 매핑을 검증한다.
 - dedupe 보관 기간과 replay 운영 정책을 별도 ADR로 결정한다.

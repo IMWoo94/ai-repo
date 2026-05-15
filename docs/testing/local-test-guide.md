@@ -64,6 +64,7 @@ npm run e2e
 - rollback, lock timeout, outbox 상태 전이
 - HTTP broker envelope와 idempotency header contract
 - consumer processed-event dedupe 저장소
+- HTTP consumer adapter duplicate no-op과 receipt side effect
 
 ### `./gradlew scenarioTest`
 
@@ -93,6 +94,7 @@ npm run e2e
 - 잔액/원장/감사/step log/outbox 정합성
 - outbox relay publish 상태 전이
 - consumer processed-event 동시 duplicate 방지
+- HTTP consumer endpoint 기반 duplicate side effect 1회 처리
 
 이 명령은 Docker daemon이 필요하다. Docker가 꺼져 있으면 실패할 수 있으며, CI의 `PostgreSQL Scenario Test` job과 대응된다.
 

@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
@@ -17,6 +18,7 @@ import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerProcessedEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
@@ -50,6 +52,7 @@ public class InMemoryWalletRepository implements
         OperationOutboxRelayRepository,
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
+        OperationOutboxConsumerReceiptRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -67,6 +70,7 @@ public class InMemoryWalletRepository implements
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
     private final Map<String, OperationOutboxConsumerProcessedEvent> outboxConsumerProcessedEvents = new HashMap<>();
+    private final Map<String, OperationOutboxConsumerReceipt> outboxConsumerReceipts = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -312,6 +316,16 @@ public class InMemoryWalletRepository implements
     @Override
     public synchronized Optional<OperationOutboxConsumerProcessedEvent> findProcessedEvent(String idempotencyKey) {
         return Optional.ofNullable(outboxConsumerProcessedEvents.get(idempotencyKey));
+    }
+
+    @Override
+    public synchronized void saveConsumerReceipt(OperationOutboxConsumerReceipt receipt) {
+        outboxConsumerReceipts.put(receipt.idempotencyKey(), receipt);
+    }
+
+    @Override
+    public synchronized Optional<OperationOutboxConsumerReceipt> findConsumerReceipt(String idempotencyKey) {
+        return Optional.ofNullable(outboxConsumerReceipts.get(idempotencyKey));
     }
 
     @Override

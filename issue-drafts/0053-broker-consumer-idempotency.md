@@ -25,6 +25,6 @@ Outbox relay는 최소 1회 발행 모델이다. Broker publish 성공 후 DB �
 
 ## 제외
 
-- 실제 broker consumer adapter 구현
+- Kafka/RabbitMQ/SQS broker-specific consumer adapter 구현
 - Kafka/RabbitMQ/SQS adapter 구현
 - dedupe TTL과 replay 운영 정책

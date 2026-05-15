@@ -21,6 +21,7 @@
 | Outbox stale writer 방지 | lease 만료 후 늦은 worker의 success/failure update가 재claim된 event를 덮지 못한다 | JDBC test, PostgreSQL scenario CI |
 | Broker idempotency envelope | HTTP broker 발행 시 schema version과 idempotency key가 header/body에 포함된다 | Contract test |
 | Consumer dedupe 저장소 | 같은 idempotency key의 duplicate 기록은 하나만 성공한다 | JDBC test, PostgreSQL scenario CI |
+| HTTP consumer duplicate no-op | 같은 broker event를 두 번 받아도 receipt side effect는 한 번만 저장된다 | API test, PostgreSQL scenario CI |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
 

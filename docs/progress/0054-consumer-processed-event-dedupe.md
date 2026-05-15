@@ -20,8 +20,8 @@ Broker에서 같은 outbox event가 중복 전달되어도 consumer가 같은 `i
 
 ## 남은 일
 
-- 실제 broker consumer adapter
-- business side effect와 processed-event 기록의 transaction 통합
+- Kafka/RabbitMQ/SQS broker-specific consumer adapter
+- 외부 시스템 side effect와 inbox/outbox 보상 정책
 - processed-event TTL/pruning 정책
 
 ## 관련 문서

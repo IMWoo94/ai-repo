@@ -106,6 +106,7 @@
 - `0052-outbox-claim-guarded-result-update.md`: Outbox claim guarded result update 작업 초안
 - `0053-broker-consumer-idempotency.md`: Broker consumer idempotency 작업 초안
 - `0054-consumer-processed-event-dedupe.md`: Consumer processed event dedupe 작업 초안
+- `0055-http-outbox-consumer-adapter.md`: HTTP outbox consumer adapter 작업 초안
 
 ## GitHub CLI로 생성
 

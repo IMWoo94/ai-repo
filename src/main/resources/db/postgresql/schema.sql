@@ -144,6 +144,16 @@ CREATE TABLE IF NOT EXISTS operation_outbox_consumer_processed_events (
     processed_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_receipts (
+    idempotency_key VARCHAR(128) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    operation_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    aggregate_type VARCHAR(64) NOT NULL,
+    aggregate_id VARCHAR(64) NOT NULL,
+    received_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     audit_id VARCHAR(64) PRIMARY KEY,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,

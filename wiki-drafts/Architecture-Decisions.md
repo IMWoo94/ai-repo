@@ -67,6 +67,7 @@
    - ADR-0042 Outbox Claim Guarded Result Update
    - ADR-0043 Broker and Consumer Idempotency Contract
    - ADR-0044 Consumer Processed Event Dedupe Store
+   - ADR-0045 HTTP Outbox Consumer Adapter
 
 ## 중요한 트레이드오프
 
@@ -80,15 +81,16 @@
 | 직접 requeue API 비활성화 | 승인 workflow 우회 방지 | 단일 API로 빠르게 재처리하는 편의성 |
 | Requeue row lock과 update count 검증 | 동시 운영 조치에서 하나의 상태 전이만 허용 | 상태 전이마다 짧은 DB row lock 비용 |
 | Outbox claim 기반 결과 갱신 | 늦은 worker가 재claim된 event 상태를 덮지 못하게 함 | worker identity 없는 최소 방어라 외부 broker 중복 발행은 별도 과제 |
-| Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | 실제 broker consumer adapter는 후속 과제 |
-| Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | 실제 broker consumer와 TTL/pruning은 후속 과제 |
+| Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | broker-specific consumer adapter는 후속 과제 |
+| Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | TTL/pruning은 후속 과제 |
+| HTTP consumer adapter | 실제 endpoint에서 duplicate를 성공 no-op으로 처리하고 receipt side effect를 1회만 저장 | Kafka/RabbitMQ/SQS ack/nack 모델은 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
 
 - broker-specific adapter와 Testcontainers contract
-- actual broker consumer adapter
 - processed-event TTL/pruning
+- consumer metric/admin API
 - pruning 실행 이력 저장과 조회 API
 - external alert channel
 - 실제 운영자 identity와 role scope 분리

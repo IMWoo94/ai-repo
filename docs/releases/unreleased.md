@@ -18,6 +18,7 @@
 - Outbox stale writer 방지
 - Broker/consumer idempotency 계약
 - Consumer processed-event dedupe 저장소
+- HTTP outbox consumer adapter와 duplicate side effect 1회 검증
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -32,6 +33,7 @@
 - Outbox publish 결과 갱신은 claim lease가 일치할 때만 성공해 늦은 worker가 재claim 상태를 덮지 못한다.
 - Broker publish envelope는 schema version과 idempotency key를 포함하고, consumer는 같은 key를 unique 처리 기준으로 삼는다.
 - Consumer processed-event 저장소는 같은 `idempotencyKey`의 중복 기록을 막고 PostgreSQL 동시성 테스트로 검증된다.
+- HTTP consumer endpoint는 duplicate event를 성공 no-op으로 처리하고 receipt side effect를 한 번만 저장한다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
@@ -69,7 +71,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 - external alert channel은 아직 없다.
 - token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
-- 실제 broker consumer adapter와 side effect transaction 통합은 아직 없다.
+- consumer 처리 metric/admin API는 아직 없다.
 - GitHub Wiki 동기화는 아직 수동 후보 문서 수준이다.
 
 ## 출시 전 blocker
@@ -81,7 +83,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 ## 후속 후보
 
 - broker-specific Testcontainers contract
-- actual broker consumer adapter
 - processed-event TTL/pruning
+- consumer metric/admin API
 - external alert channel
 - 실제 identity/role scope 연동

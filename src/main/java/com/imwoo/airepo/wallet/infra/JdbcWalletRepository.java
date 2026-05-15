@@ -4,6 +4,7 @@ import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
@@ -21,6 +22,7 @@ import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerProcessedEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
@@ -65,6 +67,7 @@ public class JdbcWalletRepository implements
         OperationOutboxRelayRepository,
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
+        OperationOutboxConsumerReceiptRepository,
         AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
@@ -758,6 +761,40 @@ public class JdbcWalletRepository implements
                         where idempotency_key = ?
                         """,
                 operationOutboxConsumerProcessedEventMapper(),
+                idempotencyKey
+        );
+    }
+
+    @Override
+    public void saveConsumerReceipt(OperationOutboxConsumerReceipt receipt) {
+        jdbcTemplate.update(
+                """
+                        insert into operation_outbox_consumer_receipts (
+                            idempotency_key, outbox_event_id, operation_id, event_type,
+                            aggregate_type, aggregate_id, received_at
+                        )
+                        values (?, ?, ?, ?, ?, ?, ?)
+                        """,
+                receipt.idempotencyKey(),
+                receipt.outboxEventId(),
+                receipt.operationId(),
+                receipt.eventType(),
+                receipt.aggregateType(),
+                receipt.aggregateId(),
+                timestamp(receipt.receivedAt())
+        );
+    }
+
+    @Override
+    public Optional<OperationOutboxConsumerReceipt> findConsumerReceipt(String idempotencyKey) {
+        return queryOptional(
+                """
+                        select idempotency_key, outbox_event_id, operation_id, event_type,
+                               aggregate_type, aggregate_id, received_at
+                        from operation_outbox_consumer_receipts
+                        where idempotency_key = ?
+                        """,
+                operationOutboxConsumerReceiptMapper(),
                 idempotencyKey
         );
     }
@@ -1567,6 +1604,18 @@ public class JdbcWalletRepository implements
                 resultSet.getString("outbox_event_id"),
                 resultSet.getString("event_type"),
                 instant(resultSet, "processed_at")
+        );
+    }
+
+    private RowMapper<OperationOutboxConsumerReceipt> operationOutboxConsumerReceiptMapper() {
+        return (resultSet, rowNumber) -> new OperationOutboxConsumerReceipt(
+                resultSet.getString("idempotency_key"),
+                resultSet.getString("outbox_event_id"),
+                resultSet.getString("operation_id"),
+                resultSet.getString("event_type"),
+                resultSet.getString("aggregate_type"),
+                resultSet.getString("aggregate_id"),
+                instant(resultSet, "received_at")
         );
     }
 
