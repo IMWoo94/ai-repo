@@ -13,18 +13,22 @@ public class OperationOutboxConsumerMonitoringService {
 
     private static final int MAX_RECEIPT_LIMIT = 100;
     private static final int MAX_WINDOW_MINUTES = 1440;
+    private static final String ALERT_SOURCE = "OUTBOX_CONSUMER";
 
     private final OperationOutboxConsumerMonitoringRepository monitoringRepository;
     private final OperationOutboxConsumerHealthPolicy healthPolicy;
+    private final OperationalAlertService operationalAlertService;
     private final Clock clock;
 
     public OperationOutboxConsumerMonitoringService(
             OperationOutboxConsumerMonitoringRepository monitoringRepository,
             OperationOutboxConsumerHealthPolicy healthPolicy,
+            OperationalAlertService operationalAlertService,
             Clock clock
     ) {
         this.monitoringRepository = monitoringRepository;
         this.healthPolicy = healthPolicy;
+        this.operationalAlertService = operationalAlertService;
         this.clock = clock;
     }
 
@@ -55,7 +59,7 @@ public class OperationOutboxConsumerMonitoringService {
         long totalDeliveryCount = metrics.processedEventCount() + metrics.duplicateEventCount();
         double duplicateRate = totalDeliveryCount == 0 ? 0.0 : (double) metrics.duplicateEventCount() / totalDeliveryCount;
         if (windowMetrics.totalDeliveryCount() == 0) {
-            return new OperationOutboxConsumerHealthSummary(
+            OperationOutboxConsumerHealthSummary summary = new OperationOutboxConsumerHealthSummary(
                     evaluatedAt,
                     OperationOutboxConsumerHealthStatus.NO_DATA,
                     metrics.processedEventCount(),
@@ -73,9 +77,11 @@ public class OperationOutboxConsumerMonitoringService {
                     healthPolicy.criticalDuplicateRate(),
                     List.of("no consumer event data in health window")
             );
+            publishAlert(summary);
+            return summary;
         }
         List<String> alertReasons = alertReasons(windowMetrics.duplicateDeliveryCount(), windowMetrics.duplicateRate());
-        return new OperationOutboxConsumerHealthSummary(
+        OperationOutboxConsumerHealthSummary summary = new OperationOutboxConsumerHealthSummary(
                 evaluatedAt,
                 status(alertReasons),
                 metrics.processedEventCount(),
@@ -92,6 +98,21 @@ public class OperationOutboxConsumerMonitoringService {
                 healthPolicy.warningDuplicateRate(),
                 healthPolicy.criticalDuplicateRate(),
                 alertReasons
+        );
+        publishAlert(summary);
+        return summary;
+    }
+
+    private void publishAlert(OperationOutboxConsumerHealthSummary summary) {
+        if (summary.status() != OperationOutboxConsumerHealthStatus.WARNING
+                && summary.status() != OperationOutboxConsumerHealthStatus.CRITICAL) {
+            return;
+        }
+        operationalAlertService.publishHealthAlert(
+                ALERT_SOURCE,
+                summary.status().name(),
+                summary.evaluatedAt(),
+                summary.alertReasons()
         );
     }
 

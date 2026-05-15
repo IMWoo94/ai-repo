@@ -49,4 +49,4 @@ Processed-event와 receipt는 이미 consumer pruning run에서 정리한다. De
 
 - pruning run 실행 이력을 저장하고 운영자 화면에 노출한다.
 - broker-specific adapter별 metric retention 권장값을 문서화한다.
-- external alert channel을 연결한다.
+- Slack/Webhook push channel을 연결한다.

@@ -25,6 +25,7 @@
 - Consumer duplicate spike alert
 - Consumer duplicate time bucket metric
 - Consumer delivery metric pruning
+- Operational alert record channel
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -78,7 +79,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 ## 알려진 제약
 
-- external alert channel은 아직 없다.
+- Slack/Webhook push alert channel은 아직 없다.
 - token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki 동기화는 아직 수동 후보 문서 수준이다.
@@ -94,5 +95,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
-- external alert channel
+- alert dedupe/suppression
+- alert record pruning
+- Slack/Webhook adapter
 - 실제 identity/role scope 연동

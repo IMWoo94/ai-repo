@@ -50,5 +50,5 @@ Consumer delivery를 분 단위 bucket으로 집계하고, health summary는 기
 ## 후속 작업
 
 - pruning run 실행 이력을 저장한다.
-- external alert channel을 연결한다.
+- Slack/Webhook push channel을 연결한다.
 - broker-specific adapter별 duplicate baseline을 문서화한다.

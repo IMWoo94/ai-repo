@@ -74,6 +74,7 @@
    - ADR-0049 Consumer Duplicate Spike Alert
    - ADR-0050 Consumer Duplicate Time Bucket Metric
    - ADR-0051 Consumer Delivery Metric Pruning
+   - ADR-0052 Operational Alert Record Channel
 
 ## 중요한 트레이드오프
 
@@ -93,9 +94,10 @@
 | HTTP publish→consume loop | relay가 실제 HTTP publisher로 consumer endpoint에 보내는 흐름 검증 | durable broker semantics는 후속 과제 |
 | Consumer monitoring admin API | 처리 성공, duplicate no-op, receipt를 운영자가 조회 | duplicate payload 상세 이력은 후속 과제 |
 | Consumer processed-event pruning | dedupe/receipt 저장소를 보존 기간 기준으로 정리 | broker replay window보다 짧은 retention은 위험하므로 운영 설정 책임이 남음 |
-| Consumer duplicate spike alert | duplicate delivery rate 기준으로 health를 판정 | external alert channel은 후속 과제 |
+| Consumer duplicate spike alert | duplicate delivery rate 기준으로 health를 판정 | push alert는 후속 과제 |
 | Consumer duplicate time bucket metric | 최근 window duplicate delivery rate를 분 단위 bucket으로 계산 | 초 단위 spike 정밀도 |
 | Consumer delivery metric pruning | delivery metric bucket을 기존 consumer pruning run에서 함께 정리 | pruning run 이력 저장은 후속 과제 |
+| Operational alert record channel | warning/critical health를 운영 alert record로 저장 | Slack/Webhook push와 dedupe는 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
@@ -103,5 +105,5 @@
 - broker-specific adapter와 Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
-- external alert channel
+- alert dedupe/suppression과 Slack/Webhook adapter
 - 실제 운영자 identity와 role scope 분리

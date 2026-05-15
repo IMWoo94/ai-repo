@@ -252,6 +252,7 @@ X-Operator-Id: local-operator
 - consumer 처리 지표는 `GET /api/v1/outbox-consumer/metrics`, 최근 receipt는 `GET /api/v1/outbox-consumer/receipts?limit=10`에서 조회한다.
 - consumer 최근 window delivery 지표는 `GET /api/v1/outbox-consumer/window-metrics?minutes=5`에서 조회한다.
 - consumer duplicate health summary와 alert 판정은 최근 window 기준으로 `GET /api/v1/outbox-consumer/health`에서 조회한다.
+- warning/critical health로 저장된 운영 alert는 `GET /api/v1/operational-alerts?limit=10`에서 조회한다.
 - consumer dedupe/receipt/delivery metric pruning은 `POST /api/v1/outbox-consumer/pruning-runs`로 수동 실행한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.

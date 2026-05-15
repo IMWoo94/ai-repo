@@ -77,10 +77,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0059 | [Consumer Duplicate Spike Alert](0059-consumer-duplicate-spike-alert.md) | 완료 |
 | 0060 | [Consumer Duplicate Time Bucket Metric](0060-consumer-duplicate-time-bucket-metric.md) | 완료 |
 | 0061 | [Consumer Delivery Metric Pruning](0061-consumer-delivery-metric-pruning.md) | 완료 |
+| 0062 | [Operational Alert Record Channel](0062-operational-alert-record-channel.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Consumer Delivery Metric Pruning
+- 최신 완료 기능: Operational Alert Record Channel
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, alert dedupe/suppression, alert record pruning, Slack/Webhook adapter, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동

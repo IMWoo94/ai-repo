@@ -16,6 +16,7 @@ class OperationOutboxRelayMonitoringServiceTest {
     private final OperationOutboxRelayMonitoringService monitoringService = new OperationOutboxRelayMonitoringService(
             repository,
             new OutboxRelayHealthPolicy(5, 2, 3, 50, 15),
+            new OperationalAlertService(repository),
             Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
     );
 
@@ -87,6 +88,7 @@ class OperationOutboxRelayMonitoringServiceTest {
         assertThat(summary.status()).isEqualTo(OutboxRelayHealthStatus.NO_DATA);
         assertThat(summary.totalRunCount()).isZero();
         assertThat(summary.alertReasons()).containsExactly("no relay run data");
+        assertThat(repository.findRecentOperationalAlerts(10)).isEmpty();
     }
 
     @Test
@@ -108,6 +110,7 @@ class OperationOutboxRelayMonitoringServiceTest {
         assertThat(summary.consecutiveFailureCount()).isZero();
         assertThat(summary.lastSuccessAt()).isEqualTo(Instant.parse("2026-05-01T00:18:01Z"));
         assertThat(summary.alertReasons()).isEmpty();
+        assertThat(repository.findRecentOperationalAlerts(10)).isEmpty();
     }
 
     @Test
@@ -140,6 +143,16 @@ class OperationOutboxRelayMonitoringServiceTest {
                 "warning consecutive relay failures",
                 "warning relay failure rate"
         );
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> {
+                    assertThat(alert.source()).isEqualTo("OUTBOX_RELAY");
+                    assertThat(alert.severity().name()).isEqualTo("WARNING");
+                    assertThat(alert.reasons()).contains(
+                            "warning consecutive relay failures",
+                            "warning relay failure rate"
+                    );
+                });
     }
 
     @Test
@@ -174,6 +187,13 @@ class OperationOutboxRelayMonitoringServiceTest {
         assertThat(summary.status()).isEqualTo(OutboxRelayHealthStatus.CRITICAL);
         assertThat(summary.consecutiveFailureCount()).isEqualTo(3);
         assertThat(summary.alertReasons()).contains("critical consecutive relay failures");
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> {
+                    assertThat(alert.source()).isEqualTo("OUTBOX_RELAY");
+                    assertThat(alert.severity().name()).isEqualTo("CRITICAL");
+                    assertThat(alert.reasons()).contains("critical consecutive relay failures");
+                });
     }
 
     @Test

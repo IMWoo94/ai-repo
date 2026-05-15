@@ -113,6 +113,7 @@
 - `0059-consumer-duplicate-spike-alert.md`: Consumer duplicate spike alert 작업 초안
 - `0060-consumer-duplicate-time-bucket-metric.md`: Consumer duplicate time bucket metric 작업 초안
 - `0061-consumer-delivery-metric-pruning.md`: Consumer delivery metric pruning 작업 초안
+- `0062-operational-alert-record-channel.md`: Operational alert record channel 작업 초안
 
 ## GitHub CLI로 생성
 

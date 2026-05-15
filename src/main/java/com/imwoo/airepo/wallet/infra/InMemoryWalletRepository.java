@@ -10,6 +10,7 @@ import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptReposit
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
+import com.imwoo.airepo.wallet.application.OperationalAlertRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -32,6 +33,7 @@ import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -63,6 +65,7 @@ public class InMemoryWalletRepository implements
         OperationOutboxConsumerDeliveryMetricRepository,
         OperationOutboxConsumerMonitoringRepository,
         OperationOutboxConsumerPruningRepository,
+        OperationalAlertRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -79,6 +82,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationOutboxRequeueRequestRecord>> outboxRequeueRequests = new HashMap<>();
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
+    private final List<OperationalAlert> operationalAlerts = new ArrayList<>();
     private final Map<String, OperationOutboxConsumerProcessedEvent> outboxConsumerProcessedEvents = new HashMap<>();
     private final Map<String, OperationOutboxConsumerReceipt> outboxConsumerReceipts = new HashMap<>();
     private final Map<Instant, ConsumerDeliveryBucket> outboxConsumerDeliveryBuckets = new HashMap<>();
@@ -93,6 +97,7 @@ public class InMemoryWalletRepository implements
     private int outboxRequeueRequestSequence = 0;
     private int outboxRelayRunSequence = 0;
     private int adminApiAccessAuditSequence = 0;
+    private int operationalAlertSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -296,6 +301,27 @@ public class InMemoryWalletRepository implements
                     }
                     return right.auditId().compareTo(left.auditId());
                 })
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized String nextOperationalAlertId() {
+        operationalAlertSequence += 1;
+        return "operational-alert-%03d".formatted(operationalAlertSequence);
+    }
+
+    @Override
+    public synchronized void saveOperationalAlert(OperationalAlert operationalAlert) {
+        operationalAlerts.add(operationalAlert);
+    }
+
+    @Override
+    public synchronized List<OperationalAlert> findRecentOperationalAlerts(int limit) {
+        return operationalAlerts.stream()
+                .sorted(Comparator.comparing(OperationalAlert::occurredAt)
+                        .thenComparing(OperationalAlert::alertId)
+                        .reversed())
                 .limit(limit)
                 .toList();
     }

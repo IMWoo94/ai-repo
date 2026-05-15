@@ -19,7 +19,7 @@ Consumer duplicate health를 누적 지표가 아니라 최근 window 기준으�
 ## 남은 일
 
 - pruning 실행 이력 저장
-- external alert channel
+- Slack/Webhook push channel
 - broker-specific duplicate baseline
 
 ## 관련 문서

@@ -32,7 +32,7 @@
 ## 남은 일
 
 - requeue 승인 워크플로우는 별도 작업으로 진행한다.
-- external alert channel과 consumer idempotency는 후속 후보로 유지한다.
+- Slack/Webhook push channel과 consumer idempotency는 후속 후보로 유지한다.
 - pruning 실행 이력 저장은 별도 운영 이력 작업으로 분리한다.
 
 ## 관련 문서

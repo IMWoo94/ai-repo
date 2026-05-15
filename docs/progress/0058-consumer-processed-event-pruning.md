@@ -20,7 +20,7 @@ Consumer dedupe 저장소와 receipt 저장소가 무기한 증가하지 않도�
 
 - pruning 실행 이력 저장
 - broker-specific replay window별 retention 권장값
-- external alert channel
+- Slack/Webhook push channel
 
 ## 관련 문서
 

@@ -18,6 +18,8 @@ import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
 import java.math.BigDecimal;
@@ -699,6 +701,36 @@ class JdbcWalletRepositoryTest {
                     assertThat(metrics.duplicateDeliveryCount()).isEqualTo(2);
                     assertThat(metrics.totalDeliveryCount()).isEqualTo(3);
                     assertThat(metrics.duplicateRate()).isEqualTo(2.0 / 3.0);
+                });
+    }
+
+    @Test
+    void operationalAlertsAreSavedAndListedRecently() {
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_CONSUMER",
+                OperationalAlertSeverity.CRITICAL,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                java.util.List.of("critical consumer duplicate delivery rate in health window")
+        ));
+
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .hasSize(2)
+                .first()
+                .satisfies(alert -> {
+                    assertThat(alert.alertId()).isEqualTo("operational-alert-002");
+                    assertThat(alert.source()).isEqualTo("OUTBOX_CONSUMER");
+                    assertThat(alert.severity()).isEqualTo(OperationalAlertSeverity.CRITICAL);
+                    assertThat(alert.reasons()).containsExactly(
+                            "critical consumer duplicate delivery rate in health window"
+                    );
                 });
     }
 

@@ -14,6 +14,7 @@ class OperationOutboxConsumerMonitoringServiceTest {
     private final OperationOutboxConsumerMonitoringService monitoringService = new OperationOutboxConsumerMonitoringService(
             repository,
             new OperationOutboxConsumerHealthPolicy(1, 20, 50, 5),
+            new OperationalAlertService(repository),
             Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
     );
 
@@ -27,6 +28,7 @@ class OperationOutboxConsumerMonitoringServiceTest {
         assertThat(summary.windowEndedAt()).isEqualTo(Instant.parse("2026-05-01T00:21:00Z"));
         assertThat(summary.windowDuplicateRate()).isZero();
         assertThat(summary.alertReasons()).containsExactly("no consumer event data in health window");
+        assertThat(repository.findRecentOperationalAlerts(10)).isEmpty();
     }
 
     @Test
@@ -44,6 +46,7 @@ class OperationOutboxConsumerMonitoringServiceTest {
         assertThat(summary.windowDuplicateDeliveryCount()).isZero();
         assertThat(summary.windowDuplicateRate()).isZero();
         assertThat(summary.alertReasons()).isEmpty();
+        assertThat(repository.findRecentOperationalAlerts(10)).isEmpty();
     }
 
     @Test
@@ -64,6 +67,14 @@ class OperationOutboxConsumerMonitoringServiceTest {
         assertThat(summary.windowDuplicateDeliveryCount()).isEqualTo(1);
         assertThat(summary.windowDuplicateRate()).isEqualTo(0.2);
         assertThat(summary.alertReasons()).containsExactly("warning consumer duplicate delivery rate in health window");
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> {
+                    assertThat(alert.alertId()).isEqualTo("operational-alert-001");
+                    assertThat(alert.source()).isEqualTo("OUTBOX_CONSUMER");
+                    assertThat(alert.severity().name()).isEqualTo("WARNING");
+                    assertThat(alert.reasons()).containsExactly("warning consumer duplicate delivery rate in health window");
+                });
     }
 
     @Test
@@ -82,6 +93,13 @@ class OperationOutboxConsumerMonitoringServiceTest {
         assertThat(summary.windowDuplicateDeliveryCount()).isEqualTo(2);
         assertThat(summary.windowDuplicateRate()).isEqualTo(2.0 / 3.0);
         assertThat(summary.alertReasons()).containsExactly("critical consumer duplicate delivery rate in health window");
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> {
+                    assertThat(alert.source()).isEqualTo("OUTBOX_CONSUMER");
+                    assertThat(alert.severity().name()).isEqualTo("CRITICAL");
+                    assertThat(alert.reasons()).containsExactly("critical consumer duplicate delivery rate in health window");
+                });
     }
 
     @Test

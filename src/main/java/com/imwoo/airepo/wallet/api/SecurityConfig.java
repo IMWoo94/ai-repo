@@ -44,7 +44,8 @@ public class SecurityConfig {
                                 "/api/v1/outbox-events/**",
                                 "/api/v1/outbox-consumer/**",
                                 "/api/v1/outbox-relay-runs/**",
-                                "/api/v1/admin-api-access-audits/**"
+                                "/api/v1/admin-api-access-audits/**",
+                                "/api/v1/operational-alerts/**"
                         )
                         .hasRole(AdminSecurityRole.OPERATOR.name())
                         .anyRequest()

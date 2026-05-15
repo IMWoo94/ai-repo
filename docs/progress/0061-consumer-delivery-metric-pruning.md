@@ -20,7 +20,7 @@ Consumer duplicate window metric 저장소가 무제한 증가하지 않도록 �
 
 - pruning 실행 이력 저장
 - broker-specific retention 권장값
-- external alert channel
+- Slack/Webhook push channel
 
 ## 관련 문서
 

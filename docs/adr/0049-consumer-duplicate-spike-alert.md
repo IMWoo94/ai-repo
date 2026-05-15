@@ -34,7 +34,7 @@ Consumer health summary API를 추가해 duplicate delivery rate 기준으로 `O
 
 - ADR-0050 적용 전까지는 누적 metric 기반 판정이었다. 현재는 최근 window 판정을 별도 time bucket metric으로 보강한다.
 - 낮은 traffic에서는 duplicate 1건이 rate를 크게 흔들 수 있어 `minDuplicateEventCount`로 노이즈를 줄인다.
-- 외부 alert channel은 아직 없다.
+- 운영 alert record channel은 ADR-0052에서 추가한다. Slack/Webhook push channel은 아직 없다.
 
 ## 검증 기준
 
@@ -46,5 +46,5 @@ Consumer health summary API를 추가해 duplicate delivery rate 기준으로 `O
 ## 후속 작업
 
 - delivery metric bucket retention/pruning 정책을 추가한다.
-- external alert channel을 연결한다.
+- Slack/Webhook push channel을 연결한다.
 - broker-specific adapter별 duplicate baseline을 문서화한다.

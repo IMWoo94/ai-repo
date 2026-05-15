@@ -172,6 +172,17 @@ CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     outcome VARCHAR(32) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operational_alerts (
+    alert_id VARCHAR(64) PRIMARY KEY,
+    source VARCHAR(64) NOT NULL,
+    severity VARCHAR(32) NOT NULL,
+    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    reasons TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_operational_alerts_occurred_at_id
+    ON operational_alerts (occurred_at DESC, alert_id DESC);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;
@@ -182,3 +193,4 @@ CREATE SEQUENCE IF NOT EXISTS outbox_requeue_audit_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_requeue_request_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_relay_run_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS admin_api_access_audit_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS operational_alert_id_seq START WITH 1;

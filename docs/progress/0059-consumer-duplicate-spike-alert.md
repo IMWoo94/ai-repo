@@ -20,7 +20,7 @@ Consumer duplicate delivery가 운영상 이상 징후인지 판단할 수 있�
 ## 남은 일
 
 - pruning 실행 이력 저장
-- external alert channel
+- Slack/Webhook push channel
 - broker-specific duplicate baseline
 
 ## 관련 문서

@@ -174,6 +174,14 @@ curl -H "X-Operator-Token: local-operator-token" \
   "http://localhost:8080/api/v1/outbox-consumer/health"
 ```
 
+Warning/Critical health 판정이 발생하면 운영 alert record가 저장됩니다. 최근 alert는 operator header와 함께 조회합니다.
+
+```bash
+curl -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/operational-alerts?limit=10"
+```
+
 ```bash
 curl -X POST \
   -H "X-Admin-Token: local-ops-token" \

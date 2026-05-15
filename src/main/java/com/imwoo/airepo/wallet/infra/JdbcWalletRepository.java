@@ -12,6 +12,7 @@ import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptReposit
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
+import com.imwoo.airepo.wallet.application.OperationalAlertRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -37,6 +38,8 @@ import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -78,6 +81,7 @@ public class JdbcWalletRepository implements
         OperationOutboxConsumerDeliveryMetricRepository,
         OperationOutboxConsumerMonitoringRepository,
         OperationOutboxConsumerPruningRepository,
+        OperationalAlertRepository,
         AdminApiAccessAuditRepository {
 
     private static final int LOCK_TIMEOUT_MILLIS = 1000;
@@ -725,6 +729,42 @@ public class JdbcWalletRepository implements
                         limit ?
                         """,
                 adminApiAccessAuditMapper(),
+                limit
+        );
+    }
+
+    @Override
+    public String nextOperationalAlertId() {
+        return nextId("operational-alert", "operational_alert_id_seq");
+    }
+
+    @Override
+    public void saveOperationalAlert(OperationalAlert operationalAlert) {
+        jdbcTemplate.update(
+                """
+                        insert into operational_alerts (
+                            alert_id, source, severity, occurred_at, reasons
+                        )
+                        values (?, ?, ?, ?, ?)
+                        """,
+                operationalAlert.alertId(),
+                operationalAlert.source(),
+                operationalAlert.severity().name(),
+                timestamp(operationalAlert.occurredAt()),
+                String.join("\n", operationalAlert.reasons())
+        );
+    }
+
+    @Override
+    public List<OperationalAlert> findRecentOperationalAlerts(int limit) {
+        return jdbcTemplate.query(
+                """
+                        select alert_id, source, severity, occurred_at, reasons
+                        from operational_alerts
+                        order by occurred_at desc, alert_id desc
+                        limit ?
+                        """,
+                operationalAlertMapper(),
                 limit
         );
     }
@@ -1792,6 +1832,16 @@ public class JdbcWalletRepository implements
                 resultSet.getString("operator_id"),
                 resultSet.getInt("status_code"),
                 AdminApiAccessOutcome.valueOf(resultSet.getString("outcome"))
+        );
+    }
+
+    private RowMapper<OperationalAlert> operationalAlertMapper() {
+        return (resultSet, rowNumber) -> new OperationalAlert(
+                resultSet.getString("alert_id"),
+                resultSet.getString("source"),
+                OperationalAlertSeverity.valueOf(resultSet.getString("severity")),
+                instant(resultSet, "occurred_at"),
+                List.of(resultSet.getString("reasons").split("\\n"))
         );
     }
 
