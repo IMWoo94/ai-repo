@@ -24,7 +24,8 @@
 | HTTP consumer duplicate no-op | 같은 broker event를 두 번 받아도 receipt side effect는 한 번만 저장된다 | API test, PostgreSQL scenario CI |
 | HTTP publish→consume loop | relay가 HTTP publisher로 consumer endpoint에 event를 보내고 receipt와 published 상태를 남긴다 | Spring Boot random port test |
 | Consumer monitoring API | processed, duplicate, receipt count와 최근 receipt를 operator 권한으로 조회한다 | API test, JDBC test |
-| Consumer duplicate health | duplicate delivery rate가 threshold를 넘으면 warning/critical health를 반환한다 | Service test, API test |
+| Consumer duplicate health | 최근 window duplicate delivery rate가 threshold를 넘으면 warning/critical health를 반환한다 | Service test, API test |
+| Consumer duplicate window metric | window 밖 bucket은 health 판정에서 제외한다 | Service test, JDBC test |
 | Consumer pruning API | 오래된 processed-event와 receipt만 admin 권한으로 삭제한다 | API test, service test, JDBC test |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
@@ -61,4 +62,4 @@
 - external alert channel E2E
 - release smoke script 또는 actuator health check
 - broker-specific Testcontainers contract scenario
-- duplicate time bucket metric scenario
+- delivery metric bucket pruning scenario

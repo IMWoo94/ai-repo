@@ -111,6 +111,7 @@
 - `0057-consumer-monitoring-admin-api.md`: Consumer monitoring admin API 작업 초안
 - `0058-consumer-processed-event-pruning.md`: Consumer processed event pruning 작업 초안
 - `0059-consumer-duplicate-spike-alert.md`: Consumer duplicate spike alert 작업 초안
+- `0060-consumer-duplicate-time-bucket-metric.md`: Consumer duplicate time bucket metric 작업 초안
 
 ## GitHub CLI로 생성
 

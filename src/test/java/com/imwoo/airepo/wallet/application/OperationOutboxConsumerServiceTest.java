@@ -15,6 +15,7 @@ class OperationOutboxConsumerServiceTest {
     private final OperationOutboxConsumerService service = new OperationOutboxConsumerService(
             repository,
             repository,
+            repository,
             Clock.fixed(Instant.parse("2026-05-01T00:05:00Z"), ZoneOffset.UTC)
     );
 
@@ -33,6 +34,14 @@ class OperationOutboxConsumerServiceTest {
                     assertThat(receipt.operationId()).isEqualTo("op-001");
                     assertThat(receipt.eventType()).isEqualTo("CHARGE_COMPLETED");
                     assertThat(receipt.receivedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                });
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-05-01T00:05:00Z"),
+                Instant.parse("2026-05-01T00:06:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isEqualTo(1);
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(1);
                 });
     }
 

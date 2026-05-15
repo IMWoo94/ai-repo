@@ -3,11 +3,13 @@ package com.imwoo.airepo.wallet.infra;
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerDeliveryMetricRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerPruningRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
@@ -47,6 +49,7 @@ import java.sql.ResultSet;
 import java.sql.SQLException;
 import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.Collections;
 import java.util.List;
 import java.util.Optional;
@@ -72,6 +75,7 @@ public class JdbcWalletRepository implements
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
+        OperationOutboxConsumerDeliveryMetricRepository,
         OperationOutboxConsumerMonitoringRepository,
         OperationOutboxConsumerPruningRepository,
         AdminApiAccessAuditRepository {
@@ -837,6 +841,74 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public void recordConsumerDeliveryMetric(Instant occurredAt, boolean duplicate) {
+        Instant bucketStartedAt = occurredAt.truncatedTo(ChronoUnit.MINUTES);
+        if (isPostgresDatabase()) {
+            jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_consumer_delivery_metrics (
+                                bucket_started_at,
+                                processed_delivery_count,
+                                duplicate_delivery_count,
+                                updated_at
+                            )
+                            values (?, ?, ?, ?)
+                            on conflict (bucket_started_at) do update
+                            set processed_delivery_count =
+                                    operation_outbox_consumer_delivery_metrics.processed_delivery_count + ?,
+                                duplicate_delivery_count =
+                                    operation_outbox_consumer_delivery_metrics.duplicate_delivery_count + ?,
+                                updated_at = ?
+                            """,
+                    timestamp(bucketStartedAt),
+                    duplicate ? 0 : 1,
+                    duplicate ? 1 : 0,
+                    timestamp(occurredAt),
+                    duplicate ? 0 : 1,
+                    duplicate ? 1 : 0,
+                    timestamp(occurredAt)
+            );
+            return;
+        }
+
+        int updatedRows = jdbcTemplate.update(
+                """
+                        update operation_outbox_consumer_delivery_metrics
+                        set processed_delivery_count = processed_delivery_count + ?,
+                            duplicate_delivery_count = duplicate_delivery_count + ?,
+                            updated_at = ?
+                        where bucket_started_at = ?
+                        """,
+                duplicate ? 0 : 1,
+                duplicate ? 1 : 0,
+                timestamp(occurredAt),
+                timestamp(bucketStartedAt)
+        );
+        if (updatedRows == 1) {
+            return;
+        }
+        try {
+            jdbcTemplate.update(
+                    """
+                            insert into operation_outbox_consumer_delivery_metrics (
+                                bucket_started_at,
+                                processed_delivery_count,
+                                duplicate_delivery_count,
+                                updated_at
+                            )
+                            values (?, ?, ?, ?)
+                            """,
+                    timestamp(bucketStartedAt),
+                    duplicate ? 0 : 1,
+                    duplicate ? 1 : 0,
+                    timestamp(occurredAt)
+            );
+        } catch (DuplicateKeyException exception) {
+            recordConsumerDeliveryMetric(occurredAt, duplicate);
+        }
+    }
+
+    @Override
     public OperationOutboxConsumerMetrics getConsumerMetrics() {
         return jdbcTemplate.queryForObject(
                 """
@@ -857,6 +929,31 @@ public class JdbcWalletRepository implements
                         nullableInstant(resultSet, "last_processed_at"),
                         nullableInstant(resultSet, "last_received_at")
                 )
+        );
+    }
+
+    @Override
+    public OperationOutboxConsumerWindowMetrics getConsumerWindowMetrics(
+            Instant windowStartedAt,
+            Instant windowEndedAt
+    ) {
+        return jdbcTemplate.queryForObject(
+                """
+                        select
+                            coalesce(sum(processed_delivery_count), 0) as processed_delivery_count,
+                            coalesce(sum(duplicate_delivery_count), 0) as duplicate_delivery_count
+                        from operation_outbox_consumer_delivery_metrics
+                        where bucket_started_at >= ?
+                          and bucket_started_at < ?
+                        """,
+                (resultSet, rowNumber) -> new OperationOutboxConsumerWindowMetrics(
+                        windowStartedAt,
+                        windowEndedAt,
+                        resultSet.getLong("processed_delivery_count"),
+                        resultSet.getLong("duplicate_delivery_count")
+                ),
+                timestamp(windowStartedAt),
+                timestamp(windowEndedAt)
         );
     }
 

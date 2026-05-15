@@ -160,7 +160,13 @@ AI_REPO_OPERATIONAL_LOG_PRUNING_FIXED_DELAY_MS=86400000 \
 
 Consumer dedupe/receipt pruning은 processed-event 30일, receipt 30일을 기본 보존 기간으로 사용합니다. 수동 실행은 admin header와 함께 호출합니다.
 
-Consumer duplicate health는 기본적으로 duplicate 5건 이상, duplicate delivery rate 20% 이상이면 `WARNING`, 50% 이상이면 `CRITICAL`로 판정합니다. 수동 조회는 operator header와 함께 호출합니다.
+Consumer duplicate health는 기본적으로 최근 5분 window에서 duplicate 5건 이상, duplicate delivery rate 20% 이상이면 `WARNING`, 50% 이상이면 `CRITICAL`로 판정합니다. 수동 조회는 operator header와 함께 호출합니다.
+
+```bash
+curl -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-consumer/window-metrics?minutes=5"
+```
 
 ```bash
 curl -H "X-Operator-Token: local-operator-token" \

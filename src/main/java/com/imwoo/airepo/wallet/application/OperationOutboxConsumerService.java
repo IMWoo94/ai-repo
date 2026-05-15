@@ -13,15 +13,18 @@ public class OperationOutboxConsumerService {
 
     private final OperationOutboxConsumerIdempotencyRepository idempotencyRepository;
     private final OperationOutboxConsumerReceiptRepository receiptRepository;
+    private final OperationOutboxConsumerDeliveryMetricRepository deliveryMetricRepository;
     private final Clock clock;
 
     public OperationOutboxConsumerService(
             OperationOutboxConsumerIdempotencyRepository idempotencyRepository,
             OperationOutboxConsumerReceiptRepository receiptRepository,
+            OperationOutboxConsumerDeliveryMetricRepository deliveryMetricRepository,
             Clock clock
     ) {
         this.idempotencyRepository = idempotencyRepository;
         this.receiptRepository = receiptRepository;
+        this.deliveryMetricRepository = deliveryMetricRepository;
         this.clock = clock;
     }
 
@@ -41,6 +44,7 @@ public class OperationOutboxConsumerService {
                 envelope.eventType(),
                 processedAt
         );
+        deliveryMetricRepository.recordConsumerDeliveryMetric(processedAt, !recorded);
         if (!recorded) {
             return result(envelope, false);
         }

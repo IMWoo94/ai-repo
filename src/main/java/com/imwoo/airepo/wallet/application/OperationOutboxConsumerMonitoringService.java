@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.application;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import org.springframework.stereotype.Service;
 public class OperationOutboxConsumerMonitoringService {
 
     private static final int MAX_RECEIPT_LIMIT = 100;
+    private static final int MAX_WINDOW_MINUTES = 1440;
 
     private final OperationOutboxConsumerMonitoringRepository monitoringRepository;
     private final OperationOutboxConsumerHealthPolicy healthPolicy;
@@ -30,6 +32,15 @@ public class OperationOutboxConsumerMonitoringService {
         return monitoringRepository.getConsumerMetrics();
     }
 
+    public OperationOutboxConsumerWindowMetrics getWindowMetrics(int minutes) {
+        if (minutes < 1 || minutes > MAX_WINDOW_MINUTES) {
+            throw new InvalidWalletOperationException("minutes must be between 1 and 1440");
+        }
+        Instant windowEndedAt = Instant.now(clock).truncatedTo(ChronoUnit.MINUTES).plus(1, ChronoUnit.MINUTES);
+        Instant windowStartedAt = windowEndedAt.minus(minutes, ChronoUnit.MINUTES);
+        return monitoringRepository.getConsumerWindowMetrics(windowStartedAt, windowEndedAt);
+    }
+
     public List<OperationOutboxConsumerReceipt> findRecentReceipts(int limit) {
         if (limit < 1 || limit > MAX_RECEIPT_LIMIT) {
             throw new InvalidWalletOperationException("limit must be between 1 and 100");
@@ -40,23 +51,30 @@ public class OperationOutboxConsumerMonitoringService {
     public OperationOutboxConsumerHealthSummary getHealthSummary() {
         OperationOutboxConsumerMetrics metrics = monitoringRepository.getConsumerMetrics();
         Instant evaluatedAt = Instant.now(clock);
+        OperationOutboxConsumerWindowMetrics windowMetrics = getWindowMetrics(Math.toIntExact(healthPolicy.windowMinutes()));
         long totalDeliveryCount = metrics.processedEventCount() + metrics.duplicateEventCount();
-        if (totalDeliveryCount == 0) {
+        double duplicateRate = totalDeliveryCount == 0 ? 0.0 : (double) metrics.duplicateEventCount() / totalDeliveryCount;
+        if (windowMetrics.totalDeliveryCount() == 0) {
             return new OperationOutboxConsumerHealthSummary(
                     evaluatedAt,
                     OperationOutboxConsumerHealthStatus.NO_DATA,
                     metrics.processedEventCount(),
                     metrics.duplicateEventCount(),
                     metrics.receiptCount(),
-                    0.0,
+                    duplicateRate,
+                    windowMetrics.windowStartedAt(),
+                    windowMetrics.windowEndedAt(),
+                    windowMetrics.processedDeliveryCount(),
+                    windowMetrics.duplicateDeliveryCount(),
+                    windowMetrics.duplicateRate(),
+                    healthPolicy.windowMinutes(),
                     healthPolicy.minDuplicateEventCount(),
                     healthPolicy.warningDuplicateRate(),
                     healthPolicy.criticalDuplicateRate(),
-                    List.of("no consumer event data")
+                    List.of("no consumer event data in health window")
             );
         }
-        double duplicateRate = (double) metrics.duplicateEventCount() / totalDeliveryCount;
-        List<String> alertReasons = alertReasons(metrics.duplicateEventCount(), duplicateRate);
+        List<String> alertReasons = alertReasons(windowMetrics.duplicateDeliveryCount(), windowMetrics.duplicateRate());
         return new OperationOutboxConsumerHealthSummary(
                 evaluatedAt,
                 status(alertReasons),
@@ -64,6 +82,12 @@ public class OperationOutboxConsumerMonitoringService {
                 metrics.duplicateEventCount(),
                 metrics.receiptCount(),
                 duplicateRate,
+                windowMetrics.windowStartedAt(),
+                windowMetrics.windowEndedAt(),
+                windowMetrics.processedDeliveryCount(),
+                windowMetrics.duplicateDeliveryCount(),
+                windowMetrics.duplicateRate(),
+                healthPolicy.windowMinutes(),
                 healthPolicy.minDuplicateEventCount(),
                 healthPolicy.warningDuplicateRate(),
                 healthPolicy.criticalDuplicateRate(),
@@ -77,9 +101,9 @@ public class OperationOutboxConsumerMonitoringService {
             return alertReasons;
         }
         if (duplicateRate >= healthPolicy.criticalDuplicateRate()) {
-            alertReasons.add("critical consumer duplicate delivery rate");
+            alertReasons.add("critical consumer duplicate delivery rate in health window");
         } else if (duplicateRate >= healthPolicy.warningDuplicateRate()) {
-            alertReasons.add("warning consumer duplicate delivery rate");
+            alertReasons.add("warning consumer duplicate delivery rate in health window");
         }
         return alertReasons;
     }

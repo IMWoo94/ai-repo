@@ -19,7 +19,7 @@ HTTP consumer가 처리한 event, duplicate no-op, receipt side effect를 운영
 ## 남은 일
 
 - broker replay window별 retention 권장값
-- duplicate time bucket metric
+- delivery metric bucket pruning
 - broker-specific adapter와 consumer metric 연결
 
 ## 관련 문서

@@ -2,10 +2,12 @@ package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerDeliveryMetricRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerPruningRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
@@ -39,6 +41,7 @@ import com.imwoo.airepo.wallet.domain.WalletAccountStatus;
 import com.imwoo.airepo.wallet.domain.WalletBalance;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -57,6 +60,7 @@ public class InMemoryWalletRepository implements
         OperationOutboxRelayRunRepository,
         OperationOutboxConsumerIdempotencyRepository,
         OperationOutboxConsumerReceiptRepository,
+        OperationOutboxConsumerDeliveryMetricRepository,
         OperationOutboxConsumerMonitoringRepository,
         OperationOutboxConsumerPruningRepository,
         AdminApiAccessAuditRepository {
@@ -77,6 +81,7 @@ public class InMemoryWalletRepository implements
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
     private final Map<String, OperationOutboxConsumerProcessedEvent> outboxConsumerProcessedEvents = new HashMap<>();
     private final Map<String, OperationOutboxConsumerReceipt> outboxConsumerReceipts = new HashMap<>();
+    private final Map<Instant, ConsumerDeliveryBucket> outboxConsumerDeliveryBuckets = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -346,6 +351,16 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized void recordConsumerDeliveryMetric(Instant occurredAt, boolean duplicate) {
+        Instant bucketStartedAt = occurredAt.truncatedTo(ChronoUnit.MINUTES);
+        ConsumerDeliveryBucket existing = outboxConsumerDeliveryBuckets.getOrDefault(
+                bucketStartedAt,
+                new ConsumerDeliveryBucket(0, 0)
+        );
+        outboxConsumerDeliveryBuckets.put(bucketStartedAt, existing.increment(duplicate));
+    }
+
+    @Override
     public synchronized OperationOutboxConsumerMetrics getConsumerMetrics() {
         Instant lastProcessedAt = outboxConsumerProcessedEvents.values().stream()
                 .map(OperationOutboxConsumerProcessedEvent::processedAt)
@@ -364,6 +379,27 @@ public class InMemoryWalletRepository implements
                 outboxConsumerReceipts.size(),
                 lastProcessedAt,
                 lastReceivedAt
+        );
+    }
+
+    @Override
+    public synchronized OperationOutboxConsumerWindowMetrics getConsumerWindowMetrics(
+            Instant windowStartedAt,
+            Instant windowEndedAt
+    ) {
+        long processedDeliveryCount = 0;
+        long duplicateDeliveryCount = 0;
+        for (Map.Entry<Instant, ConsumerDeliveryBucket> entry : outboxConsumerDeliveryBuckets.entrySet()) {
+            if (!entry.getKey().isBefore(windowStartedAt) && entry.getKey().isBefore(windowEndedAt)) {
+                processedDeliveryCount += entry.getValue().processedDeliveryCount();
+                duplicateDeliveryCount += entry.getValue().duplicateDeliveryCount();
+            }
+        }
+        return new OperationOutboxConsumerWindowMetrics(
+                windowStartedAt,
+                windowEndedAt,
+                processedDeliveryCount,
+                duplicateDeliveryCount
         );
     }
 
@@ -1114,5 +1150,18 @@ public class InMemoryWalletRepository implements
     private String nextOutboxRequeueRequestId() {
         outboxRequeueRequestSequence += 1;
         return "outbox-requeue-request-%03d".formatted(outboxRequeueRequestSequence);
+    }
+
+    private record ConsumerDeliveryBucket(
+            long processedDeliveryCount,
+            long duplicateDeliveryCount
+    ) {
+
+        ConsumerDeliveryBucket increment(boolean duplicate) {
+            if (duplicate) {
+                return new ConsumerDeliveryBucket(processedDeliveryCount, duplicateDeliveryCount + 1);
+            }
+            return new ConsumerDeliveryBucket(processedDeliveryCount + 1, duplicateDeliveryCount);
+        }
     }
 }

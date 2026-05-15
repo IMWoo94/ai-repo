@@ -65,3 +65,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0047 | Consumer Monitoring Admin API | Accepted |
 | ADR-0048 | Consumer Processed Event Pruning | Accepted |
 | ADR-0049 | Consumer Duplicate Spike Alert | Accepted |
+| ADR-0050 | Consumer Duplicate Time Bucket Metric | Accepted |

@@ -684,6 +684,25 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void consumerWindowMetricsCountsDeliveriesInsideWindow() {
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:01:30Z"), false);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:02:10Z"), true);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:02:50Z"), true);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:09:00Z"), true);
+
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isEqualTo(1);
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(2);
+                    assertThat(metrics.totalDeliveryCount()).isEqualTo(3);
+                    assertThat(metrics.duplicateRate()).isEqualTo(2.0 / 3.0);
+                });
+    }
+
+    @Test
     void deletesConsumerProcessedEventsAndReceiptsBeforeCutoff() {
         repository.recordProcessedEvent(
                 "outbox-001",

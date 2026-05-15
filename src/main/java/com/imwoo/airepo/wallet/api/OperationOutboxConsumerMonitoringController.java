@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.api;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerHealthSummary;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringService;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
 import java.util.List;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -23,6 +24,13 @@ public class OperationOutboxConsumerMonitoringController {
     @GetMapping("/metrics")
     public OperationOutboxConsumerMetrics getMetrics() {
         return monitoringService.getMetrics();
+    }
+
+    @GetMapping("/window-metrics")
+    public OperationOutboxConsumerWindowMetrics getWindowMetrics(
+            @RequestParam(defaultValue = "5") int minutes
+    ) {
+        return monitoringService.getWindowMetrics(minutes);
     }
 
     @GetMapping("/health")

@@ -9,6 +9,7 @@ Consumer duplicate delivery가 운영상 이상 징후인지 판단할 수 있�
 - `OperationOutboxConsumerHealthPolicy`, `Status`, `Summary`를 추가했다.
 - `GET /api/v1/outbox-consumer/health` API를 추가했다.
 - duplicate count와 duplicate rate 기준으로 `OK`, `WARNING`, `CRITICAL`, `NO_DATA`를 판정한다.
+- 0060 단계에서 최근 window 기반 time bucket metric으로 health 판정 기준을 보강했다.
 - 기본 threshold는 duplicate 5건 이상, warning 20%, critical 50%다.
 - threshold는 `ai-repo.outbox-consumer.health.*` 설정으로 조정할 수 있다.
 
@@ -18,7 +19,7 @@ Consumer duplicate delivery가 운영상 이상 징후인지 판단할 수 있�
 
 ## 남은 일
 
-- 최근 window 기반 duplicate spike metric
+- delivery metric bucket pruning
 - external alert channel
 - broker-specific duplicate baseline
 

@@ -27,7 +27,8 @@ import org.springframework.test.web.servlet.MockMvc;
 @TestPropertySource(properties = {
         "ai-repo.outbox-consumer.health.min-duplicate-event-count=1",
         "ai-repo.outbox-consumer.health.warning-duplicate-rate-percent=20",
-        "ai-repo.outbox-consumer.health.critical-duplicate-rate-percent=50"
+        "ai-repo.outbox-consumer.health.critical-duplicate-rate-percent=50",
+        "ai-repo.outbox-consumer.health.window-minutes=5"
 })
 class OperationOutboxConsumerMonitoringControllerTest {
 
@@ -65,6 +66,18 @@ class OperationOutboxConsumerMonitoringControllerTest {
                 .andExpect(jsonPath("$[0].idempotencyKey").value("outbox-001"))
                 .andExpect(jsonPath("$[0].operationId").value("op-001"))
                 .andExpect(jsonPath("$[0].eventType").value("CHARGE_COMPLETED"));
+
+        mockMvc.perform(get("/api/v1/outbox-consumer/window-metrics")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID)
+                        .param("minutes", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.windowStartedAt").value("2026-05-01T00:01:00Z"))
+                .andExpect(jsonPath("$.windowEndedAt").value("2026-05-01T00:06:00Z"))
+                .andExpect(jsonPath("$.processedDeliveryCount").value(1))
+                .andExpect(jsonPath("$.duplicateDeliveryCount").value(1))
+                .andExpect(jsonPath("$.totalDeliveryCount").value(2))
+                .andExpect(jsonPath("$.duplicateRate").value(0.5));
     }
 
     @Test
@@ -81,7 +94,13 @@ class OperationOutboxConsumerMonitoringControllerTest {
                 .andExpect(jsonPath("$.duplicateEventCount").value(1))
                 .andExpect(jsonPath("$.receiptCount").value(1))
                 .andExpect(jsonPath("$.duplicateRate").value(0.5))
-                .andExpect(jsonPath("$.alertReasons[0]").value("critical consumer duplicate delivery rate"));
+                .andExpect(jsonPath("$.windowStartedAt").value("2026-05-01T00:01:00Z"))
+                .andExpect(jsonPath("$.windowEndedAt").value("2026-05-01T00:06:00Z"))
+                .andExpect(jsonPath("$.windowProcessedDeliveryCount").value(1))
+                .andExpect(jsonPath("$.windowDuplicateDeliveryCount").value(1))
+                .andExpect(jsonPath("$.windowDuplicateRate").value(0.5))
+                .andExpect(jsonPath("$.alertReasons[0]")
+                        .value("critical consumer duplicate delivery rate in health window"));
     }
 
     @Test

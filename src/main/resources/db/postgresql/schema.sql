@@ -155,6 +155,13 @@ CREATE TABLE IF NOT EXISTS operation_outbox_consumer_receipts (
     received_at TIMESTAMP WITH TIME ZONE NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_delivery_metrics (
+    bucket_started_at TIMESTAMP WITH TIME ZONE PRIMARY KEY,
+    processed_delivery_count BIGINT NOT NULL DEFAULT 0,
+    duplicate_delivery_count BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     audit_id VARCHAR(64) PRIMARY KEY,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
