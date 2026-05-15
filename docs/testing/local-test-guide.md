@@ -65,6 +65,7 @@ npm run e2e
 - HTTP broker envelope와 idempotency header contract
 - consumer processed-event dedupe 저장소
 - HTTP consumer adapter duplicate no-op과 receipt side effect
+- HTTP publisher에서 consumer endpoint로 이어지는 publish→consume loop
 
 ### `./gradlew scenarioTest`
 

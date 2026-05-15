@@ -84,6 +84,7 @@
 | Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | broker-specific consumer adapter는 후속 과제 |
 | Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | TTL/pruning은 후속 과제 |
 | HTTP consumer adapter | 실제 endpoint에서 duplicate를 성공 no-op으로 처리하고 receipt side effect를 1회만 저장 | Kafka/RabbitMQ/SQS ack/nack 모델은 후속 과제 |
+| HTTP publish→consume loop | relay가 실제 HTTP publisher로 consumer endpoint에 보내는 흐름 검증 | durable broker semantics는 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보

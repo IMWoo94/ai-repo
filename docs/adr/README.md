@@ -61,3 +61,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0043 | Broker and Consumer Idempotency Contract | Accepted |
 | ADR-0044 | Consumer Processed Event Dedupe Store | Accepted |
 | ADR-0045 | HTTP Outbox Consumer Adapter | Accepted |
+| ADR-0046 | HTTP Publish Consume Loop Verification | Accepted |

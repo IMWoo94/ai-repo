@@ -19,6 +19,7 @@
 - Broker/consumer idempotency 계약
 - Consumer processed-event dedupe 저장소
 - HTTP outbox consumer adapter와 duplicate side effect 1회 검증
+- HTTP publish→consume loop 검증
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -34,6 +35,7 @@
 - Broker publish envelope는 schema version과 idempotency key를 포함하고, consumer는 같은 key를 unique 처리 기준으로 삼는다.
 - Consumer processed-event 저장소는 같은 `idempotencyKey`의 중복 기록을 막고 PostgreSQL 동시성 테스트로 검증된다.
 - HTTP consumer endpoint는 duplicate event를 성공 no-op으로 처리하고 receipt side effect를 한 번만 저장한다.
+- Outbox relay는 실제 HTTP publisher로 local consumer endpoint에 event를 보내고 receipt와 `PUBLISHED` 상태를 남기는 loop test를 가진다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
