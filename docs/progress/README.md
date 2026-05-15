@@ -74,10 +74,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0056 | [HTTP Publish Consume Loop](0056-http-publish-consume-loop.md) | 완료 |
 | 0057 | [Consumer Monitoring Admin API](0057-consumer-monitoring-admin-api.md) | 완료 |
 | 0058 | [Consumer Processed Event Pruning](0058-consumer-processed-event-pruning.md) | 완료 |
+| 0059 | [Consumer Duplicate Spike Alert](0059-consumer-duplicate-spike-alert.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Consumer Processed Event Pruning
+- 최신 완료 기능: Consumer Duplicate Spike Alert
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, external alert channel, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, duplicate time bucket metric, 실제 identity/role scope 연동

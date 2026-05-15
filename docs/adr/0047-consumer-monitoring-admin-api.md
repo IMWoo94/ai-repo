@@ -46,5 +46,5 @@ consumer processed-event 저장소에 `duplicate_count`를 추가하고, 운영 
 ## 후속 작업
 
 - broker replay window별 retention 권장값을 문서화한다.
-- consumer duplicate spike alert를 relay health와 같은 운영 health summary로 연결한다.
+- duplicate time bucket metric으로 최근 window 기준 spike를 계산한다.
 - broker-specific consumer adapter에도 같은 metric 계약을 적용한다.

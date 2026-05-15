@@ -18,11 +18,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest(classes = {AiRepoApplication.class, OperationOutboxConsumerMonitoringControllerTest.FixedClockConfig.class})
 @AutoConfigureMockMvc
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
+@TestPropertySource(properties = {
+        "ai-repo.outbox-consumer.health.min-duplicate-event-count=1",
+        "ai-repo.outbox-consumer.health.warning-duplicate-rate-percent=20",
+        "ai-repo.outbox-consumer.health.critical-duplicate-rate-percent=50"
+})
 class OperationOutboxConsumerMonitoringControllerTest {
 
     private static final String OPERATOR_TOKEN = "local-operator-token";
@@ -59,6 +65,23 @@ class OperationOutboxConsumerMonitoringControllerTest {
                 .andExpect(jsonPath("$[0].idempotencyKey").value("outbox-001"))
                 .andExpect(jsonPath("$[0].operationId").value("op-001"))
                 .andExpect(jsonPath("$[0].eventType").value("CHARGE_COMPLETED"));
+    }
+
+    @Test
+    void returnsConsumerHealthSummary() throws Exception {
+        consumeEvent().andExpect(status().isAccepted());
+        consumeEvent().andExpect(status().isAccepted());
+
+        mockMvc.perform(get("/api/v1/outbox-consumer/health")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CRITICAL"))
+                .andExpect(jsonPath("$.processedEventCount").value(1))
+                .andExpect(jsonPath("$.duplicateEventCount").value(1))
+                .andExpect(jsonPath("$.receiptCount").value(1))
+                .andExpect(jsonPath("$.duplicateRate").value(0.5))
+                .andExpect(jsonPath("$.alertReasons[0]").value("critical consumer duplicate delivery rate"));
     }
 
     @Test

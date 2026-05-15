@@ -19,7 +19,7 @@ Outbox relay가 HTTP publisher로 event를 발행하고, 실제 HTTP consumer en
 
 - broker-specific Testcontainers publish→consume loop
 - local smoke에 HTTP consumer loop 추가
-- consumer duplicate spike alert
+- duplicate time bucket metric
 
 ## 관련 문서
 

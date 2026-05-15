@@ -1,0 +1,92 @@
+package com.imwoo.airepo.wallet.application;
+
+import static org.assertj.core.api.Assertions.assertThat;
+
+import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
+import java.time.Clock;
+import java.time.Instant;
+import java.time.ZoneOffset;
+import org.junit.jupiter.api.Test;
+
+class OperationOutboxConsumerMonitoringServiceTest {
+
+    private final InMemoryWalletRepository repository = new InMemoryWalletRepository();
+    private final OperationOutboxConsumerMonitoringService monitoringService = new OperationOutboxConsumerMonitoringService(
+            repository,
+            new OperationOutboxConsumerHealthPolicy(1, 20, 50),
+            Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
+    );
+
+    @Test
+    void returnsNoDataHealthSummaryWhenConsumerEventDoesNotExist() {
+        OperationOutboxConsumerHealthSummary summary = monitoringService.getHealthSummary();
+
+        assertThat(summary.status()).isEqualTo(OperationOutboxConsumerHealthStatus.NO_DATA);
+        assertThat(summary.duplicateRate()).isZero();
+        assertThat(summary.alertReasons()).containsExactly("no consumer event data");
+    }
+
+    @Test
+    void returnsOkHealthSummaryWhenDuplicateRateIsBelowThreshold() {
+        recordProcessed("outbox-001");
+        recordProcessed("outbox-002");
+
+        OperationOutboxConsumerHealthSummary summary = monitoringService.getHealthSummary();
+
+        assertThat(summary.status()).isEqualTo(OperationOutboxConsumerHealthStatus.OK);
+        assertThat(summary.processedEventCount()).isEqualTo(2);
+        assertThat(summary.duplicateEventCount()).isZero();
+        assertThat(summary.duplicateRate()).isZero();
+        assertThat(summary.alertReasons()).isEmpty();
+    }
+
+    @Test
+    void returnsWarningWhenDuplicateRateReachesWarningThreshold() {
+        recordProcessed("outbox-001");
+        recordDuplicate("outbox-001");
+        recordProcessed("outbox-002");
+        recordProcessed("outbox-003");
+        recordProcessed("outbox-004");
+
+        OperationOutboxConsumerHealthSummary summary = monitoringService.getHealthSummary();
+
+        assertThat(summary.status()).isEqualTo(OperationOutboxConsumerHealthStatus.WARNING);
+        assertThat(summary.processedEventCount()).isEqualTo(4);
+        assertThat(summary.duplicateEventCount()).isEqualTo(1);
+        assertThat(summary.duplicateRate()).isEqualTo(0.2);
+        assertThat(summary.alertReasons()).containsExactly("warning consumer duplicate delivery rate");
+    }
+
+    @Test
+    void returnsCriticalWhenDuplicateRateReachesCriticalThreshold() {
+        recordProcessed("outbox-001");
+        recordDuplicate("outbox-001");
+        recordDuplicate("outbox-001");
+
+        OperationOutboxConsumerHealthSummary summary = monitoringService.getHealthSummary();
+
+        assertThat(summary.status()).isEqualTo(OperationOutboxConsumerHealthStatus.CRITICAL);
+        assertThat(summary.processedEventCount()).isEqualTo(1);
+        assertThat(summary.duplicateEventCount()).isEqualTo(2);
+        assertThat(summary.duplicateRate()).isEqualTo(2.0 / 3.0);
+        assertThat(summary.alertReasons()).containsExactly("critical consumer duplicate delivery rate");
+    }
+
+    private void recordProcessed(String outboxEventId) {
+        repository.recordProcessedEvent(
+                outboxEventId,
+                outboxEventId,
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:05:00Z")
+        );
+    }
+
+    private void recordDuplicate(String outboxEventId) {
+        repository.recordProcessedEvent(
+                outboxEventId,
+                outboxEventId,
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:06:00Z")
+        );
+    }
+}

@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.api;
 
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerHealthSummary;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringService;
 import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
@@ -22,6 +23,11 @@ public class OperationOutboxConsumerMonitoringController {
     @GetMapping("/metrics")
     public OperationOutboxConsumerMetrics getMetrics() {
         return monitoringService.getMetrics();
+    }
+
+    @GetMapping("/health")
+    public OperationOutboxConsumerHealthSummary getHealth() {
+        return monitoringService.getHealthSummary();
     }
 
     @GetMapping("/receipts")

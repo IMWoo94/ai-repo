@@ -31,6 +31,7 @@
 - HTTP outbox consumer adapter와 publish→consume loop
 - Consumer monitoring admin API
 - Consumer processed-event pruning
+- Consumer duplicate spike alert
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
@@ -59,5 +60,5 @@
 
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
-- consumer duplicate spike alert
+- duplicate time bucket metric
 - external alert channel

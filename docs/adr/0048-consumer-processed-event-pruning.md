@@ -47,4 +47,4 @@ Consumer processed-event와 consumer receipt를 별도 consumer pruning 정책�
 
 - broker-specific replay window에 맞춘 retention 권장값을 문서화한다.
 - pruning 실행 이력을 별도 운영 이력으로 저장한다.
-- consumer duplicate spike alert와 health summary를 추가한다.
+- duplicate attempt history 또는 time bucket metric을 추가한다.
