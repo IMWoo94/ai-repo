@@ -34,6 +34,7 @@ import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -317,6 +318,22 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized boolean existsOperationalAlertBetween(
+            String source,
+            OperationalAlertSeverity severity,
+            List<String> reasons,
+            Instant since,
+            Instant until
+    ) {
+        return operationalAlerts.stream()
+                .anyMatch(alert -> alert.source().equals(source)
+                        && alert.severity() == severity
+                        && alert.reasons().equals(reasons)
+                        && !alert.occurredAt().isBefore(since)
+                        && !alert.occurredAt().isAfter(until));
+    }
+
+    @Override
     public synchronized List<OperationalAlert> findRecentOperationalAlerts(int limit) {
         return operationalAlerts.stream()
                 .sorted(Comparator.comparing(OperationalAlert::occurredAt)
@@ -324,6 +341,13 @@ public class InMemoryWalletRepository implements
                         .reversed())
                 .limit(limit)
                 .toList();
+    }
+
+    @Override
+    public synchronized int deleteOperationalAlertsOccurredBefore(Instant cutoff) {
+        int beforeSize = operationalAlerts.size();
+        operationalAlerts.removeIf(alert -> alert.occurredAt().isBefore(cutoff));
+        return beforeSize - operationalAlerts.size();
     }
 
     @Override

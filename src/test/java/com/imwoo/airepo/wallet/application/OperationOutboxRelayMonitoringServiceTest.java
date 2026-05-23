@@ -16,7 +16,8 @@ class OperationOutboxRelayMonitoringServiceTest {
     private final OperationOutboxRelayMonitoringService monitoringService = new OperationOutboxRelayMonitoringService(
             repository,
             new OutboxRelayHealthPolicy(5, 2, 3, 50, 15),
-            new OperationalAlertService(repository),
+            new OperationalAlertService(repository, new OperationalAlertPolicy(15, 30), operationalAlert -> {
+            }),
             Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
     );
 

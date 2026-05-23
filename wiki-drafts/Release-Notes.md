@@ -35,6 +35,8 @@
 - Consumer duplicate time bucket metric
 - Consumer delivery metric pruning
 - Operational alert record channel
+- Operational alert suppression and pruning
+- Slack webhook operational alert publisher
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
@@ -54,7 +56,7 @@
 
 ## 알려진 제약
 
-- Slack/Webhook push alert channel은 아직 없다.
+- Slack webhook 발행 실패 record와 재시도 정책은 아직 없다.
 - token과 operator identity는 local header 기반이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
@@ -64,6 +66,5 @@
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
-- alert dedupe/suppression
-- alert record pruning
-- Slack/Webhook adapter
+- Slack 발행 실패 record와 재시도 정책
+- 운영 alert 화면 연결

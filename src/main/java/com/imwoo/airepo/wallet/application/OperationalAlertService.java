@@ -13,12 +13,20 @@ public class OperationalAlertService {
     private static final int MAX_ALERT_LIMIT = 100;
 
     private final OperationalAlertRepository operationalAlertRepository;
+    private final OperationalAlertPolicy operationalAlertPolicy;
+    private final OperationalAlertPublisher operationalAlertPublisher;
 
-    public OperationalAlertService(OperationalAlertRepository operationalAlertRepository) {
+    public OperationalAlertService(
+            OperationalAlertRepository operationalAlertRepository,
+            OperationalAlertPolicy operationalAlertPolicy,
+            OperationalAlertPublisher operationalAlertPublisher
+    ) {
         this.operationalAlertRepository = operationalAlertRepository;
+        this.operationalAlertPolicy = operationalAlertPolicy;
+        this.operationalAlertPublisher = operationalAlertPublisher;
     }
 
-    public void publishHealthAlert(String source, String status, Instant occurredAt, List<String> reasons) {
+    public synchronized void publishHealthAlert(String source, String status, Instant occurredAt, List<String> reasons) {
         if (reasons.isEmpty()) {
             return;
         }
@@ -26,13 +34,25 @@ public class OperationalAlertService {
         if (severity == null) {
             return;
         }
-        operationalAlertRepository.saveOperationalAlert(new OperationalAlert(
+        List<String> alertReasons = List.copyOf(reasons);
+        if (operationalAlertRepository.existsOperationalAlertBetween(
+                source,
+                severity,
+                alertReasons,
+                occurredAt.minus(operationalAlertPolicy.suppressionWindow()),
+                occurredAt
+        )) {
+            return;
+        }
+        OperationalAlert operationalAlert = new OperationalAlert(
                 operationalAlertRepository.nextOperationalAlertId(),
                 source,
                 severity,
                 occurredAt,
-                reasons
-        ));
+                alertReasons
+        );
+        operationalAlertRepository.saveOperationalAlert(operationalAlert);
+        publishExternalAlert(operationalAlert);
     }
 
     public List<OperationalAlert> findRecentAlerts(int limit) {
@@ -51,5 +71,13 @@ public class OperationalAlertService {
             return OperationalAlertSeverity.CRITICAL;
         }
         return null;
+    }
+
+    private void publishExternalAlert(OperationalAlert operationalAlert) {
+        try {
+            operationalAlertPublisher.publish(operationalAlert);
+        } catch (RuntimeException ignored) {
+            // Alert records are the local source of truth. External notification failures must not fail health APIs.
+        }
     }
 }

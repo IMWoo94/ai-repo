@@ -6,7 +6,9 @@ public record OperationalLogPruningResult(
         Instant prunedAt,
         Instant relayRunCutoff,
         Instant adminAccessAuditCutoff,
+        Instant operationalAlertCutoff,
         int deletedRelayRunCount,
-        int deletedAdminAccessAuditCount
+        int deletedAdminAccessAuditCount,
+        int deletedOperationalAlertCount
 ) {
 }

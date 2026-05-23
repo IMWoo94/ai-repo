@@ -1,11 +1,20 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-if [[ -n "${BASE_REF:-}" ]]; then
+if ! git rev-parse --is-inside-work-tree >/dev/null 2>&1; then
+  echo "FAIL: scripts/check-dev-rules.sh must run inside a git worktree"
+  exit 1
+fi
+
+if [[ -n "${AI_REPO_DEV_RULES_BASE:-}" ]]; then
+  diff_range="${AI_REPO_DEV_RULES_BASE}..HEAD"
+elif [[ -n "${BASE_REF:-}" ]]; then
   diff_range="${BASE_REF}..HEAD"
 elif [[ -n "${GITHUB_BASE_REF:-}" ]]; then
   git fetch origin "${GITHUB_BASE_REF}" --depth=1 >/dev/null 2>&1 || true
   diff_range="origin/${GITHUB_BASE_REF}...HEAD"
+elif git rev-parse --verify origin/main >/dev/null 2>&1; then
+  diff_range="$(git merge-base HEAD origin/main)..HEAD"
 else
   diff_range="HEAD~1..HEAD"
 fi
@@ -15,6 +24,7 @@ changed_files="$(
     git diff --name-only "${diff_range}" 2>/dev/null || true
     git diff --name-only --cached
     git diff --name-only
+    git ls-files --others --exclude-standard
   } | sort -u
 )"
 

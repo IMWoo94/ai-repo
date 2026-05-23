@@ -24,6 +24,8 @@ jobs:
           fetch-depth: 0
 
       - name: Run dev rules check
+        env:
+          AI_REPO_DEV_RULES_BASE: ${{ github.event_name == 'push' && github.event.before || '' }}
         run: scripts/check-dev-rules.sh
 
   gradle-check:

@@ -14,7 +14,8 @@ class OperationOutboxConsumerMonitoringServiceTest {
     private final OperationOutboxConsumerMonitoringService monitoringService = new OperationOutboxConsumerMonitoringService(
             repository,
             new OperationOutboxConsumerHealthPolicy(1, 20, 50, 5),
-            new OperationalAlertService(repository),
+            new OperationalAlertService(repository, new OperationalAlertPolicy(15, 30), operationalAlert -> {
+            }),
             Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
     );
 

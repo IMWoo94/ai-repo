@@ -253,6 +253,8 @@ X-Operator-Id: local-operator
 - consumer 최근 window delivery 지표는 `GET /api/v1/outbox-consumer/window-metrics?minutes=5`에서 조회한다.
 - consumer duplicate health summary와 alert 판정은 최근 window 기준으로 `GET /api/v1/outbox-consumer/health`에서 조회한다.
 - warning/critical health로 저장된 운영 alert는 `GET /api/v1/operational-alerts?limit=10`에서 조회한다.
+- Slack webhook push를 로컬에서 확인하려면 `AI_REPO_OPERATIONAL_ALERT_PUBLISHER_TYPE=slack-webhook`, `AI_REPO_OPERATIONAL_ALERT_SLACK_WEBHOOK_URL=<webhook-url>`을 설정한다.
+- 실제 Slack webhook live test는 기본 skip이며, `AI_REPO_LIVE_SLACK_TEST=true ./gradlew test --tests '*SlackWebhookOperationalAlertPublisherLiveTest' --rerun-tasks`로 명시 실행한다.
 - consumer dedupe/receipt/delivery metric pruning은 `POST /api/v1/outbox-consumer/pruning-runs`로 수동 실행한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.

@@ -27,6 +27,9 @@
 | Consumer duplicate health | 최근 window duplicate delivery rate가 threshold를 넘으면 warning/critical health를 반환한다 | Service test, API test |
 | Consumer duplicate window metric | window 밖 bucket은 health 판정에서 제외한다 | Service test, JDBC test |
 | Operational alert record | warning/critical health 판정은 운영 alert record로 저장된다 | Service test, API test, JDBC test |
+| Operational alert suppression | 같은 source/severity/reasons alert는 suppression window 안에서 중복 저장되지 않는다 | Service test, JDBC test |
+| Operational alert pruning | 오래된 alert record는 operational log pruning에서 cutoff 기준으로 삭제된다 | Service test, API test, JDBC test |
+| Slack alert push | 설정 시 operational alert가 Slack Incoming Webhook 호환 payload로 전송된다 | Contract test, configuration test |
 | Consumer pruning API | 오래된 processed-event, receipt, delivery metric bucket만 admin 권한으로 삭제한다 | API test, service test, JDBC test |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
@@ -60,7 +63,8 @@
 
 ## 남은 QA 후보
 
-- Slack/Webhook alert channel E2E
+- Slack 발행 실패 record와 재시도 scenario
 - release smoke script 또는 actuator health check
 - broker-specific Testcontainers contract scenario
 - pruning run history scenario
+- 운영 alert 화면 scenario

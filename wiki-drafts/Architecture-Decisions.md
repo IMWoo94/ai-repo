@@ -75,6 +75,8 @@
    - ADR-0050 Consumer Duplicate Time Bucket Metric
    - ADR-0051 Consumer Delivery Metric Pruning
    - ADR-0052 Operational Alert Record Channel
+   - ADR-0053 Operational Alert Suppression and Pruning
+   - ADR-0054 Slack Webhook Operational Alert Publisher
 
 ## 중요한 트레이드오프
 
@@ -97,7 +99,9 @@
 | Consumer duplicate spike alert | duplicate delivery rate 기준으로 health를 판정 | push alert는 후속 과제 |
 | Consumer duplicate time bucket metric | 최근 window duplicate delivery rate를 분 단위 bucket으로 계산 | 초 단위 spike 정밀도 |
 | Consumer delivery metric pruning | delivery metric bucket을 기존 consumer pruning run에서 함께 정리 | pruning run 이력 저장은 후속 과제 |
-| Operational alert record channel | warning/critical health를 운영 alert record로 저장 | Slack/Webhook push와 dedupe는 후속 과제 |
+| Operational alert record channel | warning/critical health를 운영 alert record로 저장 | Slack/Webhook push는 후속 과제 |
+| Operational alert suppression/pruning | 같은 alert의 짧은 시간 중복 저장을 막고 보존 기간 기준으로 삭제 | suppression 기준이 reason 문자열에 의존 |
+| Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
@@ -105,5 +109,5 @@
 - broker-specific adapter와 Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
-- alert dedupe/suppression과 Slack/Webhook adapter
+- Slack 발행 실패 record와 재시도 정책
 - 실제 운영자 identity와 role scope 분리

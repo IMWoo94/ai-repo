@@ -26,6 +26,8 @@
 - Consumer duplicate time bucket metric
 - Consumer delivery metric pruning
 - Operational alert record channel
+- Operational alert suppression and pruning
+- Slack webhook operational alert publisher
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
@@ -45,6 +47,8 @@
 - 운영자는 consumer processed count, duplicate count, receipt count와 최근 receipt를 조회할 수 있다.
 - 운영자는 오래된 consumer processed-event, receipt, delivery metric bucket을 보존 기간 기준으로 pruning할 수 있다.
 - 운영자는 consumer duplicate delivery rate 기준의 `OK`, `WARNING`, `CRITICAL`, `NO_DATA` health를 최근 window 기준으로 조회할 수 있다.
+- 같은 operational alert는 suppression window 안에서 중복 저장되지 않고, 오래된 alert record는 operational log pruning에서 삭제된다.
+- 설정 시 warning/critical operational alert는 Slack Incoming Webhook 호환 endpoint로 push된다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
 - 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
@@ -79,7 +83,7 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 ## 알려진 제약
 
-- Slack/Webhook push alert channel은 아직 없다.
+- Slack webhook 발행 실패 record와 재시도 정책은 아직 없다.
 - token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki 동기화는 아직 수동 후보 문서 수준이다.
@@ -95,7 +99,6 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
-- alert dedupe/suppression
-- alert record pruning
-- Slack/Webhook adapter
+- Slack 발행 실패 record와 재시도 정책
 - 실제 identity/role scope 연동
+- 운영 alert 화면 연결

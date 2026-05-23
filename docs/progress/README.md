@@ -78,10 +78,12 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0060 | [Consumer Duplicate Time Bucket Metric](0060-consumer-duplicate-time-bucket-metric.md) | 완료 |
 | 0061 | [Consumer Delivery Metric Pruning](0061-consumer-delivery-metric-pruning.md) | 완료 |
 | 0062 | [Operational Alert Record Channel](0062-operational-alert-record-channel.md) | 완료 |
+| 0063 | [Operational Alert Suppression and Pruning](0063-operational-alert-suppression-pruning.md) | 완료 |
+| 0064 | [Slack Webhook Operational Alert Publisher](0064-slack-webhook-operational-alert-publisher.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Operational Alert Record Channel
+- 최신 완료 기능: Slack Webhook Operational Alert Publisher
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, alert dedupe/suppression, alert record pruning, Slack/Webhook adapter, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결

@@ -169,6 +169,10 @@ Outbox relay scheduler는 기본 비활성화입니다. 자동 발행을 로컬�
 
 Operational log pruning scheduler도 기본 비활성화입니다. 자동 pruning을 로컬에서 확인하려면 `AI_REPO_OPERATIONAL_LOG_PRUNING_SCHEDULER_ENABLED=true`를 설정합니다. Relay run 기본 보존 기간은 30일, admin access audit 기본 보존 기간은 180일입니다.
 
+Operational alert는 같은 source/severity/reasons 조합을 기본 15분 동안 중복 저장하지 않습니다. suppression window와 보존 기간은 `AI_REPO_OPERATIONAL_ALERT_SUPPRESSION_WINDOW_MINUTES`, `AI_REPO_OPERATIONAL_ALERT_RETENTION_DAYS`로 조정합니다. 오래된 alert record는 operational log pruning 실행 시 함께 삭제됩니다.
+
+Slack Incoming Webhook 호환 alert push는 기본 비활성화입니다. 로컬에서 확인하려면 `AI_REPO_OPERATIONAL_ALERT_PUBLISHER_TYPE=slack-webhook`, `AI_REPO_OPERATIONAL_ALERT_SLACK_WEBHOOK_URL=<webhook-url>`을 설정합니다. Slack 발행 실패는 health API와 alert record 저장을 실패시키지 않습니다.
+
 Consumer pruning scheduler도 기본 비활성화입니다. 자동 pruning을 로컬에서 확인하려면 `AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_ENABLED=true`를 설정합니다. Processed-event, receipt, delivery metric bucket 기본 보존 기간은 각각 30일입니다. 실제 broker를 연결할 때는 dedupe 보존 기간을 broker replay 가능 기간보다 길게 잡아야 합니다.
 
 충전/송금은 `KRW` 단일 통화와 멱등키를 사용합니다. 원장/감사 로그는 Issue #7 기준으로 확장 중이며, 1차 범위에서는 인메모리 조회 API로 검증합니다.

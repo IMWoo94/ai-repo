@@ -37,7 +37,8 @@ public class OperationalLogPruningScheduler {
     public OperationalLogPruningResult runOnce() {
         return operationalLogPruningService.prune(
                 operationalLogPruningPolicy.relayRunRetention(),
-                operationalLogPruningPolicy.adminAccessAuditRetention()
+                operationalLogPruningPolicy.adminAccessAuditRetention(),
+                operationalLogPruningPolicy.operationalAlertRetention()
         );
     }
 }

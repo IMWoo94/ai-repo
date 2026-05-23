@@ -735,6 +735,45 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void operationalAlertsSupportDuplicateLookupAndPruning() {
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-04-30T23:59:59Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+
+        assertThat(repository.existsOperationalAlertBetween(
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                java.util.List.of("warning relay failure rate"),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                Instant.parse("2026-05-01T00:15:00Z")
+        )).isTrue();
+        assertThat(repository.existsOperationalAlertBetween(
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                java.util.List.of("warning relay failure rate"),
+                Instant.parse("2026-04-30T23:00:00Z"),
+                Instant.parse("2026-04-30T23:30:00Z")
+        )).isFalse();
+
+        assertThat(repository.deleteOperationalAlertsOccurredBefore(Instant.parse("2026-05-01T00:00:00Z")))
+                .isEqualTo(1);
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> assertThat(alert.alertId()).isEqualTo("operational-alert-002"));
+    }
+
+    @Test
     void deletesConsumerProcessedEventsAndReceiptsBeforeCutoff() {
         repository.recordProcessedEvent(
                 "outbox-001",

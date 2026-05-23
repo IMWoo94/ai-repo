@@ -756,6 +756,34 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public boolean existsOperationalAlertBetween(
+            String source,
+            OperationalAlertSeverity severity,
+            List<String> reasons,
+            Instant since,
+            Instant until
+    ) {
+        Integer count = jdbcTemplate.queryForObject(
+                """
+                        select count(*)
+                        from operational_alerts
+                        where source = ?
+                          and severity = ?
+                          and reasons = ?
+                          and occurred_at >= ?
+                          and occurred_at <= ?
+                        """,
+                Integer.class,
+                source,
+                severity.name(),
+                String.join("\n", reasons),
+                timestamp(since),
+                timestamp(until)
+        );
+        return count != null && count > 0;
+    }
+
+    @Override
     public List<OperationalAlert> findRecentOperationalAlerts(int limit) {
         return jdbcTemplate.query(
                 """
@@ -766,6 +794,14 @@ public class JdbcWalletRepository implements
                         """,
                 operationalAlertMapper(),
                 limit
+        );
+    }
+
+    @Override
+    public int deleteOperationalAlertsOccurredBefore(Instant cutoff) {
+        return jdbcTemplate.update(
+                "delete from operational_alerts where occurred_at < ?",
+                timestamp(cutoff)
         );
     }
 
