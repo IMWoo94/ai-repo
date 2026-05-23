@@ -118,12 +118,13 @@ GitHub 작업 템플릿:
 ./gradlew scenarioTest
 ./gradlew postgresScenarioTest
 ./gradlew check
+scripts/check-dev-rules.sh
 cd frontend && npm run test
 cd frontend && npm run build
 cd frontend && npm run e2e
 ```
 
-현재 브랜치에는 Gradle Wrapper와 React/Vite 프론트가 포함되어 있으므로 위 명령을 표준 품질 게이트로 사용합니다. `test`는 단위/API/저장소 중심의 빠른 회귀 게이트이고, `scenarioTest`는 대표 사용자/운영 흐름을 검증하는 시나리오 게이트입니다. `postgresScenarioTest`는 Docker/Testcontainers 기반 실제 PostgreSQL profile 대표 흐름을 검증합니다. `frontend` unit test는 React 상태와 API payload 회귀를 빠르게 검증하고, `frontend` build는 TypeScript/Vite smoke gate이며, `frontend` E2E는 브라우저에서 Vite proxy와 Spring Boot API 연결을 검증합니다.
+현재 브랜치에는 Gradle Wrapper와 React/Vite 프론트가 포함되어 있으므로 위 명령을 표준 품질 게이트로 사용합니다. `test`는 단위/API/저장소 중심의 빠른 회귀 게이트이고, `scenarioTest`는 대표 사용자/운영 흐름을 검증하는 시나리오 게이트입니다. `postgresScenarioTest`는 Docker/Testcontainers 기반 실제 PostgreSQL profile 대표 흐름을 검증합니다. `scripts/check-dev-rules.sh`는 코드, DB, 프론트, CI/script 변경이 문서와 테스트 갱신 없이 들어오는지 사전에 확인합니다. `frontend` unit test는 React 상태와 API payload 회귀를 빠르게 검증하고, `frontend` build는 TypeScript/Vite smoke gate이며, `frontend` E2E는 브라우저에서 Vite proxy와 Spring Boot API 연결을 검증합니다.
 
 로컬 테스트 실행 순서와 실패 대응은 [Local Test Guide](docs/testing/local-test-guide.md)를 따릅니다.
 시나리오 테스트 추가 기준은 [Scenario Test Strategy](docs/testing/scenario-test-strategy.md)를 따릅니다.
