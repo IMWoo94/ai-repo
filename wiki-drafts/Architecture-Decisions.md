@@ -59,6 +59,24 @@
    - ADR-0033 Outbox Relay Health Metrics Alert
    - ADR-0034 Spring Security Role Model
    - ADR-0035 HTTP Outbox Broker Adapter
+   - ADR-0037 Operator/Admin Token Split
+   - ADR-0038 Requeue Approval Workflow
+   - ADR-0039 Dev Rules Automatic Sync Check
+   - ADR-0040 Direct Requeue API Deprecation
+   - ADR-0041 Requeue State Transition Atomicity
+   - ADR-0042 Outbox Claim Guarded Result Update
+   - ADR-0043 Broker and Consumer Idempotency Contract
+   - ADR-0044 Consumer Processed Event Dedupe Store
+   - ADR-0045 HTTP Outbox Consumer Adapter
+   - ADR-0046 HTTP Publish Consume Loop Verification
+   - ADR-0047 Consumer Monitoring Admin API
+   - ADR-0048 Consumer Processed Event Pruning
+   - ADR-0049 Consumer Duplicate Spike Alert
+   - ADR-0050 Consumer Duplicate Time Bucket Metric
+   - ADR-0051 Consumer Delivery Metric Pruning
+   - ADR-0052 Operational Alert Record Channel
+   - ADR-0053 Operational Alert Suppression and Pruning
+   - ADR-0054 Slack Webhook Operational Alert Publisher
 
 ## 중요한 트레이드오프
 
@@ -69,13 +87,27 @@
 | PostgreSQL profile 분리 | 운영 유사 검증을 명시적으로 실행 | 모든 로컬 실행을 DB 필수로 만드는 단순성 |
 | Transactional outbox | 돈 이동과 event 적재 정합성 확보 | 즉시 Kafka/RabbitMQ/SQS에 결합 |
 | Header 기반 운영 인증 | local MVP에서 운영 API 보호 계약 고정 | 실제 OAuth/OIDC 로그인 |
+| 직접 requeue API 비활성화 | 승인 workflow 우회 방지 | 단일 API로 빠르게 재처리하는 편의성 |
+| Requeue row lock과 update count 검증 | 동시 운영 조치에서 하나의 상태 전이만 허용 | 상태 전이마다 짧은 DB row lock 비용 |
+| Outbox claim 기반 결과 갱신 | 늦은 worker가 재claim된 event 상태를 덮지 못하게 함 | worker identity 없는 최소 방어라 외부 broker 중복 발행은 별도 과제 |
+| Broker/consumer idempotency 계약 | `outboxEventId`를 header/body idempotency key로 고정 | broker-specific consumer adapter는 후속 과제 |
+| Consumer processed-event 저장소 | `idempotencyKey` unique 제약으로 duplicate side effect 방지 기반 확보 | broker별 replay window 권장값은 후속 과제 |
+| HTTP consumer adapter | 실제 endpoint에서 duplicate를 성공 no-op으로 처리하고 receipt side effect를 1회만 저장 | Kafka/RabbitMQ/SQS ack/nack 모델은 후속 과제 |
+| HTTP publish→consume loop | relay가 실제 HTTP publisher로 consumer endpoint에 보내는 흐름 검증 | durable broker semantics는 후속 과제 |
+| Consumer monitoring admin API | 처리 성공, duplicate no-op, receipt를 운영자가 조회 | duplicate payload 상세 이력은 후속 과제 |
+| Consumer processed-event pruning | dedupe/receipt 저장소를 보존 기간 기준으로 정리 | broker replay window보다 짧은 retention은 위험하므로 운영 설정 책임이 남음 |
+| Consumer duplicate spike alert | duplicate delivery rate 기준으로 health를 판정 | push alert는 후속 과제 |
+| Consumer duplicate time bucket metric | 최근 window duplicate delivery rate를 분 단위 bucket으로 계산 | 초 단위 spike 정밀도 |
+| Consumer delivery metric pruning | delivery metric bucket을 기존 consumer pruning run에서 함께 정리 | pruning run 이력 저장은 후속 과제 |
+| Operational alert record channel | warning/critical health를 운영 alert record로 저장 | Slack/Webhook push는 후속 과제 |
+| Operational alert suppression/pruning | 같은 alert의 짧은 시간 중복 저장을 막고 보존 기간 기준으로 삭제 | suppression 기준이 reason 문자열에 의존 |
+| Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
 
-- release smoke script 또는 actuator health endpoint
-- relay health/pruning 운영자 화면
-- manual review requeue full E2E fixture
 - broker-specific adapter와 Testcontainers contract
-- consumer idempotency
+- broker replay window별 retention 권장값
+- pruning 실행 이력 저장과 조회 API
+- Slack 발행 실패 record와 재시도 정책
 - 실제 운영자 identity와 role scope 분리

@@ -61,10 +61,29 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0043 | [MVP Release Checklist](0043-mvp-release-checklist.md) | 완료 |
 | 0044 | [v0.7.0 Release Baseline](0044-v0.7.0-release-baseline.md) | 완료 |
 | 0045 | [v0.7.0 Wiki Publication](0045-v0.7.0-wiki-publication.md) | 완료 |
+| 0046 | [Top3 Operational Hardening](0046-top3-operational-hardening.md) | 완료 |
+| 0047 | [Requeue Approval Workflow](0047-requeue-approval-workflow.md) | 완료 |
+| 0048 | [Dev Rules Automatic Check](0048-dev-rules-automatic-check.md) | 완료 |
+| 0049 | [Requeue Rejection Workflow](0049-requeue-rejection-workflow.md) | 완료 |
+| 0050 | [Direct Requeue API Deprecation](0050-direct-requeue-api-deprecation.md) | 완료 |
+| 0051 | [Requeue State Transition Atomicity](0051-requeue-state-transition-atomicity.md) | 완료 |
+| 0052 | [Outbox Claim Guarded Result Update](0052-outbox-claim-guarded-result-update.md) | 완료 |
+| 0053 | [Broker Consumer Idempotency](0053-broker-consumer-idempotency.md) | 완료 |
+| 0054 | [Consumer Processed Event Dedupe](0054-consumer-processed-event-dedupe.md) | 완료 |
+| 0055 | [HTTP Outbox Consumer Adapter](0055-http-outbox-consumer-adapter.md) | 완료 |
+| 0056 | [HTTP Publish Consume Loop](0056-http-publish-consume-loop.md) | 완료 |
+| 0057 | [Consumer Monitoring Admin API](0057-consumer-monitoring-admin-api.md) | 완료 |
+| 0058 | [Consumer Processed Event Pruning](0058-consumer-processed-event-pruning.md) | 완료 |
+| 0059 | [Consumer Duplicate Spike Alert](0059-consumer-duplicate-spike-alert.md) | 완료 |
+| 0060 | [Consumer Duplicate Time Bucket Metric](0060-consumer-duplicate-time-bucket-metric.md) | 완료 |
+| 0061 | [Consumer Delivery Metric Pruning](0061-consumer-delivery-metric-pruning.md) | 완료 |
+| 0062 | [Operational Alert Record Channel](0062-operational-alert-record-channel.md) | 완료 |
+| 0063 | [Operational Alert Suppression and Pruning](0063-operational-alert-suppression-pruning.md) | 완료 |
+| 0064 | [Slack Webhook Operational Alert Publisher](0064-slack-webhook-operational-alert-publisher.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: v0.7.0 Wiki Publication
+- 최신 완료 기능: Slack Webhook Operational Alert Publisher
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: 운영자 relay health/pruning 화면, Kafka/RabbitMQ/SQS adapter, consumer idempotency, operator/admin token 분리, pruning 실행 이력, external alert channel, 승인 워크플로우, broker-specific Testcontainers 정책, manual review requeue full E2E fixture
+- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결

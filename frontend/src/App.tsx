@@ -87,6 +87,59 @@ type OperationOutboxRequeueAudit = {
   reason: string;
 };
 
+type OperationOutboxRequeueRequestRecord = {
+  requestId: string;
+  outboxEventId: string;
+  operationId: string;
+  status: string;
+  requestedBy: string;
+  requestReason: string;
+  requestedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalReason: string | null;
+  executedBy: string | null;
+  executedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+};
+
+type OperationOutboxRelayRun = {
+  relayRunId: string;
+  startedAt: string;
+  completedAt: string;
+  status: string;
+  batchSize: number;
+  claimedCount: number;
+  publishedCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+};
+
+type OutboxRelayHealthSummary = {
+  evaluatedAt: string;
+  status: string;
+  sampleSize: number;
+  observedRunCount: number;
+  successCount: number;
+  failedCount: number;
+  failureRate: number;
+  consecutiveFailureCount: number;
+  lastCompletedAt: string | null;
+  lastSuccessAt: string | null;
+  lastFailureAt: string | null;
+  alertReasons: string[];
+};
+
+type OperationalLogPruningResult = {
+  prunedAt: string;
+  relayRunCutoff: string;
+  adminAccessAuditCutoff: string;
+  deletedRelayRunCount: number;
+  deletedAdminAccessAuditCount: number;
+};
+
 type ApiError = {
   code: string;
   message: string;
@@ -111,11 +164,11 @@ const initialApiState: ApiState = {
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
+    ...init,
     headers: {
       'Content-Type': 'application/json',
       ...init?.headers,
     },
-    ...init,
   });
 
   if (!response.ok) {
@@ -124,21 +177,6 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   }
 
   return response.json() as Promise<T>;
-}
-
-async function requestEmpty(url: string, init?: RequestInit): Promise<void> {
-  const response = await fetch(url, {
-    headers: {
-      'Content-Type': 'application/json',
-      ...init?.headers,
-    },
-    ...init,
-  });
-
-  if (!response.ok) {
-    const error = (await response.json()) as ApiError;
-    throw new Error(`${error.code}: ${error.message}`);
-  }
 }
 
 function formatMoney(money?: Money): string {
@@ -164,11 +202,18 @@ export function App() {
   const [statusMessage, setStatusMessage] = useState('Spring Boot API를 실행한 뒤 데이터를 불러오세요.');
   const [isLoading, setIsLoading] = useState(false);
   const [adminToken, setAdminToken] = useState('local-ops-token');
+  const [operatorToken, setOperatorToken] = useState('local-operator-token');
   const [operatorId, setOperatorId] = useState('local-operator');
   const [manualReviewEvents, setManualReviewEvents] = useState<OperationOutboxEvent[]>([]);
   const [selectedOutboxEventId, setSelectedOutboxEventId] = useState('');
   const [requeueReason, setRequeueReason] = useState('broker recovered from operator console');
+  const [approvalReason, setApprovalReason] = useState('원인 조치 확인');
+  const [rejectionReason, setRejectionReason] = useState('원인 조치 미확인');
   const [requeueAudits, setRequeueAudits] = useState<OperationOutboxRequeueAudit[]>([]);
+  const [requeueRequests, setRequeueRequests] = useState<OperationOutboxRequeueRequestRecord[]>([]);
+  const [relayHealth, setRelayHealth] = useState<OutboxRelayHealthSummary | null>(null);
+  const [relayRuns, setRelayRuns] = useState<OperationOutboxRelayRun[]>([]);
+  const [pruningResult, setPruningResult] = useState<OperationalLogPruningResult | null>(null);
   const [operatorStatusMessage, setOperatorStatusMessage] = useState('운영자 token과 operator id를 입력한 뒤 manual review를 조회하세요.');
   const [isOperatorLoading, setIsOperatorLoading] = useState(false);
 
@@ -176,6 +221,15 @@ export function App() {
   const selectedManualReviewEvent = useMemo(
     () => manualReviewEvents.find((event) => event.outboxEventId === selectedOutboxEventId) ?? null,
     [manualReviewEvents, selectedOutboxEventId],
+  );
+  const selectedRequeueRequest = useMemo(
+    () => (
+      requeueRequests.find((request) => request.status === 'APPROVED')
+      ?? requeueRequests.find((request) => request.status === 'REQUESTED')
+      ?? requeueRequests[0]
+      ?? null
+    ),
+    [requeueRequests],
   );
 
   async function runAction(action: () => Promise<void>, successMessage: string) {
@@ -207,6 +261,7 @@ export function App() {
   function operatorHeaders(): HeadersInit {
     return {
       'X-Admin-Token': adminToken,
+      'X-Operator-Token': operatorToken,
       'X-Operator-Id': operatorId,
     };
   }
@@ -255,20 +310,112 @@ export function App() {
     setRequeueAudits(audits);
   }
 
-  async function submitRequeue(event: FormEvent<HTMLFormElement>) {
+  async function loadRequeueRequests(outboxEventId = selectedOutboxEventId) {
+    if (!outboxEventId) {
+      setRequeueRequests([]);
+      return;
+    }
+    const requests = await requestJson<OperationOutboxRequeueRequestRecord[]>(
+      `/api/v1/outbox-events/${outboxEventId}/requeue-requests`,
+      { headers: operatorHeaders() },
+    );
+    setRequeueRequests(requests);
+  }
+
+  async function loadRequeueEvidence(outboxEventId = selectedOutboxEventId) {
+    await Promise.all([
+      loadRequeueRequests(outboxEventId),
+      loadRequeueAudits(outboxEventId),
+    ]);
+  }
+
+  async function loadRelayOperations() {
+    const [health, runs] = await Promise.all([
+      requestJson<OutboxRelayHealthSummary>('/api/v1/outbox-relay-runs/health', {
+        headers: operatorHeaders(),
+      }),
+      requestJson<OperationOutboxRelayRun[]>('/api/v1/outbox-relay-runs?limit=5', {
+        headers: operatorHeaders(),
+      }),
+    ]);
+    setRelayHealth(health);
+    setRelayRuns(runs);
+  }
+
+  async function submitPruning() {
+    await runOperatorAction(async () => {
+      const result = await requestJson<OperationalLogPruningResult>('/api/v1/operational-log-pruning-runs', {
+        method: 'POST',
+        headers: operatorHeaders(),
+      });
+      setPruningResult(result);
+    }, '운영 로그 pruning이 완료되었습니다.');
+  }
+
+  async function submitRequeueRequest(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     const outboxEventId = selectedOutboxEventId;
     await runOperatorAction(async () => {
-      await requestEmpty(`/api/v1/outbox-events/${outboxEventId}/requeue`, {
+      await requestJson<OperationOutboxRequeueRequestRecord>(`/api/v1/outbox-events/${outboxEventId}/requeue-requests`, {
         method: 'POST',
         headers: operatorHeaders(),
         body: JSON.stringify({ reason: requeueReason }),
       });
+      await loadRequeueEvidence(outboxEventId);
+    }, 'Requeue 요청이 등록되었습니다. 승인자를 분리해 승인하세요.');
+  }
+
+  async function approveSelectedRequeueRequest() {
+    if (!selectedRequeueRequest) {
+      return;
+    }
+    await runOperatorAction(async () => {
+      await requestJson<OperationOutboxRequeueRequestRecord>(
+        `/api/v1/outbox-events/requeue-requests/${selectedRequeueRequest.requestId}/approve`,
+        {
+          method: 'POST',
+          headers: operatorHeaders(),
+          body: JSON.stringify({ reason: approvalReason }),
+        },
+      );
+      await loadRequeueEvidence(selectedRequeueRequest.outboxEventId);
+    }, 'Requeue 요청이 승인되었습니다. 실행 단계로 진행하세요.');
+  }
+
+  async function executeSelectedRequeueRequest() {
+    if (!selectedRequeueRequest) {
+      return;
+    }
+    await runOperatorAction(async () => {
+      await requestJson<OperationOutboxRequeueRequestRecord>(
+        `/api/v1/outbox-events/requeue-requests/${selectedRequeueRequest.requestId}/execute`,
+        {
+          method: 'POST',
+          headers: operatorHeaders(),
+        },
+      );
       await Promise.all([
         loadManualReviewEvents(),
-        loadRequeueAudits(outboxEventId),
+        loadRequeueEvidence(selectedRequeueRequest.outboxEventId),
       ]);
-    }, 'Requeue가 완료되었습니다. 감사 이력을 확인하세요.');
+    }, 'Requeue가 실행되었습니다. 감사 이력을 확인하세요.');
+  }
+
+  async function rejectSelectedRequeueRequest() {
+    if (!selectedRequeueRequest) {
+      return;
+    }
+    await runOperatorAction(async () => {
+      await requestJson<OperationOutboxRequeueRequestRecord>(
+        `/api/v1/outbox-events/requeue-requests/${selectedRequeueRequest.requestId}/reject`,
+        {
+          method: 'POST',
+          headers: operatorHeaders(),
+          body: JSON.stringify({ reason: rejectionReason }),
+        },
+      );
+      await loadRequeueEvidence(selectedRequeueRequest.outboxEventId);
+    }, 'Requeue 요청이 반려되었습니다. 감사 이력 없이 manual review 상태를 유지합니다.');
   }
 
   async function submitCharge(event: FormEvent<HTMLFormElement>) {
@@ -398,7 +545,7 @@ export function App() {
           <p className="eyebrow">Operator console</p>
           <h2 id="operator-console-title">Manual review outbox를 운영자가 직접 확인합니다.</h2>
           <p>
-            장애로 격리된 outbox event를 조회하고, 원인 조치 후 requeue하며, operator와 reason 감사 이력을 확인합니다.
+            장애로 격리된 outbox event를 조회하고, requeue 요청/승인/실행과 감사 이력을 확인합니다.
           </p>
         </div>
 
@@ -411,6 +558,10 @@ export function App() {
             <label>
               Admin token
               <input aria-label="운영자 Admin Token" value={adminToken} onChange={(event) => setAdminToken(event.target.value)} />
+            </label>
+            <label>
+              Operator token
+              <input aria-label="운영자 Operator Token" value={operatorToken} onChange={(event) => setOperatorToken(event.target.value)} />
             </label>
             <label>
               Operator ID
@@ -448,7 +599,7 @@ export function App() {
                       className={event.outboxEventId === selectedOutboxEventId ? 'event-row selected' : 'event-row'}
                       onClick={() => {
                         setSelectedOutboxEventId(event.outboxEventId);
-                        void runOperatorAction(() => loadRequeueAudits(event.outboxEventId), 'Requeue audit 조회가 완료되었습니다.');
+                        void runOperatorAction(() => loadRequeueEvidence(event.outboxEventId), 'Requeue workflow 조회가 완료되었습니다.');
                       }}
                     >
                       <span>
@@ -466,12 +617,12 @@ export function App() {
           <article className="panel operator-card requeue-card">
             <div className="card-heading">
               <p className="eyebrow">Requeue</p>
-              <h3>재처리와 감사 이력</h3>
+              <h3>요청, 승인, 실행</h3>
             </div>
             {!selectedOutboxEventId ? (
               <EmptyState
                 title="선택된 outbox event가 없습니다."
-                description="manual review event를 선택하면 requeue reason과 audit trail을 확인할 수 있습니다."
+                description="manual review event를 선택하면 requeue 요청, 승인, 실행 상태를 확인할 수 있습니다."
               />
             ) : (
               <>
@@ -485,9 +636,9 @@ export function App() {
                       : '감사 이력으로 재처리 결과를 확인하세요.'}
                   </small>
                 </div>
-                <form className="requeue-form" onSubmit={submitRequeue}>
+                <form className="requeue-form" onSubmit={submitRequeueRequest}>
                   <label>
-                    Requeue reason
+                    Request reason
                     <textarea
                       aria-label="Requeue 사유"
                       value={requeueReason}
@@ -496,18 +647,81 @@ export function App() {
                   </label>
                   <div className="operator-actions">
                     <button type="submit" disabled={isOperatorLoading || !selectedManualReviewEvent || requeueReason.trim().length === 0}>
-                      Requeue 실행
+                      Requeue 요청
                     </button>
                     <button
                       type="button"
                       className="secondary-button"
-                      onClick={() => runOperatorAction(() => loadRequeueAudits(), 'Requeue audit 조회가 완료되었습니다.')}
+                      onClick={() => runOperatorAction(() => loadRequeueEvidence(), 'Requeue workflow 조회가 완료되었습니다.')}
                       disabled={isOperatorLoading}
                     >
-                      Audit 조회
+                      Workflow 조회
                     </button>
                   </div>
                 </form>
+                <label className="approval-reason">
+                  Approval reason
+                  <textarea
+                    aria-label="Requeue 승인 사유"
+                    value={approvalReason}
+                    onChange={(event) => setApprovalReason(event.target.value)}
+                  />
+                </label>
+                <label className="approval-reason">
+                  Rejection reason
+                  <textarea
+                    aria-label="Requeue 반려 사유"
+                    value={rejectionReason}
+                    onChange={(event) => setRejectionReason(event.target.value)}
+                  />
+                </label>
+                <div className="operator-actions">
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={approveSelectedRequeueRequest}
+                    disabled={isOperatorLoading || !selectedRequeueRequest || selectedRequeueRequest.status !== 'REQUESTED' || approvalReason.trim().length === 0}
+                  >
+                    Requeue 승인
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={rejectSelectedRequeueRequest}
+                    disabled={isOperatorLoading || !selectedRequeueRequest || selectedRequeueRequest.status !== 'REQUESTED' || rejectionReason.trim().length === 0}
+                  >
+                    Requeue 반려
+                  </button>
+                  <button
+                    type="button"
+                    className="secondary-button"
+                    onClick={executeSelectedRequeueRequest}
+                    disabled={isOperatorLoading || !selectedRequeueRequest || selectedRequeueRequest.status !== 'APPROVED'}
+                  >
+                    Requeue 실행
+                  </button>
+                </div>
+                <div className="audit-trail">
+                  <h4>Requeue requests</h4>
+                  {requeueRequests.length === 0 ? (
+                    <p className="empty compact-empty">아직 requeue 요청이 없습니다.</p>
+                  ) : (
+                    <ul>
+                      {requeueRequests.map((request) => (
+                        <li key={request.requestId}>
+                          <strong>{request.requestedBy}</strong>
+                          <span>{request.requestReason}</span>
+                          <StatusBadge status={request.status} />
+                          <small>
+                            {request.approvedBy ? `approved by ${request.approvedBy}` : 'approval pending'}
+                            {request.executedBy ? ` · executed by ${request.executedBy}` : ''}
+                            {request.rejectedBy ? ` · rejected by ${request.rejectedBy}` : ''}
+                          </small>
+                        </li>
+                      ))}
+                    </ul>
+                  )}
+                </div>
                 <div className="audit-trail">
                   <h4>Requeue audit</h4>
                   {requeueAudits.length === 0 ? (
@@ -525,6 +739,91 @@ export function App() {
                   )}
                 </div>
               </>
+            )}
+          </article>
+
+          <article className="panel operator-card relay-card">
+            <div className="card-heading inline-heading">
+              <div>
+                <p className="eyebrow">Relay health</p>
+                <h3>Scheduler 상태</h3>
+              </div>
+              {relayHealth && <StatusBadge status={relayHealth.status} />}
+            </div>
+            <button
+              type="button"
+              onClick={() => runOperatorAction(loadRelayOperations, 'Relay health와 실행 기록 조회가 완료되었습니다.')}
+              disabled={isOperatorLoading}
+            >
+              Relay 상태 조회
+            </button>
+            {!relayHealth ? (
+              <EmptyState
+                title="Relay health 데이터가 없습니다."
+                description="조회 버튼을 누르면 scheduler health summary와 최근 실행 기록을 확인할 수 있습니다."
+              />
+            ) : (
+              <div className="metric-grid">
+                <MetricCard label="관측 실행" value={`${relayHealth.observedRunCount}/${relayHealth.sampleSize}`} />
+                <MetricCard label="성공/실패" value={`${relayHealth.successCount}/${relayHealth.failedCount}`} />
+                <MetricCard label="실패율" value={`${Math.round(relayHealth.failureRate * 100)}%`} />
+                <MetricCard label="연속 실패" value={String(relayHealth.consecutiveFailureCount)} />
+              </div>
+            )}
+            {relayHealth && relayHealth.alertReasons.length > 0 && (
+              <ul className="alert-list">
+                {relayHealth.alertReasons.map((reason) => (
+                  <li key={reason}>{reason}</li>
+                ))}
+              </ul>
+            )}
+            <div className="relay-run-list">
+              <h4>최근 relay run</h4>
+              {relayRuns.length === 0 ? (
+                <p className="empty compact-empty">최근 relay run이 없습니다.</p>
+              ) : (
+                <ul>
+                  {relayRuns.map((run) => (
+                    <li key={run.relayRunId}>
+                      <span>
+                        <strong>{run.relayRunId}</strong>
+                        <small>{run.completedAt} · claimed {run.claimedCount} · failed {run.failedCount}</small>
+                      </span>
+                      <StatusBadge status={run.status} />
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
+          </article>
+
+          <article className="panel operator-card pruning-card">
+            <div className="card-heading">
+              <p className="eyebrow">Pruning</p>
+              <h3>운영 로그 정리</h3>
+            </div>
+            <p className="operator-description">
+              관리자 token으로 relay run과 admin access audit 보존 기간이 지난 데이터를 정리합니다.
+            </p>
+            <button
+              type="button"
+              onClick={submitPruning}
+              disabled={isOperatorLoading}
+            >
+              Pruning 실행
+            </button>
+            {!pruningResult ? (
+              <EmptyState
+                title="아직 pruning 실행 결과가 없습니다."
+                description="관리자 권한으로 실행하면 삭제 기준 시각과 삭제 건수를 표시합니다."
+              />
+            ) : (
+              <div className="pruning-result">
+                <MetricCard label="Relay run 삭제" value={String(pruningResult.deletedRelayRunCount)} />
+                <MetricCard label="Access audit 삭제" value={String(pruningResult.deletedAdminAccessAuditCount)} />
+                <small>relay cutoff {pruningResult.relayRunCutoff}</small>
+                <small>audit cutoff {pruningResult.adminAccessAuditCutoff}</small>
+              </div>
             )}
           </article>
         </div>
@@ -550,6 +849,15 @@ function StatusCallout({ message, tone }: { message: string; tone: 'info' | 'err
     <p className={tone === 'error' ? 'status-callout error-callout' : 'status-callout'}>
       {message}
     </p>
+  );
+}
+
+function MetricCard({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric-card">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
   );
 }
 

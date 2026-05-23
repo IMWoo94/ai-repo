@@ -107,6 +107,24 @@ CREATE TABLE IF NOT EXISTS operation_outbox_requeue_audits (
     reason VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_requeue_requests (
+    request_id VARCHAR(64) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    operation_id VARCHAR(64) NOT NULL,
+    status VARCHAR(32) NOT NULL,
+    requested_by VARCHAR(64) NOT NULL,
+    request_reason VARCHAR(255) NOT NULL,
+    requested_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    approved_by VARCHAR(64),
+    approved_at TIMESTAMP WITH TIME ZONE,
+    approval_reason VARCHAR(255),
+    executed_by VARCHAR(64),
+    executed_at TIMESTAMP WITH TIME ZONE,
+    rejected_by VARCHAR(64),
+    rejected_at TIMESTAMP WITH TIME ZONE,
+    rejection_reason VARCHAR(255)
+);
+
 CREATE TABLE IF NOT EXISTS operation_outbox_relay_runs (
     relay_run_id VARCHAR(64) PRIMARY KEY,
     started_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -119,6 +137,31 @@ CREATE TABLE IF NOT EXISTS operation_outbox_relay_runs (
     error_message VARCHAR(255)
 );
 
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_processed_events (
+    idempotency_key VARCHAR(128) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    processed_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    duplicate_count INTEGER NOT NULL DEFAULT 0
+);
+
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_receipts (
+    idempotency_key VARCHAR(128) PRIMARY KEY,
+    outbox_event_id VARCHAR(64) NOT NULL,
+    operation_id VARCHAR(64) NOT NULL,
+    event_type VARCHAR(64) NOT NULL,
+    aggregate_type VARCHAR(64) NOT NULL,
+    aggregate_id VARCHAR(64) NOT NULL,
+    received_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
+CREATE TABLE IF NOT EXISTS operation_outbox_consumer_delivery_metrics (
+    bucket_started_at TIMESTAMP WITH TIME ZONE PRIMARY KEY,
+    processed_delivery_count BIGINT NOT NULL DEFAULT 0,
+    duplicate_delivery_count BIGINT NOT NULL DEFAULT 0,
+    updated_at TIMESTAMP WITH TIME ZONE NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     audit_id VARCHAR(64) PRIMARY KEY,
     occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
@@ -129,6 +172,17 @@ CREATE TABLE IF NOT EXISTS admin_api_access_audits (
     outcome VARCHAR(32) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS operational_alerts (
+    alert_id VARCHAR(64) PRIMARY KEY,
+    source VARCHAR(64) NOT NULL,
+    severity VARCHAR(32) NOT NULL,
+    occurred_at TIMESTAMP WITH TIME ZONE NOT NULL,
+    reasons TEXT NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_operational_alerts_occurred_at_id
+    ON operational_alerts (occurred_at DESC, alert_id DESC);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;
@@ -136,5 +190,7 @@ CREATE SEQUENCE IF NOT EXISTS audit_event_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS operation_step_log_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_event_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_requeue_audit_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS outbox_requeue_request_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS outbox_relay_run_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS admin_api_access_audit_id_seq START WITH 1;
+CREATE SEQUENCE IF NOT EXISTS operational_alert_id_seq START WITH 1;

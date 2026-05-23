@@ -6,16 +6,20 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletCommandService;
 import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
+import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionType;
 import java.math.BigDecimal;
@@ -266,6 +270,75 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void stalePublishedWriterCannotOverwriteReclaimedOutboxEvent() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        var firstClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ).getFirst();
+        var secondClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ).getFirst();
+
+        assertThatThrownBy(() -> repository.markClaimedOutboxEventPublished(
+                firstClaim.outboxEventId(),
+                firstClaim.claimedAt(),
+                firstClaim.leaseExpiresAt(),
+                Instant.parse("2026-05-01T00:02:01Z")
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outbox event claim is no longer active: outbox-001");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(secondClaim.claimedAt());
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(secondClaim.leaseExpiresAt());
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+    }
+
+    @Test
+    void staleFailedWriterCannotOverwriteReclaimedOutboxEvent() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        var firstClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ).getFirst();
+        var secondClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ).getFirst();
+
+        assertThatThrownBy(() -> repository.markClaimedOutboxEventFailed(
+                firstClaim.outboxEventId(),
+                firstClaim.claimedAt(),
+                firstClaim.leaseExpiresAt(),
+                "stale broker failure",
+                Instant.parse("2026-05-01T00:02:31Z"),
+                3
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outbox event claim is no longer active: outbox-001");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.attemptCount()).isZero();
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(secondClaim.claimedAt());
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(secondClaim.leaseExpiresAt());
+                    assertThat(outboxEvent.lastError()).isNull();
+                });
+    }
+
+    @Test
     void outboxFailureMovesToManualReviewAtMaxAttempts() {
         commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
@@ -334,6 +407,90 @@ class JdbcWalletRepositoryTest {
         ))
                 .singleElement()
                 .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING));
+    }
+
+    @Test
+    void outboxManualReviewRequeueCanBeRequestedApprovedAndExecuted() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+
+        var requested = repository.requestManualReviewRequeue(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-requester",
+                "broker recovered"
+        );
+
+        assertThat(requested.requestId()).isEqualTo("outbox-requeue-request-001");
+        assertThat(requested.status()).isEqualTo(OperationOutboxRequeueRequestStatus.REQUESTED);
+
+        var approved = repository.approveManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:11:00Z"),
+                "ops-approver",
+                "원인 조치 확인"
+        );
+
+        assertThat(approved.status()).isEqualTo(OperationOutboxRequeueRequestStatus.APPROVED);
+        assertThat(approved.approvedBy()).isEqualTo("ops-approver");
+
+        var executed = repository.executeManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:12:00Z"),
+                "ops-executor"
+        );
+
+        assertThat(executed.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED);
+        assertThat(executed.executedBy()).isEqualTo("ops-executor");
+        assertThat(repository.findOutboxRequeueRequests("outbox-001"))
+                .singleElement()
+                .satisfies(request -> {
+                    assertThat(request.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED);
+                    assertThat(request.requestedBy()).isEqualTo("ops-requester");
+                    assertThat(request.approvedBy()).isEqualTo("ops-approver");
+                });
+        assertThat(repository.findOutboxRequeueAudits("outbox-001"))
+                .singleElement()
+                .satisfies(audit -> {
+                    assertThat(audit.requeuedAt()).isEqualTo(Instant.parse("2026-05-01T00:12:00Z"));
+                    assertThat(audit.operator()).isEqualTo("ops-executor");
+                    assertThat(audit.reason()).isEqualTo("broker recovered");
+                });
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING));
+    }
+
+    @Test
+    void outboxManualReviewRequeueRequestCanBeRejected() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+        var requested = repository.requestManualReviewRequeue(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-requester",
+                "broker recovered"
+        );
+
+        var rejected = repository.rejectManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:11:00Z"),
+                "ops-rejector",
+                "원인 조치 미확인"
+        );
+
+        assertThat(rejected.status()).isEqualTo(OperationOutboxRequeueRequestStatus.REJECTED);
+        assertThat(rejected.rejectedBy()).isEqualTo("ops-rejector");
+        assertThat(rejected.rejectedAt()).isEqualTo(Instant.parse("2026-05-01T00:11:00Z"));
+        assertThat(rejected.rejectionReason()).isEqualTo("원인 조치 미확인");
+        assertThat(repository.findOutboxRequeueAudits("outbox-001")).isEmpty();
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW));
     }
 
     @Test
@@ -463,6 +620,219 @@ class JdbcWalletRepositoryTest {
         assertThat(repository.findRecentAdminApiAccessAudits(10))
                 .singleElement()
                 .satisfies(accessAudit -> assertThat(accessAudit.auditId()).isEqualTo("admin-api-access-audit-002"));
+    }
+
+    @Test
+    void consumerProcessedEventDedupeRecordsOnlyFirstEvent() {
+        boolean firstRecorded = repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:05:00Z")
+        );
+        boolean duplicateRecorded = repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:06:00Z")
+        );
+
+        assertThat(firstRecorded).isTrue();
+        assertThat(duplicateRecorded).isFalse();
+        assertThat(repository.findProcessedEvent("outbox-001"))
+                .hasValueSatisfying(processedEvent -> {
+                    assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(processedEvent.processedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                    assertThat(processedEvent.duplicateCount()).isEqualTo(1);
+                });
+    }
+
+    @Test
+    void consumerMonitoringMetricsCountsProcessedDuplicatesAndReceipts() {
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:05:00Z")
+        );
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:06:00Z")
+        );
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-001",
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                Instant.parse("2026-05-01T00:05:30Z")
+        ));
+
+        assertThat(repository.getConsumerMetrics())
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedEventCount()).isEqualTo(1);
+                    assertThat(metrics.duplicateEventCount()).isEqualTo(1);
+                    assertThat(metrics.receiptCount()).isEqualTo(1);
+                    assertThat(metrics.lastProcessedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:00Z"));
+                    assertThat(metrics.lastReceivedAt()).isEqualTo(Instant.parse("2026-05-01T00:05:30Z"));
+                });
+        assertThat(repository.findRecentConsumerReceipts(10))
+                .singleElement()
+                .satisfies(receipt -> assertThat(receipt.idempotencyKey()).isEqualTo("outbox-001"));
+    }
+
+    @Test
+    void consumerWindowMetricsCountsDeliveriesInsideWindow() {
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:01:30Z"), false);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:02:10Z"), true);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:02:50Z"), true);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:09:00Z"), true);
+
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isEqualTo(1);
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(2);
+                    assertThat(metrics.totalDeliveryCount()).isEqualTo(3);
+                    assertThat(metrics.duplicateRate()).isEqualTo(2.0 / 3.0);
+                });
+    }
+
+    @Test
+    void operationalAlertsAreSavedAndListedRecently() {
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_CONSUMER",
+                OperationalAlertSeverity.CRITICAL,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                java.util.List.of("critical consumer duplicate delivery rate in health window")
+        ));
+
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .hasSize(2)
+                .first()
+                .satisfies(alert -> {
+                    assertThat(alert.alertId()).isEqualTo("operational-alert-002");
+                    assertThat(alert.source()).isEqualTo("OUTBOX_CONSUMER");
+                    assertThat(alert.severity()).isEqualTo(OperationalAlertSeverity.CRITICAL);
+                    assertThat(alert.reasons()).containsExactly(
+                            "critical consumer duplicate delivery rate in health window"
+                    );
+                });
+    }
+
+    @Test
+    void operationalAlertsSupportDuplicateLookupAndPruning() {
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-04-30T23:59:59Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+        repository.saveOperationalAlert(new OperationalAlert(
+                repository.nextOperationalAlertId(),
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse("2026-05-01T00:00:00Z"),
+                java.util.List.of("warning relay failure rate")
+        ));
+
+        assertThat(repository.existsOperationalAlertBetween(
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                java.util.List.of("warning relay failure rate"),
+                Instant.parse("2026-05-01T00:00:00Z"),
+                Instant.parse("2026-05-01T00:15:00Z")
+        )).isTrue();
+        assertThat(repository.existsOperationalAlertBetween(
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                java.util.List.of("warning relay failure rate"),
+                Instant.parse("2026-04-30T23:00:00Z"),
+                Instant.parse("2026-04-30T23:30:00Z")
+        )).isFalse();
+
+        assertThat(repository.deleteOperationalAlertsOccurredBefore(Instant.parse("2026-05-01T00:00:00Z")))
+                .isEqualTo(1);
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> assertThat(alert.alertId()).isEqualTo("operational-alert-002"));
+    }
+
+    @Test
+    void deletesConsumerProcessedEventsAndReceiptsBeforeCutoff() {
+        repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-04-30T23:59:59Z")
+        );
+        repository.recordProcessedEvent(
+                "outbox-002",
+                "outbox-002",
+                "CHARGE_COMPLETED",
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-001",
+                "outbox-001",
+                "op-001",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-001",
+                Instant.parse("2026-04-30T23:59:59Z")
+        ));
+        repository.saveConsumerReceipt(new com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt(
+                "outbox-002",
+                "outbox-002",
+                "op-002",
+                "CHARGE_COMPLETED",
+                "WALLET_OPERATION",
+                "op-002",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-04-30T23:59:00Z"), false);
+        repository.recordConsumerDeliveryMetric(Instant.parse("2026-05-01T00:00:00Z"), true);
+
+        int deletedReceiptCount = repository.deleteConsumerReceiptsReceivedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+        int deletedProcessedEventCount = repository.deleteConsumerProcessedEventsProcessedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+        int deletedDeliveryMetricBucketCount = repository.deleteConsumerDeliveryMetricsBucketStartedBefore(
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(deletedReceiptCount).isEqualTo(1);
+        assertThat(deletedProcessedEventCount).isEqualTo(1);
+        assertThat(deletedDeliveryMetricBucketCount).isEqualTo(1);
+        assertThat(repository.findConsumerReceipt("outbox-001")).isEmpty();
+        assertThat(repository.findConsumerReceipt("outbox-002")).isPresent();
+        assertThat(repository.findProcessedEvent("outbox-001")).isEmpty();
+        assertThat(repository.findProcessedEvent("outbox-002")).isPresent();
+        assertThat(repository.getConsumerWindowMetrics(
+                Instant.parse("2026-04-30T23:59:00Z"),
+                Instant.parse("2026-05-01T00:01:00Z")
+        ))
+                .satisfies(metrics -> {
+                    assertThat(metrics.processedDeliveryCount()).isZero();
+                    assertThat(metrics.duplicateDeliveryCount()).isEqualTo(1);
+                });
     }
 
     @Test

@@ -13,8 +13,25 @@
 | 송금 성공 | 출금 지갑 잔액이 감소하고 outbox event가 표시된다 | Frontend E2E, scenario test |
 | 잔액 부족 실패 | 잔액 부족 송금은 오류 메시지를 표시하고 잔액을 바꾸지 않는다 | Frontend E2E, API test |
 | 운영자 콘솔 empty | manual review event가 없으면 empty state를 표시한다 | Frontend unit, E2E |
-| 운영자 인증 오류 | 잘못된 admin token은 `ADMIN_AUTHENTICATION_REQUIRED`로 표시된다 | Frontend E2E, API test |
-| 운영자 requeue | manual review event를 requeue하면 audit trail이 남는다 | Frontend unit, scenario test |
+| 운영자 인증 오류 | 잘못된 admin/operator token은 `ADMIN_AUTHENTICATION_REQUIRED`로 표시된다 | Frontend E2E, API test |
+| 운영자 requeue 승인 | manual review event requeue를 요청, 승인, 실행하면 audit trail이 남는다 | Frontend unit, E2E, scenario test |
+| 운영자 requeue 반려 | manual review event requeue를 요청, 반려하면 event는 manual review에 남고 audit은 생기지 않는다 | Frontend unit, E2E, API test |
+| 직접 requeue API 비활성화 | 기존 직접 requeue API는 `410 Gone`으로 실패하고 event/audit을 변경하지 않는다 | API test |
+| Requeue 전이 경합 | approve/reject/execute 동시 호출에서 하나의 상태 전이만 성공하고 audit은 중복되지 않는다 | PostgreSQL scenario CI |
+| Outbox stale writer 방지 | lease 만료 후 늦은 worker의 success/failure update가 재claim된 event를 덮지 못한다 | JDBC test, PostgreSQL scenario CI |
+| Broker idempotency envelope | HTTP broker 발행 시 schema version과 idempotency key가 header/body에 포함된다 | Contract test |
+| Consumer dedupe 저장소 | 같은 idempotency key의 duplicate 기록은 하나만 성공한다 | JDBC test, PostgreSQL scenario CI |
+| HTTP consumer duplicate no-op | 같은 broker event를 두 번 받아도 receipt side effect는 한 번만 저장된다 | API test, PostgreSQL scenario CI |
+| HTTP publish→consume loop | relay가 HTTP publisher로 consumer endpoint에 event를 보내고 receipt와 published 상태를 남긴다 | Spring Boot random port test |
+| Consumer monitoring API | processed, duplicate, receipt count와 최근 receipt를 operator 권한으로 조회한다 | API test, JDBC test |
+| Consumer duplicate health | 최근 window duplicate delivery rate가 threshold를 넘으면 warning/critical health를 반환한다 | Service test, API test |
+| Consumer duplicate window metric | window 밖 bucket은 health 판정에서 제외한다 | Service test, JDBC test |
+| Operational alert record | warning/critical health 판정은 운영 alert record로 저장된다 | Service test, API test, JDBC test |
+| Operational alert suppression | 같은 source/severity/reasons alert는 suppression window 안에서 중복 저장되지 않는다 | Service test, JDBC test |
+| Operational alert pruning | 오래된 alert record는 operational log pruning에서 cutoff 기준으로 삭제된다 | Service test, API test, JDBC test |
+| Slack alert push | 설정 시 operational alert가 Slack Incoming Webhook 호환 payload로 전송된다 | Contract test, configuration test |
+| Consumer pruning API | 오래된 processed-event, receipt, delivery metric bucket만 admin 권한으로 삭제한다 | API test, service test, JDBC test |
+| Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
 
 ## 수동 시연 순서
@@ -29,8 +46,8 @@
 6. 잔액, 거래내역, 원장, 감사 로그, operation 증거가 같이 바뀌는지 확인한다.
 7. 송금 금액을 입력하고 `송금하기`를 실행한다.
 8. 잔액 부족 송금으로 오류 상태를 확인한다.
-9. 운영자 콘솔에서 local admin token으로 manual review 조회를 실행한다.
-10. 잘못된 admin token으로 인증 오류 상태를 확인한다.
+9. 운영자 콘솔에서 local operator token으로 manual review 조회를 실행한다.
+10. 잘못된 admin/operator token으로 인증 오류 상태를 확인한다.
 
 ## 릴리스 후보 gate
 
@@ -46,7 +63,8 @@
 
 ## 남은 QA 후보
 
-- manual review event fixture 기반 requeue 성공 E2E
-- relay health/pruning 운영자 화면 E2E
+- Slack 발행 실패 record와 재시도 scenario
 - release smoke script 또는 actuator health check
 - broker-specific Testcontainers contract scenario
+- pruning run history scenario
+- 운영 alert 화면 scenario

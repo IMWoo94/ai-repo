@@ -9,13 +9,16 @@ public class OperationalLogPruningPolicy {
 
     private final Duration relayRunRetention;
     private final Duration adminAccessAuditRetention;
+    private final OperationalAlertPolicy operationalAlertPolicy;
 
     public OperationalLogPruningPolicy(
             @Value("${ai-repo.operational-log-pruning.relay-run-retention-days:30}") int relayRunRetentionDays,
-            @Value("${ai-repo.operational-log-pruning.admin-access-audit-retention-days:180}") int adminAccessAuditRetentionDays
+            @Value("${ai-repo.operational-log-pruning.admin-access-audit-retention-days:180}") int adminAccessAuditRetentionDays,
+            OperationalAlertPolicy operationalAlertPolicy
     ) {
         this.relayRunRetention = retention("relay run retention", relayRunRetentionDays);
         this.adminAccessAuditRetention = retention("admin access audit retention", adminAccessAuditRetentionDays);
+        this.operationalAlertPolicy = operationalAlertPolicy;
     }
 
     public Duration relayRunRetention() {
@@ -24,6 +27,10 @@ public class OperationalLogPruningPolicy {
 
     public Duration adminAccessAuditRetention() {
         return adminAccessAuditRetention;
+    }
+
+    public Duration operationalAlertRetention() {
+        return operationalAlertPolicy.retention();
     }
 
     private Duration retention(String name, int days) {

@@ -20,6 +20,8 @@ import org.springframework.stereotype.Component;
 )
 public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
 
+    private static final int EVENT_SCHEMA_VERSION = 1;
+
     private final HttpClient httpClient;
     private final URI endpoint;
     private final Duration timeout;
@@ -47,6 +49,9 @@ public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
                 .timeout(timeout)
                 .header("Content-Type", "application/json")
                 .header("X-Outbox-Event-Id", outboxEvent.outboxEventId())
+                .header("X-Idempotency-Key", outboxEvent.outboxEventId())
+                .header("X-Event-Schema-Version", String.valueOf(EVENT_SCHEMA_VERSION))
+                .header("X-Event-Type", outboxEvent.eventType())
                 .POST(HttpRequest.BodyPublishers.ofString(envelope(outboxEvent)))
                 .build();
         try {
@@ -64,8 +69,10 @@ public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
 
     private String envelope(OperationOutboxEvent outboxEvent) {
         return """
-                {"outboxEventId":"%s","operationId":"%s","eventType":"%s","aggregateType":"%s","aggregateId":"%s","occurredAt":"%s","payload":%s}"""
+                {"schemaVersion":%d,"idempotencyKey":"%s","outboxEventId":"%s","operationId":"%s","eventType":"%s","aggregateType":"%s","aggregateId":"%s","occurredAt":"%s","payload":%s}"""
                 .formatted(
+                        EVENT_SCHEMA_VERSION,
+                        escape(outboxEvent.outboxEventId()),
                         escape(outboxEvent.outboxEventId()),
                         escape(outboxEvent.operationId()),
                         escape(outboxEvent.eventType()),

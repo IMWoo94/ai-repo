@@ -9,6 +9,8 @@ type MockFetchState = {
   operationType: 'CHARGE' | 'TRANSFER' | null;
   manualReviewEvents: MockOutboxEvent[];
   requeueAudits: MockRequeueAudit[];
+  requeueRequests: MockRequeueRequest[];
+  relayRuns: MockRelayRun[];
 };
 
 type MockOutboxEvent = {
@@ -37,12 +39,44 @@ type MockRequeueAudit = {
   reason: string;
 };
 
+type MockRequeueRequest = {
+  requestId: string;
+  outboxEventId: string;
+  operationId: string;
+  status: string;
+  requestedBy: string;
+  requestReason: string;
+  requestedAt: string;
+  approvedBy: string | null;
+  approvedAt: string | null;
+  approvalReason: string | null;
+  executedBy: string | null;
+  executedAt: string | null;
+  rejectedBy: string | null;
+  rejectedAt: string | null;
+  rejectionReason: string | null;
+};
+
+type MockRelayRun = {
+  relayRunId: string;
+  startedAt: string;
+  completedAt: string;
+  status: string;
+  batchSize: number;
+  claimedCount: number;
+  publishedCount: number;
+  failedCount: number;
+  errorMessage: string | null;
+};
+
 function setupFetch(state: MockFetchState = {
   balanceAmount: 125000,
   operationId: null,
   operationType: null,
   manualReviewEvents: [],
   requeueAudits: [],
+  requeueRequests: [],
+  relayRuns: [],
 }) {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
@@ -83,14 +117,130 @@ function setupFetch(state: MockFetchState = {
       return jsonResponse(state.manualReviewEvents);
     }
 
+    if (url.includes('/outbox-relay-runs/health')) {
+      return jsonResponse({
+        evaluatedAt: '2026-05-02T00:00:00Z',
+        status: state.relayRuns.length === 0 ? 'NO_DATA' : 'OK',
+        sampleSize: 20,
+        observedRunCount: state.relayRuns.length,
+        successCount: state.relayRuns.filter((run) => run.status === 'SUCCESS').length,
+        failedCount: state.relayRuns.filter((run) => run.status === 'FAILED').length,
+        failureRate: 0,
+        consecutiveFailureCount: 0,
+        lastCompletedAt: state.relayRuns[0]?.completedAt ?? null,
+        lastSuccessAt: state.relayRuns.find((run) => run.status === 'SUCCESS')?.completedAt ?? null,
+        lastFailureAt: state.relayRuns.find((run) => run.status === 'FAILED')?.completedAt ?? null,
+        alertReasons: state.relayRuns.length === 0 ? ['no relay run data'] : [],
+      });
+    }
+
+    if (url.includes('/outbox-relay-runs')) {
+      return jsonResponse(state.relayRuns);
+    }
+
+    if (url.includes('/operational-log-pruning-runs') && method === 'POST') {
+      expect(init?.headers).toMatchObject({
+        'X-Admin-Token': 'local-ops-token',
+        'X-Operator-Token': 'local-operator-token',
+        'X-Operator-Id': 'local-operator',
+      });
+      return jsonResponse({
+        prunedAt: '2026-05-02T00:00:00Z',
+        relayRunCutoff: '2026-04-02T00:00:00Z',
+        adminAccessAuditCutoff: '2025-11-03T00:00:00Z',
+        deletedRelayRunCount: 1,
+        deletedAdminAccessAuditCount: 2,
+      });
+    }
+
     if (url.includes('/requeue-audits')) {
       const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-audits')[0];
       return jsonResponse(state.requeueAudits.filter((audit) => audit.outboxEventId === outboxEventId));
     }
 
+    if (url.includes('/outbox-events/') && url.endsWith('/requeue-requests') && method === 'GET') {
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-requests')[0];
+      return jsonResponse(state.requeueRequests.filter((request) => request.outboxEventId === outboxEventId));
+    }
+
+    if (url.includes('/outbox-events/') && url.endsWith('/requeue-requests') && method === 'POST') {
+      const outboxEventId = url.split('/outbox-events/')[1].split('/requeue-requests')[0];
+      const outboxEvent = state.manualReviewEvents.find((event) => event.outboxEventId === outboxEventId);
+      const body = JSON.parse(String(init?.body));
+      const request: MockRequeueRequest = {
+        requestId: 'outbox-requeue-request-001',
+        outboxEventId,
+        operationId: outboxEvent?.operationId ?? 'op-operator-001',
+        status: 'REQUESTED',
+        requestedBy: 'local-operator',
+        requestReason: body.reason,
+        requestedAt: '2026-05-02T00:00:00Z',
+        approvedBy: null,
+        approvedAt: null,
+        approvalReason: null,
+        executedBy: null,
+        executedAt: null,
+        rejectedBy: null,
+        rejectedAt: null,
+        rejectionReason: null,
+      };
+      state.requeueRequests.push(request);
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/reject') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/reject')[0];
+      const body = JSON.parse(String(init?.body));
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'REJECTED';
+      request.rejectedBy = 'local-operator';
+      request.rejectionReason = body.reason;
+      request.rejectedAt = '2026-05-02T00:01:00Z';
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/approve') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/approve')[0];
+      const body = JSON.parse(String(init?.body));
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'APPROVED';
+      request.approvedBy = 'local-operator';
+      request.approvalReason = body.reason;
+      request.approvedAt = '2026-05-02T00:01:00Z';
+      return jsonResponse(request);
+    }
+
+    if (url.includes('/outbox-events/requeue-requests/') && url.endsWith('/execute') && method === 'POST') {
+      const requestId = url.split('/requeue-requests/')[1].split('/execute')[0];
+      const request = state.requeueRequests.find((item) => item.requestId === requestId);
+      if (!request) {
+        throw new Error('requeue request not found');
+      }
+      request.status = 'EXECUTED';
+      request.executedBy = 'local-operator';
+      request.executedAt = '2026-05-02T00:02:00Z';
+      state.manualReviewEvents = state.manualReviewEvents.filter((event) => event.outboxEventId !== request.outboxEventId);
+      state.requeueAudits.push({
+        auditId: 'outbox-requeue-audit-001',
+        outboxEventId: request.outboxEventId,
+        operationId: request.operationId,
+        requeuedAt: '2026-05-02T00:02:00Z',
+        operator: 'local-operator',
+        reason: request.requestReason,
+      });
+      return jsonResponse(request);
+    }
+
     if (url.includes('/outbox-events/') && url.endsWith('/requeue') && method === 'POST') {
       expect(init?.headers).toMatchObject({
         'X-Admin-Token': 'local-ops-token',
+        'X-Operator-Token': 'local-operator-token',
         'X-Operator-Id': 'local-operator',
       });
       const outboxEventId = url.split('/outbox-events/')[1].split('/requeue')[0];
@@ -338,7 +488,7 @@ describe('App', () => {
     expect(screen.getByText('Manual review 대기 event가 없습니다.')).toBeVisible();
   });
 
-  it('manual review outbox를 requeue하고 audit trail을 표시한다', async () => {
+  it('manual review outbox requeue를 요청, 승인, 실행하고 audit trail을 표시한다', async () => {
     const user = userEvent.setup();
     const fetchMock = setupFetch({
       balanceAmount: 125000,
@@ -346,6 +496,8 @@ describe('App', () => {
       operationType: null,
       manualReviewEvents: [manualReviewEvent()],
       requeueAudits: [],
+      requeueRequests: [],
+      relayRuns: [],
     });
 
     render(<App />);
@@ -358,17 +510,102 @@ describe('App', () => {
 
     await user.clear(screen.getByLabelText('Requeue 사유'));
     await user.type(screen.getByLabelText('Requeue 사유'), 'broker recovered');
+    await user.click(screen.getByRole('button', { name: 'Requeue 요청' }));
+
+    expect(await screen.findByText('Requeue 요청이 등록되었습니다. 승인자를 분리해 승인하세요.')).toBeVisible();
+    expect(screen.getByText('REQUESTED')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Requeue 승인' }));
+
+    expect(await screen.findByText('Requeue 요청이 승인되었습니다. 실행 단계로 진행하세요.')).toBeVisible();
+    expect(screen.getByText('APPROVED')).toBeVisible();
+
     await user.click(screen.getByRole('button', { name: 'Requeue 실행' }));
 
-    expect(await screen.findByText('Requeue가 완료되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
-    expect(screen.getAllByText('broker recovered')).toHaveLength(2);
-    expect(screen.getByText('local-operator')).toBeVisible();
-    expect(screen.getByText('REQUEUED')).toBeVisible();
+    expect(await screen.findByText('Requeue가 실행되었습니다. 감사 이력을 확인하세요.')).toBeVisible();
+    expect(screen.getByText('EXECUTED')).toBeVisible();
+    expect(screen.getAllByText('broker recovered').length).toBeGreaterThanOrEqual(2);
+    expect(screen.getAllByText('local-operator').length).toBeGreaterThanOrEqual(1);
 
-    const requeueCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/requeue'));
-    expect(requeueCall).toBeDefined();
-    expect(JSON.parse(String(requeueCall?.[1]?.body))).toMatchObject({
+    const requeueRequestCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/requeue-requests'));
+    expect(requeueRequestCall).toBeDefined();
+    expect(JSON.parse(String(requeueRequestCall?.[1]?.body))).toMatchObject({
       reason: 'broker recovered',
     });
   });
+
+  it('manual review outbox requeue 요청을 반려하고 manual review 상태를 유지한다', async () => {
+    const user = userEvent.setup();
+    setupFetch({
+      balanceAmount: 125000,
+      operationId: null,
+      operationType: null,
+      manualReviewEvents: [manualReviewEvent()],
+      requeueAudits: [],
+      requeueRequests: [],
+      relayRuns: [],
+    });
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Manual review 조회' }));
+    await user.clear(screen.getByLabelText('Requeue 사유'));
+    await user.type(screen.getByLabelText('Requeue 사유'), 'broker recovered');
+    await user.click(screen.getByRole('button', { name: 'Requeue 요청' }));
+
+    expect(await screen.findByText('REQUESTED')).toBeVisible();
+
+    await user.clear(screen.getByLabelText('Requeue 반려 사유'));
+    await user.type(screen.getByLabelText('Requeue 반려 사유'), '원인 조치 미확인');
+    await user.click(screen.getByRole('button', { name: 'Requeue 반려' }));
+
+    expect(await screen.findByText('Requeue 요청이 반려되었습니다. 감사 이력 없이 manual review 상태를 유지합니다.')).toBeVisible();
+    expect(screen.getByText('REJECTED')).toBeVisible();
+    expect(screen.getAllByText('MANUAL_REVIEW').length).toBeGreaterThanOrEqual(1);
+    expect(screen.getByText('아직 requeue audit이 없습니다.')).toBeVisible();
+  });
+
+  it('relay health와 pruning 결과를 운영자 콘솔에 표시한다', async () => {
+    const user = userEvent.setup();
+    setupFetch({
+      balanceAmount: 125000,
+      operationId: null,
+      operationType: null,
+      manualReviewEvents: [],
+      requeueAudits: [],
+      requeueRequests: [],
+      relayRuns: [relayRun()],
+    });
+
+    render(<App />);
+
+    await screen.findByText('125,000 KRW');
+    await user.click(screen.getByRole('button', { name: 'Relay 상태 조회' }));
+
+    expect(await screen.findByText('Relay health와 실행 기록 조회가 완료되었습니다.')).toBeVisible();
+    expect(screen.getByText('outbox-relay-run-001')).toBeVisible();
+    expect(screen.getByText('1/20')).toBeVisible();
+
+    await user.click(screen.getByRole('button', { name: 'Pruning 실행' }));
+
+    expect(await screen.findByText('운영 로그 pruning이 완료되었습니다.')).toBeVisible();
+    expect(screen.getByText('Relay run 삭제')).toBeVisible();
+    expect(screen.getByText('Access audit 삭제')).toBeVisible();
+    expect(screen.getByText('2')).toBeVisible();
+  });
 });
+
+function relayRun(): MockRelayRun {
+  return {
+    relayRunId: 'outbox-relay-run-001',
+    startedAt: '2026-05-02T00:00:00Z',
+    completedAt: '2026-05-02T00:00:01Z',
+    status: 'SUCCESS',
+    batchSize: 10,
+    claimedCount: 1,
+    publishedCount: 1,
+    failedCount: 0,
+    errorMessage: null,
+  };
+}

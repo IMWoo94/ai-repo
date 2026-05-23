@@ -114,10 +114,10 @@ HTTP broker adapter는 `POST`와 `application/json`, `X-Outbox-Event-Id` header�
 
 Scheduler 실행 결과는 운영 header와 함께 조회합니다.
 
-운영 API는 Spring Security 기반 role model을 사용합니다. 현재 로컬 token은 `ROLE_OPERATOR`와 `ROLE_ADMIN`을 모두 부여하며, `X-Operator-Id`가 없으면 role이 부여되지 않아 403을 반환합니다.
+운영 API는 Spring Security 기반 role model을 사용합니다. `X-Operator-Token`은 조회성 운영 API에 필요한 `ROLE_OPERATOR`를 부여하고, `X-Admin-Token`은 변경성 운영 조치에 필요한 `ROLE_ADMIN`까지 부여합니다. 두 token 모두 `X-Operator-Id`가 없으면 role이 부여되지 않아 403을 반환합니다.
 
 ```bash
-curl -H "X-Admin-Token: local-ops-token" \
+curl -H "X-Operator-Token: local-operator-token" \
   -H "X-Operator-Id: local-operator" \
   "http://localhost:8080/api/v1/outbox-relay-runs?limit=10"
 ```
@@ -125,7 +125,7 @@ curl -H "X-Admin-Token: local-ops-token" \
 Scheduler health summary와 alert 판정도 운영 header와 함께 조회합니다. 기본 기준은 최근 20회, warning 연속 실패 2회, critical 연속 실패 3회, warning 실패율 50%, 마지막 성공 15분 초과 critical입니다.
 
 ```bash
-curl -H "X-Admin-Token: local-ops-token" \
+curl -H "X-Operator-Token: local-operator-token" \
   -H "X-Operator-Id: local-operator" \
   "http://localhost:8080/api/v1/outbox-relay-runs/health"
 ```
@@ -133,7 +133,7 @@ curl -H "X-Admin-Token: local-ops-token" \
 운영 API 접근 감사 로그도 같은 header로 조회합니다. Admin token 값은 감사 로그에 저장하지 않습니다.
 
 ```bash
-curl -H "X-Admin-Token: local-ops-token" \
+curl -H "X-Operator-Token: local-operator-token" \
   -H "X-Operator-Id: local-operator" \
   "http://localhost:8080/api/v1/admin-api-access-audits?limit=10"
 ```
@@ -155,6 +155,48 @@ AI_REPO_OPERATIONAL_LOG_PRUNING_RELAY_RUN_RETENTION_DAYS=30 \
 AI_REPO_OPERATIONAL_LOG_PRUNING_ADMIN_ACCESS_AUDIT_RETENTION_DAYS=180 \
 AI_REPO_OPERATIONAL_LOG_PRUNING_INITIAL_DELAY_MS=60000 \
 AI_REPO_OPERATIONAL_LOG_PRUNING_FIXED_DELAY_MS=86400000 \
+./gradlew bootRun
+```
+
+Consumer dedupe/receipt/delivery metric pruning은 processed-event 30일, receipt 30일, delivery metric bucket 30일을 기본 보존 기간으로 사용합니다. 수동 실행은 admin header와 함께 호출합니다.
+
+Consumer duplicate health는 기본적으로 최근 5분 window에서 duplicate 5건 이상, duplicate delivery rate 20% 이상이면 `WARNING`, 50% 이상이면 `CRITICAL`로 판정합니다. 수동 조회는 operator header와 함께 호출합니다.
+
+```bash
+curl -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-consumer/window-metrics?minutes=5"
+```
+
+```bash
+curl -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-consumer/health"
+```
+
+Warning/Critical health 판정이 발생하면 운영 alert record가 저장됩니다. 최근 alert는 operator header와 함께 조회합니다.
+
+```bash
+curl -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/operational-alerts?limit=10"
+```
+
+```bash
+curl -X POST \
+  -H "X-Admin-Token: local-ops-token" \
+  -H "X-Operator-Id: local-operator" \
+  "http://localhost:8080/api/v1/outbox-consumer/pruning-runs"
+```
+
+자동 consumer pruning scheduler도 기본 비활성화입니다.
+
+```bash
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_ENABLED=true \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_PROCESSED_EVENT_RETENTION_DAYS=30 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_RECEIPT_RETENTION_DAYS=30 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_INITIAL_DELAY_MS=60000 \
+AI_REPO_OUTBOX_CONSUMER_PRUNING_SCHEDULER_FIXED_DELAY_MS=86400000 \
 ./gradlew bootRun
 ```
 

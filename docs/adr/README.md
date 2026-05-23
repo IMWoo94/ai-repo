@@ -52,3 +52,21 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0034 | Spring Security Role Model | Accepted |
 | ADR-0035 | HTTP Outbox Broker Adapter | Accepted |
 | ADR-0036 | PostgreSQL Scenario Testcontainers CI Gate | Accepted |
+| ADR-0037 | Operator/Admin Token Split | Accepted |
+| ADR-0038 | Requeue Approval Workflow | Accepted |
+| ADR-0039 | Dev Rules Automatic Sync Check | Accepted |
+| ADR-0040 | Direct Requeue API Deprecation | Accepted |
+| ADR-0041 | Requeue State Transition Atomicity | Accepted |
+| ADR-0042 | Outbox Claim Guarded Result Update | Accepted |
+| ADR-0043 | Broker and Consumer Idempotency Contract | Accepted |
+| ADR-0044 | Consumer Processed Event Dedupe Store | Accepted |
+| ADR-0045 | HTTP Outbox Consumer Adapter | Accepted |
+| ADR-0046 | HTTP Publish Consume Loop Verification | Accepted |
+| ADR-0047 | Consumer Monitoring Admin API | Accepted |
+| ADR-0048 | Consumer Processed Event Pruning | Accepted |
+| ADR-0049 | Consumer Duplicate Spike Alert | Accepted |
+| ADR-0050 | Consumer Duplicate Time Bucket Metric | Accepted |
+| ADR-0051 | Consumer Delivery Metric Pruning | Accepted |
+| ADR-0052 | Operational Alert Record Channel | Accepted |
+| ADR-0053 | Operational Alert Suppression and Pruning | Accepted |
+| ADR-0054 | Slack Webhook Operational Alert Publisher | Accepted |

@@ -13,8 +13,8 @@
 - 기본 실행은 인메모리 저장소이며, `postgres` 프로필에서는 PostgreSQL, Flyway, JDBC 저장소를 사용한다.
 - 돈 이동 성공 결과는 거래내역, 원장, 감사 이벤트, operation step log, transactional outbox event로 추적한다.
 - outbox event는 relay 상태와 retry 정책을 가지며, 반복 실패 시 `MANUAL_REVIEW`로 격리된다.
-- 운영자는 manual review outbox를 조회하고 requeue하며, requeue audit trail을 확인한다.
-- 운영 API는 local admin token과 operator id header로 보호된다.
+- 운영자는 manual review outbox를 조회하고 requeue 요청, 승인, 실행, audit trail을 확인한다.
+- 운영 API는 local operator/admin token과 operator id header로 보호된다.
 - 현재 릴리스 후보 기준은 `docs/releases/v0.7.0.md`를 따른다.
 
 ## 현재 도메인 진행 순서
@@ -144,7 +144,9 @@
 | 최대 재시도 초과 event는 manual review로 격리한다 | 무한 재시도를 막고 운영자 확인 대상으로 분리한다 | ADR-0018 |
 | manual review event는 운영자 API로 조회한다 | 장애 event를 운영자가 확인할 수 있어야 한다 | ADR-0019 |
 | requeue는 operator와 reason을 감사 이력으로 남긴다 | 금융/핀테크 운영 조치는 사후 추적 가능해야 한다 | ADR-0020 |
-| 운영 API는 admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이다 | ADR-0028, ADR-0034 |
+| 운영 API는 operator/admin token과 operator id header를 요구한다 | 조회와 변경 행위 모두 책임 추적 대상이며, 변경성 운영 조치는 admin 권한이 필요하다 | ADR-0028, ADR-0034, ADR-0037 |
+| requeue는 요청자와 승인자를 분리한다 | 실패 event 재처리는 4-eyes 운영 조치로 설명 가능해야 한다 | ADR-0038 |
+| requeue 반려는 event 상태를 바꾸지 않는다 | 원인 조치가 확인되지 않은 event는 계속 `MANUAL_REVIEW`에 남아야 한다 | ADR-0038 |
 | relay run, health summary, admin access audit, pruning run은 운영 관측 기록이다 | 운영자는 상태와 조치 이력을 API로 확인한다 | ADR-0030, ADR-0031, ADR-0032, ADR-0033 |
 
 ## 화면과 검증 규칙
@@ -421,15 +423,22 @@
 - 3회 실패 event는 `MANUAL_REVIEW` 상태로 전이한다.
 - `MANUAL_REVIEW` event는 자동 claim 대상이 아니다.
 - `MANUAL_REVIEW` event는 `lastError`와 `attemptCount`를 유지한다.
+- publish 결과 갱신은 claim된 `claimedAt`, `leaseExpiresAt`이 현재 row와 일치할 때만 성공한다.
 - 기준 결정은 ADR-0018을 따른다.
 
 ### Issue #33 구현 기준
 
 - `GET /api/v1/outbox-events/manual-review`로 수동 확인 대상 event를 조회한다.
-- `POST /api/v1/outbox-events/{outboxEventId}/requeue`로 수동 확인 event를 다시 처리 대기 상태로 전환한다.
-- requeue 요청은 operator와 reason을 필수로 가진다.
+- `POST /api/v1/outbox-events/{outboxEventId}/requeue-requests`로 requeue 요청을 만든다.
+- `POST /api/v1/outbox-events/requeue-requests/{requestId}/approve`로 요청자와 다른 승인자가 승인한다.
+- `POST /api/v1/outbox-events/requeue-requests/{requestId}/execute`로 승인된 요청을 실행한다.
+- `POST /api/v1/outbox-events/requeue-requests/{requestId}/reject`로 요청자와 다른 반려자가 반려한다.
+- 기존 `POST /api/v1/outbox-events/{outboxEventId}/requeue` 직접 실행 API는 deprecated이며 `410 Gone`을 반환한다.
+- requeue workflow 상태는 `REQUESTED -> APPROVED -> EXECUTED`, `REQUESTED -> REJECTED`다.
 - `GET /api/v1/outbox-events/{outboxEventId}/requeue-audits`로 requeue 감사 이력을 조회한다.
 - requeue 대상은 `MANUAL_REVIEW` 상태 event로 제한한다.
-- requeue 결과는 `PENDING`, `attemptCount = 0`, retry/lease/publish/error 필드 초기화다.
-- 인증/인가와 승인 워크플로우는 후속 작업으로 남긴다.
+- execute 결과는 `PENDING`, `attemptCount = 0`, retry/lease/publish/error 필드 초기화다.
+- reject 결과는 기존 outbox event를 `MANUAL_REVIEW` 상태로 유지한다.
+- approve/reject/execute는 DB row lock과 update count 검증으로 하나의 상태 전이만 성공해야 한다.
+- 인증/인가는 operator/admin token 기반이며, 실제 로그인 identity 연결은 후속 작업으로 남긴다.
 - 기준 결정은 ADR-0019를 따른다.

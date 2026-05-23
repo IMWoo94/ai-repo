@@ -1,8 +1,16 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerIdempotencyRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerDeliveryMetricRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMetrics;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerMonitoringRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerPruningRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerReceiptRepository;
+import com.imwoo.airepo.wallet.application.OperationOutboxConsumerWindowMetrics;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
+import com.imwoo.airepo.wallet.application.OperationalAlertRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
@@ -15,12 +23,18 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.Member;
 import com.imwoo.airepo.wallet.domain.MemberStatus;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerProcessedEvent;
+import com.imwoo.airepo.wallet.domain.OperationOutboxConsumerReceipt;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.OperationStep;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import com.imwoo.airepo.wallet.domain.TransactionHistoryItem;
 import com.imwoo.airepo.wallet.domain.TransactionStatus;
@@ -30,7 +44,9 @@ import com.imwoo.airepo.wallet.domain.WalletAccountStatus;
 import com.imwoo.airepo.wallet.domain.WalletBalance;
 import java.math.BigDecimal;
 import java.time.Instant;
+import java.time.temporal.ChronoUnit;
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -45,6 +61,12 @@ public class InMemoryWalletRepository implements
         WalletLedgerQueryRepository,
         OperationOutboxRelayRepository,
         OperationOutboxRelayRunRepository,
+        OperationOutboxConsumerIdempotencyRepository,
+        OperationOutboxConsumerReceiptRepository,
+        OperationOutboxConsumerDeliveryMetricRepository,
+        OperationOutboxConsumerMonitoringRepository,
+        OperationOutboxConsumerPruningRepository,
+        OperationalAlertRepository,
         AdminApiAccessAuditRepository {
 
     private static final String DEFAULT_CURRENCY = "KRW";
@@ -58,8 +80,13 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
+    private final Map<String, List<OperationOutboxRequeueRequestRecord>> outboxRequeueRequests = new HashMap<>();
     private final List<OperationOutboxRelayRun> outboxRelayRuns = new ArrayList<>();
     private final List<AdminApiAccessAudit> adminApiAccessAudits = new ArrayList<>();
+    private final List<OperationalAlert> operationalAlerts = new ArrayList<>();
+    private final Map<String, OperationOutboxConsumerProcessedEvent> outboxConsumerProcessedEvents = new HashMap<>();
+    private final Map<String, OperationOutboxConsumerReceipt> outboxConsumerReceipts = new HashMap<>();
+    private final Map<Instant, ConsumerDeliveryBucket> outboxConsumerDeliveryBuckets = new HashMap<>();
     private final Map<String, WalletOperationRecord> operations = new HashMap<>();
     private int transactionSequence = 2;
     private int operationSequence = 0;
@@ -68,8 +95,10 @@ public class InMemoryWalletRepository implements
     private int operationStepLogSequence = 0;
     private int outboxEventSequence = 0;
     private int outboxRequeueAuditSequence = 0;
+    private int outboxRequeueRequestSequence = 0;
     private int outboxRelayRunSequence = 0;
     private int adminApiAccessAuditSequence = 0;
+    private int operationalAlertSequence = 0;
 
     public InMemoryWalletRepository() {
         members.put(
@@ -216,6 +245,11 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized List<OperationOutboxRequeueRequestRecord> findOutboxRequeueRequests(String outboxEventId) {
+        return List.copyOf(outboxRequeueRequests.getOrDefault(outboxEventId, List.of()));
+    }
+
+    @Override
     public synchronized String nextRelayRunId() {
         outboxRelayRunSequence++;
         return "outbox-relay-run-%03d".formatted(outboxRelayRunSequence);
@@ -273,10 +307,181 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized String nextOperationalAlertId() {
+        operationalAlertSequence += 1;
+        return "operational-alert-%03d".formatted(operationalAlertSequence);
+    }
+
+    @Override
+    public synchronized void saveOperationalAlert(OperationalAlert operationalAlert) {
+        operationalAlerts.add(operationalAlert);
+    }
+
+    @Override
+    public synchronized boolean existsOperationalAlertBetween(
+            String source,
+            OperationalAlertSeverity severity,
+            List<String> reasons,
+            Instant since,
+            Instant until
+    ) {
+        return operationalAlerts.stream()
+                .anyMatch(alert -> alert.source().equals(source)
+                        && alert.severity() == severity
+                        && alert.reasons().equals(reasons)
+                        && !alert.occurredAt().isBefore(since)
+                        && !alert.occurredAt().isAfter(until));
+    }
+
+    @Override
+    public synchronized List<OperationalAlert> findRecentOperationalAlerts(int limit) {
+        return operationalAlerts.stream()
+                .sorted(Comparator.comparing(OperationalAlert::occurredAt)
+                        .thenComparing(OperationalAlert::alertId)
+                        .reversed())
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized int deleteOperationalAlertsOccurredBefore(Instant cutoff) {
+        int beforeSize = operationalAlerts.size();
+        operationalAlerts.removeIf(alert -> alert.occurredAt().isBefore(cutoff));
+        return beforeSize - operationalAlerts.size();
+    }
+
+    @Override
     public synchronized int deleteAdminApiAccessAuditsOccurredBefore(Instant cutoff) {
         int beforeSize = adminApiAccessAudits.size();
         adminApiAccessAudits.removeIf(accessAudit -> accessAudit.occurredAt().isBefore(cutoff));
         return beforeSize - adminApiAccessAudits.size();
+    }
+
+    @Override
+    public synchronized boolean recordProcessedEvent(
+            String idempotencyKey,
+            String outboxEventId,
+            String eventType,
+            Instant processedAt
+    ) {
+        if (outboxConsumerProcessedEvents.containsKey(idempotencyKey)) {
+            OperationOutboxConsumerProcessedEvent existing = outboxConsumerProcessedEvents.get(idempotencyKey);
+            outboxConsumerProcessedEvents.put(
+                    idempotencyKey,
+                    new OperationOutboxConsumerProcessedEvent(
+                            existing.idempotencyKey(),
+                            existing.outboxEventId(),
+                            existing.eventType(),
+                            existing.processedAt(),
+                            existing.duplicateCount() + 1
+                    )
+            );
+            return false;
+        }
+        outboxConsumerProcessedEvents.put(
+                idempotencyKey,
+                new OperationOutboxConsumerProcessedEvent(idempotencyKey, outboxEventId, eventType, processedAt, 0)
+        );
+        return true;
+    }
+
+    @Override
+    public synchronized Optional<OperationOutboxConsumerProcessedEvent> findProcessedEvent(String idempotencyKey) {
+        return Optional.ofNullable(outboxConsumerProcessedEvents.get(idempotencyKey));
+    }
+
+    @Override
+    public synchronized void saveConsumerReceipt(OperationOutboxConsumerReceipt receipt) {
+        outboxConsumerReceipts.put(receipt.idempotencyKey(), receipt);
+    }
+
+    @Override
+    public synchronized Optional<OperationOutboxConsumerReceipt> findConsumerReceipt(String idempotencyKey) {
+        return Optional.ofNullable(outboxConsumerReceipts.get(idempotencyKey));
+    }
+
+    @Override
+    public synchronized void recordConsumerDeliveryMetric(Instant occurredAt, boolean duplicate) {
+        Instant bucketStartedAt = occurredAt.truncatedTo(ChronoUnit.MINUTES);
+        ConsumerDeliveryBucket existing = outboxConsumerDeliveryBuckets.getOrDefault(
+                bucketStartedAt,
+                new ConsumerDeliveryBucket(0, 0)
+        );
+        outboxConsumerDeliveryBuckets.put(bucketStartedAt, existing.increment(duplicate));
+    }
+
+    @Override
+    public synchronized OperationOutboxConsumerMetrics getConsumerMetrics() {
+        Instant lastProcessedAt = outboxConsumerProcessedEvents.values().stream()
+                .map(OperationOutboxConsumerProcessedEvent::processedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        Instant lastReceivedAt = outboxConsumerReceipts.values().stream()
+                .map(OperationOutboxConsumerReceipt::receivedAt)
+                .max(Comparator.naturalOrder())
+                .orElse(null);
+        long duplicateEventCount = outboxConsumerProcessedEvents.values().stream()
+                .mapToLong(OperationOutboxConsumerProcessedEvent::duplicateCount)
+                .sum();
+        return new OperationOutboxConsumerMetrics(
+                outboxConsumerProcessedEvents.size(),
+                duplicateEventCount,
+                outboxConsumerReceipts.size(),
+                lastProcessedAt,
+                lastReceivedAt
+        );
+    }
+
+    @Override
+    public synchronized OperationOutboxConsumerWindowMetrics getConsumerWindowMetrics(
+            Instant windowStartedAt,
+            Instant windowEndedAt
+    ) {
+        long processedDeliveryCount = 0;
+        long duplicateDeliveryCount = 0;
+        for (Map.Entry<Instant, ConsumerDeliveryBucket> entry : outboxConsumerDeliveryBuckets.entrySet()) {
+            if (!entry.getKey().isBefore(windowStartedAt) && entry.getKey().isBefore(windowEndedAt)) {
+                processedDeliveryCount += entry.getValue().processedDeliveryCount();
+                duplicateDeliveryCount += entry.getValue().duplicateDeliveryCount();
+            }
+        }
+        return new OperationOutboxConsumerWindowMetrics(
+                windowStartedAt,
+                windowEndedAt,
+                processedDeliveryCount,
+                duplicateDeliveryCount
+        );
+    }
+
+    @Override
+    public synchronized List<OperationOutboxConsumerReceipt> findRecentConsumerReceipts(int limit) {
+        return outboxConsumerReceipts.values().stream()
+                .sorted(Comparator.comparing(OperationOutboxConsumerReceipt::receivedAt)
+                        .thenComparing(OperationOutboxConsumerReceipt::idempotencyKey)
+                        .reversed())
+                .limit(limit)
+                .toList();
+    }
+
+    @Override
+    public synchronized int deleteConsumerProcessedEventsProcessedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerProcessedEvents.size();
+        outboxConsumerProcessedEvents.values().removeIf(processedEvent -> processedEvent.processedAt().isBefore(cutoff));
+        return beforeSize - outboxConsumerProcessedEvents.size();
+    }
+
+    @Override
+    public synchronized int deleteConsumerReceiptsReceivedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerReceipts.size();
+        outboxConsumerReceipts.values().removeIf(receipt -> receipt.receivedAt().isBefore(cutoff));
+        return beforeSize - outboxConsumerReceipts.size();
+    }
+
+    @Override
+    public synchronized int deleteConsumerDeliveryMetricsBucketStartedBefore(Instant cutoff) {
+        int beforeSize = outboxConsumerDeliveryBuckets.size();
+        outboxConsumerDeliveryBuckets.keySet().removeIf(bucketStartedAt -> bucketStartedAt.isBefore(cutoff));
+        return beforeSize - outboxConsumerDeliveryBuckets.size();
     }
 
     @Override
@@ -315,6 +520,34 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized void markClaimedOutboxEventPublished(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            Instant publishedAt
+    ) {
+        replaceOutboxEvent(outboxEventId, event -> {
+            requireActiveClaim(event, claimedAt, leaseExpiresAt);
+            return new OperationOutboxEvent(
+                    event.outboxEventId(),
+                    event.operationId(),
+                    event.eventType(),
+                    event.aggregateType(),
+                    event.aggregateId(),
+                    event.payload(),
+                    OperationOutboxStatus.PUBLISHED,
+                    event.occurredAt(),
+                    event.attemptCount(),
+                    null,
+                    null,
+                    null,
+                    publishedAt,
+                    null
+            );
+        });
+    }
+
+    @Override
     public synchronized void markOutboxEventFailed(
             String outboxEventId,
             String lastError,
@@ -337,6 +570,36 @@ public class InMemoryWalletRepository implements
                 null,
                 lastError
         ));
+    }
+
+    @Override
+    public synchronized void markClaimedOutboxEventFailed(
+            String outboxEventId,
+            Instant claimedAt,
+            Instant leaseExpiresAt,
+            String lastError,
+            Instant nextRetryAt,
+            int maxAttempts
+    ) {
+        replaceOutboxEvent(outboxEventId, event -> {
+            requireActiveClaim(event, claimedAt, leaseExpiresAt);
+            return new OperationOutboxEvent(
+                    event.outboxEventId(),
+                    event.operationId(),
+                    event.eventType(),
+                    event.aggregateType(),
+                    event.aggregateId(),
+                    event.payload(),
+                    failedStatus(event, maxAttempts),
+                    event.occurredAt(),
+                    event.attemptCount() + 1,
+                    failedNextRetryAt(event, nextRetryAt, maxAttempts),
+                    null,
+                    null,
+                    null,
+                    lastError
+            );
+        });
     }
 
     @Override
@@ -375,6 +638,140 @@ public class InMemoryWalletRepository implements
                         operator,
                         reason
                 ));
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord requestManualReviewRequeue(
+            String outboxEventId,
+            Instant requestedAt,
+            String requestedBy,
+            String reason
+    ) {
+        OperationOutboxEvent event = findOutboxEvent(outboxEventId);
+        if (event.status() != OperationOutboxStatus.MANUAL_REVIEW) {
+            throw new InvalidWalletOperationException("outboxEventId must be in MANUAL_REVIEW: " + outboxEventId);
+        }
+        OperationOutboxRequeueRequestRecord request = new OperationOutboxRequeueRequestRecord(
+                nextOutboxRequeueRequestId(),
+                outboxEventId,
+                event.operationId(),
+                OperationOutboxRequeueRequestStatus.REQUESTED,
+                requestedBy,
+                reason,
+                requestedAt,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        outboxRequeueRequests.computeIfAbsent(outboxEventId, ignored -> new ArrayList<>()).add(request);
+        return request;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord approveManualReviewRequeueRequest(
+            String requestId,
+            Instant approvedAt,
+            String approvedBy,
+            String approvalReason
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+            throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+        }
+        if (request.requestedBy().equals(approvedBy)) {
+            throw new InvalidWalletOperationException("approver must be different from requester");
+        }
+        OperationOutboxRequeueRequestRecord approvedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.APPROVED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                approvedBy,
+                approvedAt,
+                approvalReason,
+                null,
+                null,
+                null,
+                null,
+                null
+        );
+        replaceOutboxRequeueRequest(approvedRequest);
+        return approvedRequest;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord executeManualReviewRequeueRequest(
+            String requestId,
+            Instant executedAt,
+            String executedBy
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.APPROVED) {
+            throw new InvalidWalletOperationException("requeue request must be APPROVED: " + requestId);
+        }
+        requeueManualReviewOutboxEvent(request.outboxEventId(), executedAt, executedBy, request.requestReason());
+        OperationOutboxRequeueRequestRecord executedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.EXECUTED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                request.approvedBy(),
+                request.approvedAt(),
+                request.approvalReason(),
+                executedBy,
+                executedAt,
+                request.rejectedBy(),
+                request.rejectedAt(),
+                request.rejectionReason()
+        );
+        replaceOutboxRequeueRequest(executedRequest);
+        return executedRequest;
+    }
+
+    @Override
+    public synchronized OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            Instant rejectedAt,
+            String rejectedBy,
+            String rejectionReason
+    ) {
+        OperationOutboxRequeueRequestRecord request = findOutboxRequeueRequest(requestId);
+        if (request.status() != OperationOutboxRequeueRequestStatus.REQUESTED) {
+            throw new InvalidWalletOperationException("requeue request must be REQUESTED: " + requestId);
+        }
+        if (request.requestedBy().equals(rejectedBy)) {
+            throw new InvalidWalletOperationException("rejector must be different from requester");
+        }
+        OperationOutboxRequeueRequestRecord rejectedRequest = new OperationOutboxRequeueRequestRecord(
+                request.requestId(),
+                request.outboxEventId(),
+                request.operationId(),
+                OperationOutboxRequeueRequestStatus.REJECTED,
+                request.requestedBy(),
+                request.requestReason(),
+                request.requestedAt(),
+                request.approvedBy(),
+                request.approvedAt(),
+                request.approvalReason(),
+                request.executedBy(),
+                request.executedAt(),
+                rejectedBy,
+                rejectedAt,
+                rejectionReason
+        );
+        replaceOutboxRequeueRequest(rejectedRequest);
+        return rejectedRequest;
     }
 
     @Override
@@ -589,6 +986,14 @@ public class InMemoryWalletRepository implements
         return OperationOutboxStatus.FAILED;
     }
 
+    private void requireActiveClaim(OperationOutboxEvent event, Instant claimedAt, Instant leaseExpiresAt) {
+        if (event.status() != OperationOutboxStatus.PROCESSING
+                || !claimedAt.equals(event.claimedAt())
+                || !leaseExpiresAt.equals(event.leaseExpiresAt())) {
+            throw new InvalidWalletOperationException("outbox event claim is no longer active: " + event.outboxEventId());
+        }
+    }
+
     private Instant failedNextRetryAt(OperationOutboxEvent event, Instant nextRetryAt, int maxAttempts) {
         if (event.attemptCount() + 1 >= maxAttempts) {
             return null;
@@ -602,6 +1007,14 @@ public class InMemoryWalletRepository implements
                 .filter(outboxEvent -> outboxEvent.outboxEventId().equals(outboxEventId))
                 .findFirst()
                 .orElseThrow(() -> new InvalidWalletOperationException("manual review outbox event not found: " + outboxEventId));
+    }
+
+    private OperationOutboxRequeueRequestRecord findOutboxRequeueRequest(String requestId) {
+        return outboxRequeueRequests.values().stream()
+                .flatMap(List::stream)
+                .filter(request -> request.requestId().equals(requestId))
+                .findFirst()
+                .orElseThrow(() -> new InvalidWalletOperationException("requeue request not found: " + requestId));
     }
 
     private int compareOutboxEvents(OperationOutboxEvent left, OperationOutboxEvent right) {
@@ -649,6 +1062,20 @@ public class InMemoryWalletRepository implements
                 }
             }
             return replacedEvents;
+        });
+    }
+
+    private void replaceOutboxRequeueRequest(OperationOutboxRequeueRequestRecord replacement) {
+        outboxRequeueRequests.replaceAll((outboxEventId, requests) -> {
+            List<OperationOutboxRequeueRequestRecord> replacedRequests = new ArrayList<>();
+            for (OperationOutboxRequeueRequestRecord request : requests) {
+                if (request.requestId().equals(replacement.requestId())) {
+                    replacedRequests.add(replacement);
+                } else {
+                    replacedRequests.add(request);
+                }
+            }
+            return replacedRequests;
         });
     }
 
@@ -775,5 +1202,23 @@ public class InMemoryWalletRepository implements
     private String nextOutboxRequeueAuditId() {
         outboxRequeueAuditSequence += 1;
         return "outbox-requeue-audit-%03d".formatted(outboxRequeueAuditSequence);
+    }
+
+    private String nextOutboxRequeueRequestId() {
+        outboxRequeueRequestSequence += 1;
+        return "outbox-requeue-request-%03d".formatted(outboxRequeueRequestSequence);
+    }
+
+    private record ConsumerDeliveryBucket(
+            long processedDeliveryCount,
+            long duplicateDeliveryCount
+    ) {
+
+        ConsumerDeliveryBucket increment(boolean duplicate) {
+            if (duplicate) {
+                return new ConsumerDeliveryBucket(processedDeliveryCount, duplicateDeliveryCount + 1);
+            }
+            return new ConsumerDeliveryBucket(processedDeliveryCount + 1, duplicateDeliveryCount);
+        }
     }
 }

@@ -23,7 +23,7 @@
 ## 남은 일
 
 - Micrometer/Actuator metric endpoint를 추가한다.
-- 외부 alert channel과 escalation policy를 설계한다.
+- operational alert record channel 이후 Slack/Webhook adapter와 escalation policy를 설계한다.
 - 실제 broker adapter 도입 후 publish 실패와 health 판정을 연결 검증한다.
 
 ## 관련 문서

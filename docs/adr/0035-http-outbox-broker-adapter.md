@@ -70,7 +70,10 @@ HTTP broker adapter를 먼저 도입한다.
 | HTTP type | `http` |
 | HTTP method | `POST` |
 | content type | `application/json` |
-| idempotency header | `X-Outbox-Event-Id` |
+| event id header | `X-Outbox-Event-Id` |
+| idempotency header | `X-Idempotency-Key` = `outboxEventId` |
+| schema header | `X-Event-Schema-Version` |
+| type header | `X-Event-Type` |
 | 성공 기준 | HTTP 2xx |
 | 실패 기준 | HTTP non-2xx, IO, interrupt |
 
@@ -80,7 +83,7 @@ HTTP broker adapter를 먼저 도입한다.
 
 - 기본 로컬 실행은 기존처럼 in-memory publisher를 사용한다.
 - 설정만 바꾸면 실제 HTTP broker endpoint로 outbox event를 발행할 수 있다.
-- 발행 envelope와 header contract가 테스트로 고정된다.
+- 발행 envelope, schema version, idempotency header contract가 테스트로 고정된다.
 - HTTP 실패가 relay 실패 처리와 연결된다.
 
 비용:
@@ -91,6 +94,6 @@ HTTP broker adapter를 먼저 도입한다.
 
 후속 작업:
 
-- consumer idempotency key 정책을 설계한다.
+- consumer processed-event 저장소와 dedupe 보관 기간을 설계한다.
 - Kafka/RabbitMQ/SQS 중 하나를 선택해 product-specific adapter를 추가한다.
 - broker 인증, 서명, retry topic/DLQ 정책을 별도 ADR로 결정한다.

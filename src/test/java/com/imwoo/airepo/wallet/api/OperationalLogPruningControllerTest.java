@@ -7,13 +7,17 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.imwoo.airepo.AiRepoApplication;
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
 import com.imwoo.airepo.wallet.application.OperationOutboxRelayRunRepository;
+import com.imwoo.airepo.wallet.application.OperationalAlertRepository;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
@@ -30,26 +34,31 @@ import org.springframework.test.web.servlet.MockMvc;
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @TestPropertySource(properties = {
         "ai-repo.operational-log-pruning.relay-run-retention-days=1",
-        "ai-repo.operational-log-pruning.admin-access-audit-retention-days=1"
+        "ai-repo.operational-log-pruning.admin-access-audit-retention-days=1",
+        "ai-repo.operational-alert.retention-days=1"
 })
 class OperationalLogPruningControllerTest {
 
     private static final String ADMIN_TOKEN = "local-ops-token";
+    private static final String OPERATOR_TOKEN = "local-operator-token";
     private static final String OPERATOR_ID = "ops-user";
 
     private final MockMvc mockMvc;
     private final OperationOutboxRelayRunRepository relayRunRepository;
     private final AdminApiAccessAuditRepository accessAuditRepository;
+    private final OperationalAlertRepository operationalAlertRepository;
 
     @Autowired
     OperationalLogPruningControllerTest(
             MockMvc mockMvc,
             OperationOutboxRelayRunRepository relayRunRepository,
-            AdminApiAccessAuditRepository accessAuditRepository
+            AdminApiAccessAuditRepository accessAuditRepository,
+            OperationalAlertRepository operationalAlertRepository
     ) {
         this.mockMvc = mockMvc;
         this.relayRunRepository = relayRunRepository;
         this.accessAuditRepository = accessAuditRepository;
+        this.operationalAlertRepository = operationalAlertRepository;
     }
 
     @Test
@@ -58,6 +67,8 @@ class OperationalLogPruningControllerTest {
         relayRunRepository.saveOutboxRelayRun(relayRun("outbox-relay-run-002", "2026-05-01T00:00:00Z"));
         accessAuditRepository.saveAdminApiAccessAudit(accessAudit("admin-api-access-audit-001", "2026-04-30T23:59:59Z"));
         accessAuditRepository.saveAdminApiAccessAudit(accessAudit("admin-api-access-audit-002", "2026-05-01T00:00:00Z"));
+        operationalAlertRepository.saveOperationalAlert(alert("operational-alert-001", "2026-04-30T23:59:59Z"));
+        operationalAlertRepository.saveOperationalAlert(alert("operational-alert-002", "2026-05-01T00:00:00Z"));
 
         mockMvc.perform(post("/api/v1/operational-log-pruning-runs")
                         .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
@@ -65,8 +76,19 @@ class OperationalLogPruningControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.relayRunCutoff").value("2026-05-01T00:00:00Z"))
                 .andExpect(jsonPath("$.adminAccessAuditCutoff").value("2026-05-01T00:00:00Z"))
+                .andExpect(jsonPath("$.operationalAlertCutoff").value("2026-05-01T00:00:00Z"))
                 .andExpect(jsonPath("$.deletedRelayRunCount").value(1))
-                .andExpect(jsonPath("$.deletedAdminAccessAuditCount").value(1));
+                .andExpect(jsonPath("$.deletedAdminAccessAuditCount").value(1))
+                .andExpect(jsonPath("$.deletedOperationalAlertCount").value(1));
+    }
+
+    @Test
+    void rejectsOperatorTokenForPruning() throws Exception {
+        mockMvc.perform(post("/api/v1/operational-log-pruning-runs")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_AUTHORIZATION_DENIED"));
     }
 
     @Test
@@ -100,6 +122,16 @@ class OperationalLogPruningControllerTest {
                 OPERATOR_ID,
                 200,
                 AdminApiAccessOutcome.SUCCESS
+        );
+    }
+
+    private OperationalAlert alert(String alertId, String occurredAt) {
+        return new OperationalAlert(
+                alertId,
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse(occurredAt),
+                List.of("warning relay failure rate")
         );
     }
 

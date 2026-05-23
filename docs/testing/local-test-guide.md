@@ -62,6 +62,11 @@ npm run e2e
 - controller 오류 매핑
 - repository 영속화 정책
 - rollback, lock timeout, outbox 상태 전이
+- HTTP broker envelope와 idempotency header contract
+- consumer processed-event dedupe 저장소
+- HTTP consumer adapter duplicate no-op과 receipt side effect
+- HTTP publisher에서 consumer endpoint로 이어지는 publish→consume loop
+- consumer monitoring admin API의 processed, duplicate, receipt count
 
 ### `./gradlew scenarioTest`
 
@@ -90,6 +95,8 @@ npm run e2e
 - 충전/멱등 재시도/송금 API 흐름
 - 잔액/원장/감사/step log/outbox 정합성
 - outbox relay publish 상태 전이
+- consumer processed-event 동시 duplicate 방지
+- HTTP consumer endpoint 기반 duplicate side effect 1회 처리
 
 이 명령은 Docker daemon이 필요하다. Docker가 꺼져 있으면 실패할 수 있으며, CI의 `PostgreSQL Scenario Test` job과 대응된다.
 
@@ -182,8 +189,10 @@ Running 3 tests using 1 worker
 - 송금 실행 후 출금 지갑 잔액이 `129,000 KRW`로 감소한다.
 - 잔액 부족 송금 시 `INSUFFICIENT_BALANCE` 오류가 표시된다.
 - 최근 operation, `LEDGER_RECORDED`, `CHARGE_COMPLETED`, `TRANSFER_COMPLETED` outbox event가 표시된다.
-- 운영자 콘솔에서 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
-- 운영자 콘솔에서 local admin header로 manual review empty state가 표시된다.
+- 운영자 콘솔에서 잘못된 admin/operator token의 `ADMIN_AUTHENTICATION_REQUIRED` 오류가 표시된다.
+- 운영자 콘솔에서 local operator header로 manual review empty state가 표시된다.
+- manual review fixture 기반 requeue 성공과 audit trail이 표시된다.
+- relay health와 operational log pruning 결과가 운영자 콘솔에 표시된다.
 
 ## MVP 로컬 smoke
 
@@ -197,8 +206,8 @@ scripts/mvp-local-smoke.sh
 
 - Actuator health endpoint의 `UP` 응답
 - 백엔드 지갑 잔액 API 응답
-- 운영자 manual review API의 local admin header 성공 응답
-- 잘못된 admin token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
+- 운영자 manual review API의 local operator header 성공 응답
+- 잘못된 admin/operator token의 `ADMIN_AUTHENTICATION_REQUIRED` 응답
 - Vite 프론트 HTML 응답
 
 기본 URL은 `http://127.0.0.1:8080`, `http://127.0.0.1:5173`이다. 필요하면 `AI_REPO_BACKEND_URL`, `AI_REPO_FRONTEND_URL`, `AI_REPO_OPS_ADMIN_TOKEN`, `AI_REPO_SMOKE_OPERATOR_ID`로 override한다.
@@ -218,18 +227,35 @@ scripts/mvp-local-smoke.sh
 
 ### Outbox 운영 API가 401 또는 403을 반환할 때
 
-Outbox manual review, requeue, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
+Outbox manual review, requeue 요청/승인/실행/반려, requeue audit, relay run 조회, admin access audit 조회, operational log pruning 실행은 운영 API다. 로컬 호출에는 다음 header가 필요하다.
 
 ```bash
+X-Operator-Token: local-operator-token
 X-Admin-Token: local-ops-token
 X-Operator-Id: local-operator
 ```
 
-- `401 ADMIN_AUTHENTICATION_REQUIRED`: `X-Admin-Token`이 없거나 값이 다르다.
+- `401 ADMIN_AUTHENTICATION_REQUIRED`: `X-Operator-Token`과 `X-Admin-Token`이 모두 없거나 값이 다르다.
 - `403 ADMIN_AUTHORIZATION_DENIED`: token은 맞지만 `X-Operator-Id`가 없다.
 - 운영 API 권한 판단은 Spring Security `ROLE_OPERATOR`, `ROLE_ADMIN` 기반으로 수행한다.
-- 실제 로컬 token은 `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
+- 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있다.
+- requeue 요청은 operator token으로 가능하다.
+- requeue 승인/실행/반려와 operational log pruning 같은 변경성 운영 조치는 admin token을 요구한다.
+- consumer pruning도 dedupe/receipt 기록을 삭제하는 변경성 운영 조치이므로 admin token을 요구한다.
+- requeue 승인/반려는 요청자와 다른 `X-Operator-Id`를 요구한다.
+- requeue 반려는 outbox event를 `MANUAL_REVIEW` 상태로 유지하고 requeue audit을 남기지 않는다.
+- 기존 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`과 `DIRECT_REQUEUE_API_DEPRECATED`를 반환한다.
+- PostgreSQL Testcontainers는 requeue approve/reject/execute 동시 호출에서 하나의 상태 전이만 성공하는지 검증한다.
+- PostgreSQL Testcontainers는 lease 만료 후 늦은 outbox worker가 재claim된 event를 덮어쓰지 못하는지 검증한다.
+- 실제 로컬 token은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`으로 변경할 수 있다.
 - relay health summary와 alert 판정은 `GET /api/v1/outbox-relay-runs/health`에서 조회한다.
+- consumer 처리 지표는 `GET /api/v1/outbox-consumer/metrics`, 최근 receipt는 `GET /api/v1/outbox-consumer/receipts?limit=10`에서 조회한다.
+- consumer 최근 window delivery 지표는 `GET /api/v1/outbox-consumer/window-metrics?minutes=5`에서 조회한다.
+- consumer duplicate health summary와 alert 판정은 최근 window 기준으로 `GET /api/v1/outbox-consumer/health`에서 조회한다.
+- warning/critical health로 저장된 운영 alert는 `GET /api/v1/operational-alerts?limit=10`에서 조회한다.
+- Slack webhook push를 로컬에서 확인하려면 `AI_REPO_OPERATIONAL_ALERT_PUBLISHER_TYPE=slack-webhook`, `AI_REPO_OPERATIONAL_ALERT_SLACK_WEBHOOK_URL=<webhook-url>`을 설정한다.
+- 실제 Slack webhook live test는 기본 skip이며, `AI_REPO_LIVE_SLACK_TEST=true ./gradlew test --tests '*SlackWebhookOperationalAlertPublisherLiveTest' --rerun-tasks`로 명시 실행한다.
+- consumer dedupe/receipt/delivery metric pruning은 `POST /api/v1/outbox-consumer/pruning-runs`로 수동 실행한다.
 - 접근 성공/실패 이력은 `GET /api/v1/admin-api-access-audits?limit=10`에서 조회한다.
 - 운영 로그 pruning은 `POST /api/v1/operational-log-pruning-runs`로 수동 실행한다.
 

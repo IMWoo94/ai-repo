@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.application;
 
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueAudit;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestRecord;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -48,6 +49,11 @@ public class OperationOutboxRelayService {
         return operationOutboxRelayRepository.findOutboxRequeueAudits(outboxEventId);
     }
 
+    public List<OperationOutboxRequeueRequestRecord> getRequeueRequests(String outboxEventId) {
+        validateOutboxEventId(outboxEventId);
+        return operationOutboxRelayRepository.findOutboxRequeueRequests(outboxEventId);
+    }
+
     public List<OperationOutboxEvent> claimReadyEvents(int limit) {
         if (limit <= 0) {
             throw new InvalidWalletOperationException("limit must be positive");
@@ -64,11 +70,11 @@ public class OperationOutboxRelayService {
             try {
                 operationOutboxPublisher.publish(claimedEvent);
             } catch (RuntimeException exception) {
-                markFailed(claimedEvent.outboxEventId(), publisherFailureMessage(exception));
+                markClaimedEventFailed(claimedEvent, publisherFailureMessage(exception));
                 failedCount++;
                 continue;
             }
-            markPublished(claimedEvent.outboxEventId());
+            markClaimedEventPublished(claimedEvent);
             publishedCount++;
         }
         return new OperationOutboxPublishBatchResult(claimedEvents.size(), publishedCount, failedCount);
@@ -77,6 +83,15 @@ public class OperationOutboxRelayService {
     public void markPublished(String outboxEventId) {
         validateOutboxEventId(outboxEventId);
         operationOutboxRelayRepository.markOutboxEventPublished(outboxEventId, Instant.now(clock));
+    }
+
+    private void markClaimedEventPublished(OperationOutboxEvent claimedEvent) {
+        operationOutboxRelayRepository.markClaimedOutboxEventPublished(
+                claimedEvent.outboxEventId(),
+                claimedEvent.claimedAt(),
+                claimedEvent.leaseExpiresAt(),
+                Instant.now(clock)
+        );
     }
 
     public void markFailed(String outboxEventId, String lastError) {
@@ -92,6 +107,17 @@ public class OperationOutboxRelayService {
         );
     }
 
+    private void markClaimedEventFailed(OperationOutboxEvent claimedEvent, String lastError) {
+        operationOutboxRelayRepository.markClaimedOutboxEventFailed(
+                claimedEvent.outboxEventId(),
+                claimedEvent.claimedAt(),
+                claimedEvent.leaseExpiresAt(),
+                lastError,
+                Instant.now(clock).plus(RETRY_BACKOFF),
+                MAX_ATTEMPTS
+        );
+    }
+
     public void requeueManualReviewEvent(String outboxEventId, String operator, String reason) {
         validateOutboxEventId(outboxEventId);
         validateRequired("operator", operator);
@@ -101,6 +127,64 @@ public class OperationOutboxRelayService {
                 Instant.now(clock),
                 operator,
                 reason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord requestManualReviewRequeue(
+            String outboxEventId,
+            String requestedBy,
+            String reason
+    ) {
+        validateOutboxEventId(outboxEventId);
+        validateRequired("requestedBy", requestedBy);
+        validateRequired("reason", reason);
+        return operationOutboxRelayRepository.requestManualReviewRequeue(
+                outboxEventId,
+                Instant.now(clock),
+                requestedBy,
+                reason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord approveManualReviewRequeueRequest(
+            String requestId,
+            String approvedBy,
+            String approvalReason
+    ) {
+        validateRequired("requestId", requestId);
+        validateRequired("approvedBy", approvedBy);
+        validateRequired("approvalReason", approvalReason);
+        return operationOutboxRelayRepository.approveManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                approvedBy,
+                approvalReason
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord executeManualReviewRequeueRequest(String requestId, String executedBy) {
+        validateRequired("requestId", requestId);
+        validateRequired("executedBy", executedBy);
+        return operationOutboxRelayRepository.executeManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                executedBy
+        );
+    }
+
+    public OperationOutboxRequeueRequestRecord rejectManualReviewRequeueRequest(
+            String requestId,
+            String rejectedBy,
+            String rejectionReason
+    ) {
+        validateRequired("requestId", requestId);
+        validateRequired("rejectedBy", rejectedBy);
+        validateRequired("rejectionReason", rejectionReason);
+        return operationOutboxRelayRepository.rejectManualReviewRequeueRequest(
+                requestId,
+                Instant.now(clock),
+                rejectedBy,
+                rejectionReason
         );
     }
 

@@ -5,12 +5,15 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletCommandService;
+import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
+import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
+import com.imwoo.airepo.wallet.domain.OperationOutboxStatus;
 import com.imwoo.airepo.wallet.domain.TransactionDirection;
 import java.math.BigDecimal;
 import java.time.Clock;
@@ -24,6 +27,7 @@ import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import org.flywaydb.core.Flyway;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
@@ -35,6 +39,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers(disabledWithoutDocker = true)
+@Tag("postgres-scenario")
 class PostgresContainerWalletRepositoryTest {
 
     @Container
@@ -209,6 +214,178 @@ class PostgresContainerWalletRepositoryTest {
         }
     }
 
+    @Test
+    void concurrentRequeueExecutionsOnlyExecuteOnceInRealPostgres() throws Exception {
+        makeManualReviewOutboxEvent();
+        var requested = repository.requestManualReviewRequeue(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-requester",
+                "broker recovered"
+        );
+        repository.approveManualReviewRequeueRequest(
+                requested.requestId(),
+                Instant.parse("2026-05-01T00:11:00Z"),
+                "ops-approver",
+                "원인 조치 확인"
+        );
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<RequeueAttempt> firstAttempt = executorService.submit(() -> executeRequeueConcurrently(
+                    startLatch,
+                    requested.requestId(),
+                    "ops-executor-1"
+            ));
+            Future<RequeueAttempt> secondAttempt = executorService.submit(() -> executeRequeueConcurrently(
+                    startLatch,
+                    requested.requestId(),
+                    "ops-executor-2"
+            ));
+
+            startLatch.countDown();
+
+            List<RequeueAttempt> attempts = List.of(
+                    firstAttempt.get(10, TimeUnit.SECONDS),
+                    secondAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(RequeueAttempt::successful).hasSize(1);
+            assertThat(attempts)
+                    .filteredOn(attempt -> !attempt.successful())
+                    .singleElement()
+                    .satisfies(attempt -> assertThat(attempt.exception())
+                            .isInstanceOf(InvalidWalletOperationException.class)
+                            .hasMessage("requeue request must be APPROVED: " + requested.requestId()));
+            assertThat(repository.findOutboxRequeueRequests("outbox-001"))
+                    .singleElement()
+                    .satisfies(request -> assertThat(request.status()).isEqualTo(OperationOutboxRequeueRequestStatus.EXECUTED));
+            assertThat(repository.findOutboxRequeueAudits("outbox-001")).hasSize(1);
+            assertThat(repository.findOperationOutboxEvents("op-001"))
+                    .singleElement()
+                    .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PENDING));
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void staleOutboxWriterCannotOverwriteReclaimedEventInRealPostgres() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "postgres-stale-outbox-001", "PostgreSQL stale outbox 충전"));
+        var firstClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ).getFirst();
+        var secondClaim = repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:02:00Z"),
+                Instant.parse("2026-05-01T00:03:00Z")
+        ).getFirst();
+
+        assertThatThrownBy(() -> repository.markClaimedOutboxEventPublished(
+                firstClaim.outboxEventId(),
+                firstClaim.claimedAt(),
+                firstClaim.leaseExpiresAt(),
+                Instant.parse("2026-05-01T00:02:01Z")
+        ))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("outbox event claim is no longer active: outbox-001");
+
+        assertThat(repository.findOperationOutboxEvents("op-001"))
+                .singleElement()
+                .satisfies(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(secondClaim.claimedAt());
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(secondClaim.leaseExpiresAt());
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+    }
+
+    @Test
+    void concurrentRequeueApproveAndRejectOnlyOneTransitionWinsInRealPostgres() throws Exception {
+        makeManualReviewOutboxEvent();
+        var requested = repository.requestManualReviewRequeue(
+                "outbox-001",
+                Instant.parse("2026-05-01T00:10:00Z"),
+                "ops-requester",
+                "broker recovered"
+        );
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<RequeueAttempt> approveAttempt = executorService.submit(() -> approveRequeueConcurrently(
+                    startLatch,
+                    requested.requestId()
+            ));
+            Future<RequeueAttempt> rejectAttempt = executorService.submit(() -> rejectRequeueConcurrently(
+                    startLatch,
+                    requested.requestId()
+            ));
+
+            startLatch.countDown();
+
+            List<RequeueAttempt> attempts = List.of(
+                    approveAttempt.get(10, TimeUnit.SECONDS),
+                    rejectAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(RequeueAttempt::successful).hasSize(1);
+            assertThat(attempts)
+                    .filteredOn(attempt -> !attempt.successful())
+                    .singleElement()
+                    .satisfies(attempt -> assertThat(attempt.exception())
+                            .isInstanceOf(InvalidWalletOperationException.class));
+            assertThat(repository.findOutboxRequeueRequests("outbox-001"))
+                    .singleElement()
+                    .satisfies(request -> assertThat(request.status())
+                            .isIn(OperationOutboxRequeueRequestStatus.APPROVED, OperationOutboxRequeueRequestStatus.REJECTED));
+            assertThat(repository.findOutboxRequeueAudits("outbox-001")).isEmpty();
+            assertThat(repository.findOperationOutboxEvents("op-001"))
+                    .singleElement()
+                    .satisfies(outboxEvent -> assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.MANUAL_REVIEW));
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentConsumerProcessedEventDedupeOnlyRecordsOnceInRealPostgres() throws Exception {
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<ConsumerProcessedAttempt> firstAttempt = executorService.submit(() -> recordConsumerProcessedEventConcurrently(
+                    startLatch,
+                    Instant.parse("2026-05-01T00:05:00Z")
+            ));
+            Future<ConsumerProcessedAttempt> secondAttempt = executorService.submit(() -> recordConsumerProcessedEventConcurrently(
+                    startLatch,
+                    Instant.parse("2026-05-01T00:06:00Z")
+            ));
+
+            startLatch.countDown();
+
+            List<ConsumerProcessedAttempt> attempts = List.of(
+                    firstAttempt.get(10, TimeUnit.SECONDS),
+                    secondAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(ConsumerProcessedAttempt::recorded).hasSize(1);
+            assertThat(attempts).filteredOn(attempt -> !attempt.recorded()).hasSize(1);
+            assertThat(repository.findProcessedEvent("outbox-001"))
+                    .hasValueSatisfying(processedEvent -> {
+                    assertThat(processedEvent.outboxEventId()).isEqualTo("outbox-001");
+                    assertThat(processedEvent.eventType()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(processedEvent.duplicateCount()).isEqualTo(1);
+                });
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
     private Void holdWalletBalanceLock(CountDownLatch lockedLatch, CountDownLatch releaseLatch) {
         TransactionTemplate lockTransaction = new TransactionTemplate(new DataSourceTransactionManager(dataSource));
         lockTransaction.execute(status -> {
@@ -236,14 +413,76 @@ class PostgresContainerWalletRepositoryTest {
         }
     }
 
+    private void makeManualReviewOutboxEvent() {
+        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "postgres-requeue-charge-001", "PostgreSQL requeue 충전"));
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
+        repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
+    }
+
+    private RequeueAttempt executeRequeueConcurrently(
+            CountDownLatch startLatch,
+            String requestId,
+            String executor
+    ) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        try {
+            repository.executeManualReviewRequeueRequest(
+                    requestId,
+                    Instant.parse("2026-05-01T00:12:00Z"),
+                    executor
+            );
+            return RequeueAttempt.success();
+        } catch (RuntimeException exception) {
+            return RequeueAttempt.failure(exception);
+        }
+    }
+
+    private RequeueAttempt approveRequeueConcurrently(
+            CountDownLatch startLatch,
+            String requestId
+    ) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        try {
+            repository.approveManualReviewRequeueRequest(
+                    requestId,
+                    Instant.parse("2026-05-01T00:11:00Z"),
+                    "ops-approver",
+                    "원인 조치 확인"
+            );
+            return RequeueAttempt.success();
+        } catch (RuntimeException exception) {
+            return RequeueAttempt.failure(exception);
+        }
+    }
+
+    private RequeueAttempt rejectRequeueConcurrently(
+            CountDownLatch startLatch,
+            String requestId
+    ) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        try {
+            repository.rejectManualReviewRequeueRequest(
+                    requestId,
+                    Instant.parse("2026-05-01T00:11:00Z"),
+                    "ops-rejector",
+                    "원인 조치 미확인"
+            );
+            return RequeueAttempt.success();
+        } catch (RuntimeException exception) {
+            return RequeueAttempt.failure(exception);
+        }
+    }
+
     private TransferAttempt applyConcurrentTransfer(
             CountDownLatch startLatch,
             String idempotencyKey,
             String fingerprint
     ) throws InterruptedException {
-        if (!startLatch.await(5, TimeUnit.SECONDS)) {
-            throw new IllegalStateException("Timed out waiting for concurrent transfer start");
-        }
+        awaitConcurrentStart(startLatch);
 
         try {
             repository.applyTransfer(
@@ -258,6 +497,26 @@ class PostgresContainerWalletRepositoryTest {
             return TransferAttempt.success();
         } catch (RuntimeException exception) {
             return TransferAttempt.failure(exception);
+        }
+    }
+
+    private ConsumerProcessedAttempt recordConsumerProcessedEventConcurrently(
+            CountDownLatch startLatch,
+            Instant processedAt
+    ) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        return new ConsumerProcessedAttempt(repository.recordProcessedEvent(
+                "outbox-001",
+                "outbox-001",
+                "CHARGE_COMPLETED",
+                processedAt
+        ));
+    }
+
+    private void awaitConcurrentStart(CountDownLatch startLatch) throws InterruptedException {
+        if (!startLatch.await(5, TimeUnit.SECONDS)) {
+            throw new IllegalStateException("Timed out waiting for concurrent start");
         }
     }
 
@@ -285,5 +544,19 @@ class PostgresContainerWalletRepositoryTest {
         private static TransferAttempt failure(RuntimeException exception) {
             return new TransferAttempt(false, exception);
         }
+    }
+
+    private record RequeueAttempt(boolean successful, RuntimeException exception) {
+
+        private static RequeueAttempt success() {
+            return new RequeueAttempt(true, null);
+        }
+
+        private static RequeueAttempt failure(RuntimeException exception) {
+            return new RequeueAttempt(false, exception);
+        }
+    }
+
+    private record ConsumerProcessedAttempt(boolean recorded) {
     }
 }

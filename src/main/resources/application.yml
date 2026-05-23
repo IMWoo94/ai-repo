@@ -23,6 +23,9 @@ management:
 ai-repo:
   ops:
     admin-token: ${AI_REPO_OPS_ADMIN_TOKEN:local-ops-token}
+    operator-token: ${AI_REPO_OPS_OPERATOR_TOKEN:local-operator-token}
+  test-fixtures:
+    enabled: ${AI_REPO_TEST_FIXTURES_ENABLED:false}
   outbox:
     publisher:
       type: ${AI_REPO_OUTBOX_PUBLISHER_TYPE:memory}
@@ -48,3 +51,11 @@ ai-repo:
       enabled: ${AI_REPO_OPERATIONAL_LOG_PRUNING_SCHEDULER_ENABLED:false}
       initial-delay-ms: ${AI_REPO_OPERATIONAL_LOG_PRUNING_INITIAL_DELAY_MS:60000}
       fixed-delay-ms: ${AI_REPO_OPERATIONAL_LOG_PRUNING_FIXED_DELAY_MS:86400000}
+  operational-alert:
+    suppression-window-minutes: ${AI_REPO_OPERATIONAL_ALERT_SUPPRESSION_WINDOW_MINUTES:15}
+    retention-days: ${AI_REPO_OPERATIONAL_ALERT_RETENTION_DAYS:30}
+    publisher:
+      type: ${AI_REPO_OPERATIONAL_ALERT_PUBLISHER_TYPE:none}
+      slack:
+        webhook-url: ${AI_REPO_OPERATIONAL_ALERT_SLACK_WEBHOOK_URL:}
+        timeout-ms: ${AI_REPO_OPERATIONAL_ALERT_SLACK_TIMEOUT_MS:3000}

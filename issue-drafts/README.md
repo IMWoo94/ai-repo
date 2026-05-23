@@ -96,6 +96,24 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/94
 - `0045-v0.7.0-wiki-publication.md`: v0.7.0 Wiki publication 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/96
+- `0046-top3-operational-hardening.md`: Top3 operational hardening 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/98
+- `0047-requeue-approval-workflow.md`: Requeue approval workflow 작업 초안
+- `0048-dev-rules-automatic-check.md`: Dev rules automatic check 작업 초안
+- `0049-requeue-rejection-workflow.md`: Requeue rejection workflow 작업 초안
+- `0050-direct-requeue-api-deprecation.md`: Direct requeue API deprecation 작업 초안
+- `0051-requeue-state-transition-atomicity.md`: Requeue state transition atomicity 작업 초안
+- `0052-outbox-claim-guarded-result-update.md`: Outbox claim guarded result update 작업 초안
+- `0053-broker-consumer-idempotency.md`: Broker consumer idempotency 작업 초안
+- `0054-consumer-processed-event-dedupe.md`: Consumer processed event dedupe 작업 초안
+- `0055-http-outbox-consumer-adapter.md`: HTTP outbox consumer adapter 작업 초안
+- `0056-http-publish-consume-loop.md`: HTTP publish consume loop 작업 초안
+- `0057-consumer-monitoring-admin-api.md`: Consumer monitoring admin API 작업 초안
+- `0058-consumer-processed-event-pruning.md`: Consumer processed event pruning 작업 초안
+- `0059-consumer-duplicate-spike-alert.md`: Consumer duplicate spike alert 작업 초안
+- `0060-consumer-duplicate-time-bucket-metric.md`: Consumer duplicate time bucket metric 작업 초안
+- `0061-consumer-delivery-metric-pruning.md`: Consumer delivery metric pruning 작업 초안
+- `0062-operational-alert-record-channel.md`: Operational alert record channel 작업 초안
 
 ## GitHub CLI로 생성
 

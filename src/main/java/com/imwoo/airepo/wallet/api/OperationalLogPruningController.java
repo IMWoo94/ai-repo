@@ -28,7 +28,8 @@ public class OperationalLogPruningController {
     public ResponseEntity<OperationalLogPruningResult> prune() {
         return ResponseEntity.ok(operationalLogPruningService.prune(
                 operationalLogPruningPolicy.relayRunRetention(),
-                operationalLogPruningPolicy.adminAccessAuditRetention()
+                operationalLogPruningPolicy.adminAccessAuditRetention(),
+                operationalLogPruningPolicy.operationalAlertRetention()
         ));
     }
 }

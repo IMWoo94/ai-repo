@@ -7,17 +7,21 @@ import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRun;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRelayRunStatus;
+import com.imwoo.airepo.wallet.domain.OperationalAlert;
+import com.imwoo.airepo.wallet.domain.OperationalAlertSeverity;
 import com.imwoo.airepo.wallet.infra.InMemoryWalletRepository;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneOffset;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 
 class OperationalLogPruningServiceTest {
 
     private final InMemoryWalletRepository repository = new InMemoryWalletRepository();
     private final OperationalLogPruningService pruningService = new OperationalLogPruningService(
+            repository,
             repository,
             repository,
             Clock.fixed(Instant.parse("2026-05-02T00:00:00Z"), ZoneOffset.UTC)
@@ -29,30 +33,44 @@ class OperationalLogPruningServiceTest {
         repository.saveOutboxRelayRun(relayRun("outbox-relay-run-002", "2026-05-01T00:00:00Z"));
         repository.saveAdminApiAccessAudit(accessAudit("admin-api-access-audit-001", "2026-04-30T23:59:59Z"));
         repository.saveAdminApiAccessAudit(accessAudit("admin-api-access-audit-002", "2026-05-01T00:00:00Z"));
+        repository.saveOperationalAlert(alert("operational-alert-001", "2026-04-30T23:59:59Z"));
+        repository.saveOperationalAlert(alert("operational-alert-002", "2026-05-01T00:00:00Z"));
 
-        OperationalLogPruningResult result = pruningService.prune(Duration.ofDays(1), Duration.ofDays(1));
+        OperationalLogPruningResult result = pruningService.prune(
+                Duration.ofDays(1),
+                Duration.ofDays(1),
+                Duration.ofDays(1)
+        );
 
         assertThat(result.prunedAt()).isEqualTo(Instant.parse("2026-05-02T00:00:00Z"));
         assertThat(result.relayRunCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
         assertThat(result.adminAccessAuditCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
+        assertThat(result.operationalAlertCutoff()).isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
         assertThat(result.deletedRelayRunCount()).isEqualTo(1);
         assertThat(result.deletedAdminAccessAuditCount()).isEqualTo(1);
+        assertThat(result.deletedOperationalAlertCount()).isEqualTo(1);
         assertThat(repository.findRecentOutboxRelayRuns(10))
                 .singleElement()
                 .satisfies(relayRun -> assertThat(relayRun.relayRunId()).isEqualTo("outbox-relay-run-002"));
         assertThat(repository.findRecentAdminApiAccessAudits(10))
                 .singleElement()
                 .satisfies(accessAudit -> assertThat(accessAudit.auditId()).isEqualTo("admin-api-access-audit-002"));
+        assertThat(repository.findRecentOperationalAlerts(10))
+                .singleElement()
+                .satisfies(alert -> assertThat(alert.alertId()).isEqualTo("operational-alert-002"));
     }
 
     @Test
     void rejectsInvalidRetention() {
-        assertThatThrownBy(() -> pruningService.prune(Duration.ZERO, Duration.ofDays(1)))
+        assertThatThrownBy(() -> pruningService.prune(Duration.ZERO, Duration.ofDays(1), Duration.ofDays(1)))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("relayRunRetention must be positive");
-        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ZERO))
+        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ZERO, Duration.ofDays(1)))
                 .isInstanceOf(InvalidWalletOperationException.class)
                 .hasMessage("adminAccessAuditRetention must be positive");
+        assertThatThrownBy(() -> pruningService.prune(Duration.ofDays(1), Duration.ofDays(1), Duration.ZERO))
+                .isInstanceOf(InvalidWalletOperationException.class)
+                .hasMessage("operationalAlertRetention must be positive");
     }
 
     private OperationOutboxRelayRun relayRun(String relayRunId, String completedAt) {
@@ -78,6 +96,16 @@ class OperationalLogPruningServiceTest {
                 "ops-user",
                 200,
                 AdminApiAccessOutcome.SUCCESS
+        );
+    }
+
+    private OperationalAlert alert(String alertId, String occurredAt) {
+        return new OperationalAlert(
+                alertId,
+                "OUTBOX_RELAY",
+                OperationalAlertSeverity.WARNING,
+                Instant.parse(occurredAt),
+                List.of("warning relay failure rate")
         );
     }
 }

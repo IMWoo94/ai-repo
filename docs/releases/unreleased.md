@@ -8,7 +8,27 @@
 
 ## 후보 범위
 
-- 아직 없음
+- Manual review requeue 성공 E2E fixture
+- 운영자 relay health/pruning 화면
+- operator/admin token 분리와 role model 강화
+- Requeue 승인 워크플로우
+- Requeue 반려 워크플로우
+- 직접 requeue API deprecation
+- Requeue 상태 전이 원자화
+- Outbox stale writer 방지
+- Broker/consumer idempotency 계약
+- Consumer processed-event dedupe 저장소
+- HTTP outbox consumer adapter와 duplicate side effect 1회 검증
+- HTTP publish→consume loop 검증
+- Consumer monitoring admin API
+- Consumer processed-event pruning
+- Consumer duplicate spike alert
+- Consumer duplicate time bucket metric
+- Consumer delivery metric pruning
+- Operational alert record channel
+- Operational alert suppression and pruning
+- Slack webhook operational alert publisher
+- `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
 
@@ -16,8 +36,21 @@
 
 - 핵심 사용자 흐름인 잔액 조회, 충전, 송금, 거래내역 확인이 화면과 API에서 동작한다.
 - 돈 이동 결과가 원장, 감사 로그, operation step log, outbox event로 추적된다.
-- 운영자는 manual review outbox를 화면에서 조회하고, requeue와 audit trail을 확인할 수 있다.
-- 운영 API는 local admin token과 operator id로 보호된다.
+- 운영자는 manual review outbox, requeue 요청/승인/실행/반려, relay health, relay run, pruning 결과를 화면에서 확인할 수 있다.
+- 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`으로 실패한다.
+- Requeue approve/reject/execute 경합은 PostgreSQL Testcontainers에서 하나의 전이만 성공하는지 검증한다.
+- Outbox publish 결과 갱신은 claim lease가 일치할 때만 성공해 늦은 worker가 재claim 상태를 덮지 못한다.
+- Broker publish envelope는 schema version과 idempotency key를 포함하고, consumer는 같은 key를 unique 처리 기준으로 삼는다.
+- Consumer processed-event 저장소는 같은 `idempotencyKey`의 중복 기록을 막고 PostgreSQL 동시성 테스트로 검증된다.
+- HTTP consumer endpoint는 duplicate event를 성공 no-op으로 처리하고 receipt side effect를 한 번만 저장한다.
+- Outbox relay는 실제 HTTP publisher로 local consumer endpoint에 event를 보내고 receipt와 `PUBLISHED` 상태를 남기는 loop test를 가진다.
+- 운영자는 consumer processed count, duplicate count, receipt count와 최근 receipt를 조회할 수 있다.
+- 운영자는 오래된 consumer processed-event, receipt, delivery metric bucket을 보존 기간 기준으로 pruning할 수 있다.
+- 운영자는 consumer duplicate delivery rate 기준의 `OK`, `WARNING`, `CRITICAL`, `NO_DATA` health를 최근 window 기준으로 조회할 수 있다.
+- 같은 operational alert는 suppression window 안에서 중복 저장되지 않고, 오래된 alert record는 operational log pruning에서 삭제된다.
+- 설정 시 warning/critical operational alert는 Slack Incoming Webhook 호환 endpoint로 push된다.
+- CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
+- 운영 API는 local operator/admin token과 operator id로 보호된다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
 - 프론트 build, unit, E2E가 CI에서 분리 검증된다.
 - 백엔드 unit/API, scenario, PostgreSQL scenario가 CI에서 분리 검증된다.
@@ -50,10 +83,8 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 ## 알려진 제약
 
-- 운영자 requeue 성공 E2E는 아직 manual review fixture 생성 정책이 필요하다.
-- 운영자 relay health와 pruning 화면은 아직 없다.
-- 운영자 승인 워크플로우와 external alert channel은 아직 없다.
-- admin token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
+- Slack webhook 발행 실패 record와 재시도 정책은 아직 없다.
+- token과 operator identity는 local header 기반이며 실제 로그인과 분리되어 있다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki 동기화는 아직 수동 후보 문서 수준이다.
 
@@ -65,8 +96,9 @@ GitHub Actions에서는 다음 job이 통과해야 한다.
 
 ## 후속 후보
 
-- 운영자 requeue full E2E fixture
-- relay health/pruning operator UI
 - broker-specific Testcontainers contract
-- consumer idempotency
-- external alert channel
+- broker replay window별 retention 권장값
+- pruning 실행 이력 저장과 조회 API
+- Slack 발행 실패 record와 재시도 정책
+- 실제 identity/role scope 연동
+- 운영 alert 화면 연결

@@ -1,5 +1,8 @@
 # Current Development Baseline Review
 
+> 이 문서는 `v0.6.0` 기준 baseline review 기록이다.
+> 현재 Top3 운영 하드닝 검증은 `docs/reviews/2026-05-06-top3-documentation-implementation-verification.md`와 `docs/progress/0046-top3-operational-hardening.md`를 기준으로 본다.
+
 ## 기준
 
 - 기준 버전: `v0.6.0`

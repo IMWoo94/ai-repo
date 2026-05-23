@@ -13,18 +13,22 @@ import org.springframework.stereotype.Service;
 public class OperationOutboxRelayMonitoringService {
 
     private static final int MAX_ERROR_MESSAGE_LENGTH = 255;
+    private static final String ALERT_SOURCE = "OUTBOX_RELAY";
 
     private final OperationOutboxRelayRunRepository operationOutboxRelayRunRepository;
     private final OutboxRelayHealthPolicy outboxRelayHealthPolicy;
+    private final OperationalAlertService operationalAlertService;
     private final Clock clock;
 
     public OperationOutboxRelayMonitoringService(
             OperationOutboxRelayRunRepository operationOutboxRelayRunRepository,
             OutboxRelayHealthPolicy outboxRelayHealthPolicy,
+            OperationalAlertService operationalAlertService,
             Clock clock
     ) {
         this.operationOutboxRelayRunRepository = operationOutboxRelayRunRepository;
         this.outboxRelayHealthPolicy = outboxRelayHealthPolicy;
+        this.operationalAlertService = operationalAlertService;
         this.clock = clock;
     }
 
@@ -74,7 +78,7 @@ public class OperationOutboxRelayMonitoringService {
                 outboxRelayHealthPolicy.sampleSize()
         );
         if (recentRuns.isEmpty()) {
-            return new OutboxRelayHealthSummary(
+            OutboxRelayHealthSummary summary = new OutboxRelayHealthSummary(
                     evaluatedAt,
                     OutboxRelayHealthStatus.NO_DATA,
                     outboxRelayHealthPolicy.sampleSize(),
@@ -88,6 +92,8 @@ public class OperationOutboxRelayMonitoringService {
                     null,
                     List.of("no relay run data")
             );
+            publishAlert(summary);
+            return summary;
         }
 
         int successCount = countStatus(recentRuns, OperationOutboxRelayRunStatus.SUCCESS);
@@ -103,7 +109,7 @@ public class OperationOutboxRelayMonitoringService {
                 consecutiveFailureCount,
                 failureRate
         );
-        return new OutboxRelayHealthSummary(
+        OutboxRelayHealthSummary summary = new OutboxRelayHealthSummary(
                 evaluatedAt,
                 status(alertReasons),
                 outboxRelayHealthPolicy.sampleSize(),
@@ -116,6 +122,21 @@ public class OperationOutboxRelayMonitoringService {
                 lastSuccessAt,
                 lastFailureAt,
                 alertReasons
+        );
+        publishAlert(summary);
+        return summary;
+    }
+
+    private void publishAlert(OutboxRelayHealthSummary summary) {
+        if (summary.status() != OutboxRelayHealthStatus.WARNING
+                && summary.status() != OutboxRelayHealthStatus.CRITICAL) {
+            return;
+        }
+        operationalAlertService.publishHealthAlert(
+                ALERT_SOURCE,
+                summary.status().name(),
+                summary.evaluatedAt(),
+                summary.alertReasons()
         );
     }
 
