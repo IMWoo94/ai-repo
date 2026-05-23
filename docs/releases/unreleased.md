@@ -8,7 +8,9 @@
 
 ## 후보 범위
 
-- 아직 없음
+- CI에 `Dev Rules Check` job을 추가해 코드/DB/프론트/CI 변경 시 문서와 테스트 동기화 누락을 빠르게 탐지한다.
+- macOS 기본 Bash에서도 `scripts/check-dev-rules.sh`가 동작하도록 배열 입력 처리를 POSIX 친화적인 루프로 구성한다.
+- `AdminAuthorizationGuard` 단위 테스트를 추가해 admin token과 operator id 검증 정책을 controller test보다 작은 범위에서 고정한다.
 
 ## MVP 출시 판단 기준
 
@@ -31,6 +33,7 @@
 ./gradlew check
 ./gradlew scenarioTest
 ./gradlew postgresScenarioTest
+scripts/check-dev-rules.sh
 npm --prefix frontend run test
 npm --prefix frontend run build
 npm --prefix frontend run e2e
@@ -41,6 +44,7 @@ git diff --check
 
 GitHub Actions에서는 다음 job이 통과해야 한다.
 
+- `Dev Rules Check`
 - `Gradle Check`
 - `Scenario Test`
 - `PostgreSQL Scenario Test`

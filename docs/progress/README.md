@@ -61,6 +61,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0043 | [MVP Release Checklist](0043-mvp-release-checklist.md) | 완료 |
 | 0044 | [v0.7.0 Release Baseline](0044-v0.7.0-release-baseline.md) | 완료 |
 | 0045 | [v0.7.0 Wiki Publication](0045-v0.7.0-wiki-publication.md) | 완료 |
+| 0046 | [Dev Rules Check and Admin Auth Guard Test](0046-dev-rules-check-admin-auth-guard-test.md) | 완료 |
 
 ## 현재 기준선
 

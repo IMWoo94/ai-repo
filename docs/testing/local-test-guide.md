@@ -12,6 +12,7 @@
 | 대표 업무 흐름 | `./gradlew scenarioTest` | 충전/송금/원장/감사/outbox 시나리오 |
 | PostgreSQL 대표 흐름 | `./gradlew postgresScenarioTest` | Testcontainers PostgreSQL, Flyway, postgres profile 시나리오 |
 | 백엔드 전체 게이트 | `./gradlew check` | Gradle 표준 검증 |
+| 개발 규칙 검증 | `scripts/check-dev-rules.sh` | 변경 파일 기준 문서/테스트 동기화 누락 |
 | 프론트 컴포넌트 테스트 | `cd frontend && npm run test` | React 상태, API payload, 오류 메시지 |
 | 프론트 타입/번들 검증 | `cd frontend && npm run build` | TypeScript, Vite build |
 | 브라우저 E2E | `cd frontend && npm run e2e` | Spring Boot API, Vite proxy, React 화면 흐름 |
@@ -25,6 +26,7 @@
 ./gradlew scenarioTest
 ./gradlew postgresScenarioTest
 ./gradlew check
+scripts/check-dev-rules.sh
 cd frontend
 npm run test
 npm run build
@@ -96,6 +98,21 @@ npm run e2e
 ### `./gradlew check`
 
 Gradle 표준 검증 게이트다. 현재는 `test`를 포함하며, CI의 `Gradle Check` job과 대응된다.
+
+## 개발 규칙 검증
+
+### `scripts/check-dev-rules.sh`
+
+변경 파일 목록을 기준으로 구현, DB migration, 프론트, CI/script 변경이 문서와 테스트 갱신 없이 들어오는지 확인한다.
+
+검증 대상:
+
+- backend production 변경 시 `src/test/java` 테스트 동반 여부
+- frontend source 변경 시 component test 또는 E2E 동반 여부
+- DB migration 변경 시 ADR 동반 여부
+- 코드, DB, 프론트, CI/script 변경 시 README, ADR, progress, release note, testing guide, frontend doc, wiki draft, issue draft 중 하나 이상 갱신 여부
+
+CI의 `Dev Rules Check` job과 대응된다.
 
 ## 프론트 테스트
 
@@ -207,6 +224,7 @@ scripts/mvp-local-smoke.sh
 
 | CI job | 로컬 명령 |
 | --- | --- |
+| `Dev Rules Check` | `scripts/check-dev-rules.sh` |
 | `Gradle Check` | `./gradlew check` |
 | `Scenario Test` | `./gradlew scenarioTest` |
 | `PostgreSQL Scenario Test` | `./gradlew postgresScenarioTest` |
