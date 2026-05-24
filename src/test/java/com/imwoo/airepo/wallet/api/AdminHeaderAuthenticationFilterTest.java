@@ -91,4 +91,19 @@ class AdminHeaderAuthenticationFilterTest {
         assertThat(response.getContentAsString()).contains("ADMIN_AUTHENTICATION_REQUIRED");
         assertThat(response.getContentAsString()).contains("operator or admin token is required");
     }
+
+    @Test
+    void skipsLookalikePublicPrefixWithoutAdminToken() throws Exception {
+        MockHttpServletRequest request = new MockHttpServletRequest("GET", "/api/v1/outbox-relay-runs-health");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+        AtomicReference<Boolean> reachedController = new AtomicReference<>(false);
+
+        filter.doFilter(request, response, (servletRequest, servletResponse) -> {
+            reachedController.set(true);
+        });
+
+        assertThat(response.getStatus()).isEqualTo(200);
+        assertThat(reachedController.get()).isTrue();
+        assertThat(SecurityContextHolder.getContext().getAuthentication()).isNull();
+    }
 }

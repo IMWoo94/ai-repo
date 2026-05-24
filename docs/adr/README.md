@@ -70,3 +70,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0052 | Operational Alert Record Channel | Accepted |
 | ADR-0053 | Operational Alert Suppression and Pruning | Accepted |
 | ADR-0054 | Slack Webhook Operational Alert Publisher | Accepted |
+| ADR-0055 | Admin API Path Matching Hardening | Accepted |

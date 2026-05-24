@@ -6,7 +6,6 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.List;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
 import org.springframework.stereotype.Component;
@@ -15,15 +14,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class AdminApiAccessAuditFilter extends OncePerRequestFilter {
-
-    private static final List<String> ADMIN_API_PATH_PREFIXES = List.of(
-            "/api/v1/outbox-events",
-            "/api/v1/outbox-consumer",
-            "/api/v1/outbox-relay-runs",
-            "/api/v1/admin-api-access-audits",
-            "/api/v1/operational-alerts",
-            "/api/v1/operational-log-pruning-runs"
-    );
 
     private final AdminApiAccessAuditService adminApiAccessAuditService;
 
@@ -37,7 +27,7 @@ public class AdminApiAccessAuditFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!isAdminApiPath(request.getRequestURI())) {
+        if (!AdminApiPathMatcher.isAdminApiPath(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -51,9 +41,5 @@ public class AdminApiAccessAuditFilter extends OncePerRequestFilter {
                     response.getStatus()
             );
         }
-    }
-
-    private boolean isAdminApiPath(String requestUri) {
-        return ADMIN_API_PATH_PREFIXES.stream().anyMatch(requestUri::startsWith);
     }
 }
