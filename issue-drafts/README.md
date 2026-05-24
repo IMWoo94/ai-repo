@@ -114,6 +114,9 @@
 - `0060-consumer-duplicate-time-bucket-metric.md`: Consumer duplicate time bucket metric 작업 초안
 - `0061-consumer-delivery-metric-pruning.md`: Consumer delivery metric pruning 작업 초안
 - `0062-operational-alert-record-channel.md`: Operational alert record channel 작업 초안
+- `0063-operational-alert-suppression-pruning.md`: Operational alert suppression and pruning 작업 초안
+- `0064-slack-webhook-operational-alert-publisher.md`: Slack webhook operational alert publisher 작업 초안
+- `0065-admin-api-path-matching-hardening.md`: Admin API path matching hardening 작업 초안
 
 ## GitHub CLI로 생성
 

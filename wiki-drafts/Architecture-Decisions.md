@@ -77,6 +77,7 @@
    - ADR-0052 Operational Alert Record Channel
    - ADR-0053 Operational Alert Suppression and Pruning
    - ADR-0054 Slack Webhook Operational Alert Publisher
+   - ADR-0055 Admin API Path Matching Hardening
 
 ## 중요한 트레이드오프
 
@@ -102,10 +103,12 @@
 | Operational alert record channel | warning/critical health를 운영 alert record로 저장 | Slack/Webhook push는 후속 과제 |
 | Operational alert suppression/pruning | 같은 alert의 짧은 시간 중복 저장을 막고 보존 기간 기준으로 삭제 | suppression 기준이 reason 문자열에 의존 |
 | Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
+| Admin API path matching hardening | 인증·감사 필터가 공통 segment-aware matcher로 root/sub-path만 운영 API로 분류 | Spring Security matcher 목록과 완전한 단일 source of truth는 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
 
+- Spring Security matcher와 운영 API matcher 목록 동기화 테스트
 - broker-specific adapter와 Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API

@@ -18,15 +18,6 @@ import org.springframework.web.filter.OncePerRequestFilter;
 @Component
 public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
 
-    private static final List<String> ADMIN_API_PATH_PREFIXES = List.of(
-            "/api/v1/outbox-events",
-            "/api/v1/outbox-consumer",
-            "/api/v1/outbox-relay-runs",
-            "/api/v1/admin-api-access-audits",
-            "/api/v1/operational-alerts",
-            "/api/v1/operational-log-pruning-runs"
-    );
-
     private final AdminAuthorizationProperties properties;
     private final AdminSecurityErrorHandler adminSecurityErrorHandler;
 
@@ -44,7 +35,7 @@ public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain
     ) throws ServletException, IOException {
-        if (!isAdminApiPath(request.getRequestURI())) {
+        if (!AdminApiPathMatcher.isAdminApiPath(request.getRequestURI())) {
             filterChain.doFilter(request, response);
             return;
         }
@@ -73,10 +64,6 @@ public class AdminHeaderAuthenticationFilter extends OncePerRequestFilter {
         } finally {
             SecurityContextHolder.clearContext();
         }
-    }
-
-    private boolean isAdminApiPath(String requestUri) {
-        return ADMIN_API_PATH_PREFIXES.stream().anyMatch(requestUri::startsWith);
     }
 
     private String principal(String operatorId) {

@@ -50,7 +50,7 @@
 - 같은 operational alert는 suppression window 안에서 중복 저장되지 않고, 오래된 alert record는 operational log pruning에서 삭제된다.
 - 설정 시 warning/critical operational alert는 Slack Incoming Webhook 호환 endpoint로 push된다.
 - CI는 `.dev/rules` 기반 문서, 테스트, Wiki 동기화 누락 검사를 수행한다.
-- 운영 API는 local operator/admin token과 operator id로 보호된다.
+- 운영 API는 local operator/admin token과 operator id로 보호된다. 인증 필터와 접근 감사 필터는 같은 segment-aware 운영 API path matcher를 사용하므로 root/sub-path만 보호·감사하고 lookalike prefix는 오탐하지 않는다.
 - PostgreSQL profile이 Flyway migration과 Testcontainers scenario로 검증된다.
 - 프론트 build, unit, E2E가 CI에서 분리 검증된다.
 - 백엔드 unit/API, scenario, PostgreSQL scenario가 CI에서 분리 검증된다.
