@@ -29,6 +29,7 @@
 - Operational alert suppression and pruning
 - Slack webhook operational alert publisher
 - `.dev/rules` 자동 문서/테스트 동기화 체크
+- Outbox relay/consumer health policy 설정 guard rail 단위 테스트
 
 ## MVP 출시 판단 기준
 

@@ -67,6 +67,7 @@ npm run e2e
 - HTTP consumer adapter duplicate no-op과 receipt side effect
 - HTTP publisher에서 consumer endpoint로 이어지는 publish→consume loop
 - consumer monitoring admin API의 processed, duplicate, receipt count
+- relay/consumer health threshold 설정값 변환과 guard rail
 
 ### `./gradlew scenarioTest`
 
