@@ -10,6 +10,7 @@ import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
+import com.imwoo.airepo.wallet.application.WalletOperationOutcome;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.Money;
 import com.imwoo.airepo.wallet.domain.OperationOutboxRequeueRequestStatus;
@@ -175,6 +176,36 @@ class PostgresContainerWalletRepositoryTest {
                     repository.findOperation("postgres-concurrent-transfer-001").isPresent()
                             ^ repository.findOperation("postgres-concurrent-transfer-002").isPresent()
             ).isTrue();
+        } finally {
+            executorService.shutdownNow();
+        }
+    }
+
+    @Test
+    void concurrentChargesWithSameIdempotencyKeyRecoverIdempotentResultInsteadOfFailing() throws Exception {
+        ExecutorService executorService = Executors.newFixedThreadPool(2);
+        CountDownLatch startLatch = new CountDownLatch(1);
+
+        try {
+            Future<ChargeAttempt> firstAttempt = executorService.submit(() -> applyConcurrentCharge(startLatch));
+            Future<ChargeAttempt> secondAttempt = executorService.submit(() -> applyConcurrentCharge(startLatch));
+
+            startLatch.countDown();
+
+            List<ChargeAttempt> attempts = List.of(
+                    firstAttempt.get(10, TimeUnit.SECONDS),
+                    secondAttempt.get(10, TimeUnit.SECONDS)
+            );
+
+            assertThat(attempts).filteredOn(ChargeAttempt::successful).hasSize(2);
+            assertThat(attempts).extracting(ChargeAttempt::operationId).containsOnly("op-001");
+            assertThat(attempts).filteredOn(ChargeAttempt::created).hasSize(1);
+            assertThat(attempts).filteredOn(attempt -> !attempt.created()).hasSize(1);
+            assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
+            assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+            assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
+            assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
+            assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
         } finally {
             executorService.shutdownNow();
         }
@@ -514,6 +545,24 @@ class PostgresContainerWalletRepositoryTest {
         ));
     }
 
+    private ChargeAttempt applyConcurrentCharge(CountDownLatch startLatch) throws InterruptedException {
+        awaitConcurrentStart(startLatch);
+
+        try {
+            WalletOperationOutcome outcome = repository.applyCharge(
+                    "postgres-concurrent-charge-001",
+                    "postgres-concurrent-charge-fingerprint-001",
+                    "wallet-001",
+                    money("5000"),
+                    "PostgreSQL 동시 충전",
+                    Instant.parse("2026-05-01T00:00:00Z")
+            );
+            return ChargeAttempt.success(outcome.record().result().operationId(), outcome.created());
+        } catch (RuntimeException exception) {
+            return ChargeAttempt.failure(exception);
+        }
+    }
+
     private void awaitConcurrentStart(CountDownLatch startLatch) throws InterruptedException {
         if (!startLatch.await(5, TimeUnit.SECONDS)) {
             throw new IllegalStateException("Timed out waiting for concurrent start");
@@ -558,5 +607,16 @@ class PostgresContainerWalletRepositoryTest {
     }
 
     private record ConsumerProcessedAttempt(boolean recorded) {
+    }
+
+    private record ChargeAttempt(boolean successful, String operationId, boolean created, RuntimeException exception) {
+
+        private static ChargeAttempt success(String operationId, boolean created) {
+            return new ChargeAttempt(true, operationId, created, null);
+        }
+
+        private static ChargeAttempt failure(RuntimeException exception) {
+            return new ChargeAttempt(false, null, false, exception);
+        }
     }
 }

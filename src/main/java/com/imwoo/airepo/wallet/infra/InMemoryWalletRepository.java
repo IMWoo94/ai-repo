@@ -14,6 +14,8 @@ import com.imwoo.airepo.wallet.application.OperationalAlertRepository;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletCommandRepository;
 import com.imwoo.airepo.wallet.application.WalletLedgerQueryRepository;
+import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
+import com.imwoo.airepo.wallet.application.WalletOperationOutcome;
 import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletOperationResult;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
@@ -780,7 +782,7 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
-    public synchronized WalletOperationRecord applyCharge(
+    public synchronized WalletOperationOutcome applyCharge(
             String idempotencyKey,
             String fingerprint,
             String walletId,
@@ -788,6 +790,10 @@ public class InMemoryWalletRepository implements
             String description,
             Instant occurredAt
     ) {
+        WalletOperationRecord recovered = recoverExistingOperation(idempotencyKey, fingerprint);
+        if (recovered != null) {
+            return WalletOperationOutcome.recovered(recovered);
+        }
         WalletBalance currentBalance = balances.get(walletId);
         WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
         balances.put(walletId, updatedBalance);
@@ -844,11 +850,11 @@ public class InMemoryWalletRepository implements
         operations.put(idempotencyKey, record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         addOutboxEvent(result);
-        return record;
+        return WalletOperationOutcome.created(record);
     }
 
     @Override
-    public synchronized WalletOperationRecord applyTransfer(
+    public synchronized WalletOperationOutcome applyTransfer(
             String idempotencyKey,
             String fingerprint,
             String sourceWalletId,
@@ -857,6 +863,10 @@ public class InMemoryWalletRepository implements
             String description,
             Instant occurredAt
     ) {
+        WalletOperationRecord recovered = recoverExistingOperation(idempotencyKey, fingerprint);
+        if (recovered != null) {
+            return WalletOperationOutcome.recovered(recovered);
+        }
         WalletBalance sourceBalance = balances.get(sourceWalletId);
         WalletBalance targetBalance = balances.get(targetWalletId);
         String operationId = nextOperationId();
@@ -944,7 +954,18 @@ public class InMemoryWalletRepository implements
         operations.put(idempotencyKey, record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         addOutboxEvent(result);
-        return record;
+        return WalletOperationOutcome.created(record);
+    }
+
+    private WalletOperationRecord recoverExistingOperation(String idempotencyKey, String fingerprint) {
+        WalletOperationRecord existing = operations.get(idempotencyKey);
+        if (existing == null) {
+            return null;
+        }
+        if (!existing.fingerprint().equals(fingerprint)) {
+            throw new IdempotencyKeyConflictException(idempotencyKey);
+        }
+        return existing;
     }
 
     private void addOutboxEvent(WalletOperationResult result) {

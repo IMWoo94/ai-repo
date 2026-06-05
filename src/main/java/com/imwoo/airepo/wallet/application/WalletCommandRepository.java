@@ -8,7 +8,7 @@ public interface WalletCommandRepository extends WalletQueryRepository {
 
     Optional<WalletOperationRecord> findOperation(String idempotencyKey);
 
-    WalletOperationRecord applyCharge(
+    WalletOperationOutcome applyCharge(
             String idempotencyKey,
             String fingerprint,
             String walletId,
@@ -17,7 +17,7 @@ public interface WalletCommandRepository extends WalletQueryRepository {
             Instant occurredAt
     );
 
-    WalletOperationRecord applyTransfer(
+    WalletOperationOutcome applyTransfer(
             String idempotencyKey,
             String fingerprint,
             String sourceWalletId,

@@ -78,6 +78,8 @@
    - ADR-0053 Operational Alert Suppression and Pruning
    - ADR-0054 Slack Webhook Operational Alert Publisher
    - ADR-0055 Admin API Path Matching Hardening
+   - ADR-0056 Test Fixture Admin Boundary
+   - ADR-0057 Idempotency Duplicate-Key Recovery
 
 ## 중요한 트레이드오프
 

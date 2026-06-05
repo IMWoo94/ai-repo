@@ -51,6 +51,19 @@ class InMemoryWalletCommandServiceTest {
     }
 
     @Test
+    void applyChargeReportsRecoveredOutcomeWhenIdempotencyKeyAlreadyApplied() {
+        WalletOperationOutcome first = repository.applyCharge(
+                "charge-001", "fp-charge-001", "wallet-001", money("5000"), "테스트 충전", instant());
+        WalletOperationOutcome second = repository.applyCharge(
+                "charge-001", "fp-charge-001", "wallet-001", money("5000"), "테스트 충전", instant());
+
+        assertThat(first.created()).isTrue();
+        assertThat(second.created()).isFalse();
+        assertThat(second.record().result().operationId()).isEqualTo(first.record().result().operationId());
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
+    }
+
+    @Test
     void sameIdempotencyKeyWithDifferentChargeRequestFails() {
         service.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
 
@@ -123,5 +136,9 @@ class InMemoryWalletCommandServiceTest {
 
     private Money money(String amount) {
         return new Money(new BigDecimal(amount), "KRW");
+    }
+
+    private Instant instant() {
+        return Instant.parse("2026-05-01T00:00:00Z");
     }
 }

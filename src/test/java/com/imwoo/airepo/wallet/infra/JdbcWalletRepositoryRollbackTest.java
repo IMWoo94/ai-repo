@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.infra;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.domain.Money;
 import java.math.BigDecimal;
 import java.sql.Timestamp;
@@ -10,7 +11,6 @@ import java.time.Instant;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.springframework.dao.DuplicateKeyException;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.jdbc.datasource.DataSourceTransactionManager;
 import org.springframework.jdbc.datasource.embedded.EmbeddedDatabase;
@@ -61,7 +61,7 @@ class JdbcWalletRepositoryRollbackTest {
                 new Money(new BigDecimal("5000"), "KRW"),
                 "롤백 검증",
                 Instant.parse("2026-05-01T00:00:00Z")
-        )).isInstanceOf(DuplicateKeyException.class);
+        )).isInstanceOf(IdempotencyKeyConflictException.class);
 
         assertThat(amount("wallet-001")).isEqualByComparingTo(initialBalance);
         assertThat(count("transaction_history where wallet_id = 'wallet-001'")).isEqualTo(initialTransactionCount);

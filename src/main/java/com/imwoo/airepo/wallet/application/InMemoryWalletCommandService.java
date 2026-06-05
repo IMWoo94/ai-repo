@@ -30,17 +30,14 @@ public class InMemoryWalletCommandService implements WalletCommandService {
         WalletAccount walletAccount = findOperableWallet(walletId);
         String fingerprint = chargeFingerprint(walletAccount.walletId(), command);
         return resolveIdempotency(command.idempotencyKey(), fingerprint)
-                .orElseGet(() -> new WalletCommandResult(
-                        walletCommandRepository.applyCharge(
-                                command.idempotencyKey(),
-                                fingerprint,
-                                walletAccount.walletId(),
-                                command.money(),
-                                command.description(),
-                                Instant.now(clock)
-                        ).result(),
-                        true
-                ));
+                .orElseGet(() -> toCommandResult(walletCommandRepository.applyCharge(
+                        command.idempotencyKey(),
+                        fingerprint,
+                        walletAccount.walletId(),
+                        command.money(),
+                        command.description(),
+                        Instant.now(clock)
+                )));
     }
 
     @Override
@@ -63,18 +60,19 @@ public class InMemoryWalletCommandService implements WalletCommandService {
 
         String fingerprint = transferFingerprint(sourceWallet.walletId(), targetWallet.walletId(), command);
         return resolveIdempotency(command.idempotencyKey(), fingerprint)
-                .orElseGet(() -> new WalletCommandResult(
-                        walletCommandRepository.applyTransfer(
-                                command.idempotencyKey(),
-                                fingerprint,
-                                sourceWallet.walletId(),
-                                targetWallet.walletId(),
-                                command.money(),
-                                command.description(),
-                                Instant.now(clock)
-                        ).result(),
-                        true
-                ));
+                .orElseGet(() -> toCommandResult(walletCommandRepository.applyTransfer(
+                        command.idempotencyKey(),
+                        fingerprint,
+                        sourceWallet.walletId(),
+                        targetWallet.walletId(),
+                        command.money(),
+                        command.description(),
+                        Instant.now(clock)
+                )));
+    }
+
+    private WalletCommandResult toCommandResult(WalletOperationOutcome outcome) {
+        return new WalletCommandResult(outcome.record().result(), outcome.created());
     }
 
     private Optional<WalletCommandResult> resolveIdempotency(String idempotencyKey, String fingerprint) {

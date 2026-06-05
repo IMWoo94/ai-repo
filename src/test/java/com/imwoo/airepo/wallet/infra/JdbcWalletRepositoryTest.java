@@ -9,6 +9,8 @@ import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
+import com.imwoo.airepo.wallet.application.WalletOperationOutcome;
+import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
@@ -137,6 +139,72 @@ class JdbcWalletRepositoryTest {
         assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
+    }
+
+    @Test
+    void applyChargeReturnsExistingRecordWhenIdempotencyKeyAlreadyApplied() {
+        WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전");
+        WalletCommandResult winner = commandService.charge("wallet-001", command);
+        WalletOperationRecord stored = repository.findOperation("charge-db-001").orElseThrow();
+
+        WalletOperationOutcome recovered = repository.applyCharge(
+                stored.idempotencyKey(),
+                stored.fingerprint(),
+                "wallet-001",
+                command.money(),
+                command.description(),
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(recovered.created()).isFalse();
+        assertThat(recovered.record().result().operationId()).isEqualTo(winner.operation().operationId());
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
+        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+        assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
+        assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
+        assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
+    }
+
+    @Test
+    void applyChargeRejectsReusedIdempotencyKeyWithDifferentFingerprint() {
+        WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전");
+        commandService.charge("wallet-001", command);
+
+        assertThatThrownBy(() -> repository.applyCharge(
+                "charge-db-001",
+                "CHARGE|wallet-001|9999|KRW|다른 요청",
+                "wallet-001",
+                money("9999"),
+                "다른 요청",
+                Instant.parse("2026-05-01T00:00:00Z")
+        )).isInstanceOf(IdempotencyKeyConflictException.class);
+
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
+        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+    }
+
+    @Test
+    void applyTransferReturnsExistingRecordWhenIdempotencyKeyAlreadyApplied() {
+        WalletTransferCommand command = new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금");
+        WalletCommandResult winner = commandService.transfer("wallet-001", command);
+        WalletOperationRecord stored = repository.findOperation("transfer-db-001").orElseThrow();
+
+        WalletOperationOutcome recovered = repository.applyTransfer(
+                stored.idempotencyKey(),
+                stored.fingerprint(),
+                "wallet-001",
+                "wallet-002",
+                command.money(),
+                command.description(),
+                Instant.parse("2026-05-01T00:00:00Z")
+        );
+
+        assertThat(recovered.created()).isFalse();
+        assertThat(recovered.record().result().operationId()).isEqualTo(winner.operation().operationId());
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("124000"));
+        assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("31000"));
+        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
         assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
     }
 

@@ -1,6 +1,8 @@
 package com.imwoo.airepo.wallet.infra;
 
 import com.imwoo.airepo.wallet.application.AdminApiAccessAuditRepository;
+import com.imwoo.airepo.wallet.application.WalletOperationOutcome;
+import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.OperationOutboxConsumerDeliveryMetricRepository;
@@ -1132,7 +1134,7 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public WalletOperationRecord applyCharge(
+    public WalletOperationOutcome applyCharge(
             String idempotencyKey,
             String fingerprint,
             String walletId,
@@ -1140,7 +1142,7 @@ public class JdbcWalletRepository implements
             String description,
             Instant occurredAt
     ) {
-        return executeWithLockTimeout(() -> {
+        return executeIdempotentOperation(idempotencyKey, fingerprint, () -> {
             WalletBalance currentBalance = findBalanceForUpdate(walletId);
             WalletBalance updatedBalance = new WalletBalance(walletId, currentBalance.money().add(money), occurredAt);
             String operationId = nextId("op", "operation_id_seq");
@@ -1233,7 +1235,7 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public WalletOperationRecord applyTransfer(
+    public WalletOperationOutcome applyTransfer(
             String idempotencyKey,
             String fingerprint,
             String sourceWalletId,
@@ -1242,7 +1244,7 @@ public class JdbcWalletRepository implements
             String description,
             Instant occurredAt
     ) {
-        return executeWithLockTimeout(() -> {
+        return executeIdempotentOperation(idempotencyKey, fingerprint, () -> {
             List<WalletBalance> lockedBalances = findTransferBalancesForUpdate(sourceWalletId, targetWalletId);
             WalletBalance sourceBalance = findLockedBalance(lockedBalances, sourceWalletId);
             WalletBalance targetBalance = findLockedBalance(lockedBalances, targetWalletId);
@@ -1369,6 +1371,30 @@ public class JdbcWalletRepository implements
             insertOutboxEvent(result);
             return record;
         });
+    }
+
+    private WalletOperationOutcome executeIdempotentOperation(
+            String idempotencyKey,
+            String fingerprint,
+            Supplier<WalletOperationRecord> operation
+    ) {
+        try {
+            return WalletOperationOutcome.created(executeWithLockTimeout(operation));
+        } catch (DuplicateKeyException exception) {
+            return WalletOperationOutcome.recovered(recoverIdempotentRecord(idempotencyKey, fingerprint, exception));
+        }
+    }
+
+    private WalletOperationRecord recoverIdempotentRecord(
+            String idempotencyKey,
+            String fingerprint,
+            DuplicateKeyException exception
+    ) {
+        WalletOperationRecord existing = findOperation(idempotencyKey).orElseThrow(() -> exception);
+        if (!existing.fingerprint().equals(fingerprint)) {
+            throw new IdempotencyKeyConflictException(idempotencyKey);
+        }
+        return existing;
     }
 
     private WalletOperationRecord executeWithLockTimeout(Supplier<WalletOperationRecord> operation) {

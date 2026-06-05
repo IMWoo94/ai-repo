@@ -28,6 +28,9 @@
 - Operational alert record channel
 - Operational alert suppression and pruning
 - Slack webhook operational alert publisher
+- Admin API path matching hardening
+- Test fixture admin boundary
+- Idempotency duplicate-key recovery
 - `.dev/rules` 자동 문서/테스트 동기화 체크
 
 ## MVP 출시 판단 기준
