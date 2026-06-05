@@ -29,6 +29,8 @@
 - Operational alert suppression and pruning
 - Slack webhook operational alert publisher
 - `.dev/rules` 자동 문서/테스트 동기화 체크
+- Admin API path matching hardening
+- 엔드유저 memberId JWT 인증과 wallet ownership 서비스계층 강제(IDOR 차단, 비소유자 403, ledger-entries 포함)
 
 ## MVP 출시 판단 기준
 

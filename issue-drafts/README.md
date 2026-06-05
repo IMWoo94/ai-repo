@@ -117,6 +117,7 @@
 - `0063-operational-alert-suppression-pruning.md`: Operational alert suppression and pruning 작업 초안
 - `0064-slack-webhook-operational-alert-publisher.md`: Slack webhook operational alert publisher 작업 초안
 - `0065-admin-api-path-matching-hardening.md`: Admin API path matching hardening 작업 초안
+- `0066-enduser-jwt-auth-wallet-ownership.md`: 엔드유저 JWT 인증과 지갑 소유권 강제 작업 초안
 
 ## GitHub CLI로 생성
 

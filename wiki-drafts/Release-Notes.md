@@ -57,12 +57,15 @@
 ## 알려진 제약
 
 - Slack webhook 발행 실패 record와 재시도 정책은 아직 없다.
-- token과 operator identity는 local header 기반이다.
+- 운영 API의 operator/admin identity는 local header 기반이다.
+- 엔드유저 JWT는 발급/검증만 있고, 만료 후 갱신(refresh) 정책과 프론트엔드 로그인 연동은 후속이다.
 - Kafka/RabbitMQ/SQS 같은 broker-specific adapter는 아직 없다.
 - GitHub Wiki actual publication은 `v0.7.0` 기준으로 완료했다.
 
 ## 다음 후보
 
+- 프론트엔드 로그인 + Bearer 토큰 부착
+- JWT 만료 후 갱신(refresh) 정책
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API

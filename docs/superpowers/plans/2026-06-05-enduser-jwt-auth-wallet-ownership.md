@@ -10,6 +10,20 @@
 
 ---
 
+## Status (2026-06-06)
+
+**Backend complete (Tasks 1–11)** — committed on `agent/enduser-jwt-auth-wallet-ownership-20260605` (`d29ecf8` for T8–T11; T1–T7 in earlier commits). `./gradlew test` (255), `scenarioTest`, `postgresScenarioTest`, `check` all green. See progress `0066`, ADR-0056.
+
+Deviations from the as-written plan, decided with the maintainer:
+- **Enforcement layer:** kept service-core `memberId` threading (Task 8 approach A) over a controller-boundary guard, for service-layer defense-in-depth.
+- **IDOR response:** non-owner returns **403 `WALLET_ACCESS_DENIED`** (honest signal), not a 404 collapse — existence-enumeration distinction is an accepted tradeoff.
+- **Ledger coverage (added):** `getLedgerEntries` was also threaded + ownership-checked; the original plan did not cover the `/api/v1/wallets/{id}/ledger-entries` IDOR.
+- **test-fixtures:** `AdminApiPathMatcher` aligned with the admin chain so fixture POSTs authenticate as ADMIN.
+
+**Pending (Tasks 12–15):** frontend login + Bearer header, frontend E2E auth flow, and the final PR. JWT refresh/expiry policy is also deferred.
+
+---
+
 ## File Structure
 
 **Backend — create:**
