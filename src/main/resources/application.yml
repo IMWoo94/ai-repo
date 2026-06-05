@@ -24,6 +24,10 @@ ai-repo:
   ops:
     admin-token: ${AI_REPO_OPS_ADMIN_TOKEN:local-ops-token}
     operator-token: ${AI_REPO_OPS_OPERATOR_TOKEN:local-operator-token}
+  auth:
+    jwt:
+      secret: ${AI_REPO_AUTH_JWT_SECRET:local-dev-jwt-secret-please-change-32b}
+      ttl-minutes: ${AI_REPO_AUTH_JWT_TTL_MINUTES:60}
   test-fixtures:
     enabled: ${AI_REPO_TEST_FIXTURES_ENABLED:false}
   outbox:
