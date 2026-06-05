@@ -21,4 +21,10 @@ final class WalletAccessPolicy {
         }
         return walletAccount;
     }
+
+    static void requireOwnership(WalletAccount walletAccount, String memberId) {
+        if (!walletAccount.memberId().equals(memberId)) {
+            throw new WalletAccessDeniedException(walletAccount.walletId());
+        }
+    }
 }
