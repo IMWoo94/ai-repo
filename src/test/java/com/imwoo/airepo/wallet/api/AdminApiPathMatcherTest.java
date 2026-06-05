@@ -23,7 +23,9 @@ class AdminApiPathMatcherTest {
             "/api/v1/outbox-relay-runs/health",
             "/api/v1/admin-api-access-audits",
             "/api/v1/operational-alerts",
-            "/api/v1/operational-log-pruning-runs"
+            "/api/v1/operational-log-pruning-runs",
+            "/api/v1/test-fixtures",
+            "/api/v1/test-fixtures/outbox-events/manual-review"
     })
     void matchesAdminApiRootAndSubPaths(String requestUri) {
         assertThat(AdminApiPathMatcher.isAdminApiPath(requestUri)).isTrue();

@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.api;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -36,13 +37,31 @@ class WalletLedgerControllerTest {
     void returnsLedgerEntriesAfterCharge() throws Exception {
         charge();
 
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries")
+                        .with(jwt().jwt(token -> token.subject("member-001"))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].operationId").value("op-001"))
                 .andExpect(jsonPath("$[0].type").value("CHARGE"))
                 .andExpect(jsonPath("$[0].direction").value("CREDIT"))
                 .andExpect(jsonPath("$[0].balanceAfter.amount").value(130000));
+    }
+
+    @Test
+    void rejectsLedgerEntriesWhenMemberDoesNotOwnWallet() throws Exception {
+        charge();
+
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries")
+                        .with(jwt().jwt(token -> token.subject("member-002"))))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("WALLET_ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value("Wallet access denied: wallet-001"));
+    }
+
+    @Test
+    void rejectsUnauthenticatedLedgerEntries() throws Exception {
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -101,6 +120,7 @@ class WalletLedgerControllerTest {
 
     private void charge() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(jwt().jwt(token -> token.subject("member-001")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {

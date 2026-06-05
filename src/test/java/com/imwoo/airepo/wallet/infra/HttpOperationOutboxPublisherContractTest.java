@@ -76,7 +76,7 @@ class HttpOperationOutboxPublisherContractTest {
                     Clock.fixed(Instant.parse("2026-05-01T00:00:00Z"), ZoneOffset.UTC),
                     repository
             );
-            commandService.charge("wallet-001", new WalletChargeCommand(
+            commandService.charge("member-001", "wallet-001", new WalletChargeCommand(
                     new Money(new BigDecimal("5000"), "KRW"),
                     "charge-http-001",
                     "HTTP broker failure"

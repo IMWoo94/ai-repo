@@ -4,6 +4,7 @@ import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
+import com.imwoo.airepo.wallet.domain.WalletAccount;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,11 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     }
 
     @Override
-    public List<LedgerEntry> getLedgerEntries(String walletId) {
+    public List<LedgerEntry> getLedgerEntries(String memberId, String walletId) {
         validateWalletId(walletId);
-        String queryableWalletId = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId).walletId();
-        return walletLedgerQueryRepository.findLedgerEntries(queryableWalletId).stream()
+        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
+        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
+        return walletLedgerQueryRepository.findLedgerEntries(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(LedgerEntry::occurredAt)
                         .thenComparing(LedgerEntry::ledgerEntryId)
                         .reversed())

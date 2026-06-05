@@ -22,12 +22,13 @@ public class InMemoryWalletCommandService implements WalletCommandService {
     }
 
     @Override
-    public synchronized WalletCommandResult charge(String walletId, WalletChargeCommand command) {
+    public synchronized WalletCommandResult charge(String memberId, String walletId, WalletChargeCommand command) {
         validateWalletId(walletId);
         validateMoney(command.money());
         validateIdempotencyKey(command.idempotencyKey());
 
         WalletAccount walletAccount = findOperableWallet(walletId);
+        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
         String fingerprint = chargeFingerprint(walletAccount.walletId(), command);
         return resolveIdempotency(command.idempotencyKey(), fingerprint)
                 .orElseGet(() -> new WalletCommandResult(
@@ -44,7 +45,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
     }
 
     @Override
-    public synchronized WalletCommandResult transfer(String sourceWalletId, WalletTransferCommand command) {
+    public synchronized WalletCommandResult transfer(String memberId, String sourceWalletId, WalletTransferCommand command) {
         validateWalletId(sourceWalletId);
         validateWalletId(command.targetWalletId());
         validateMoney(command.money());
@@ -54,6 +55,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
         }
 
         WalletAccount sourceWallet = findOperableWallet(sourceWalletId);
+        WalletAccessPolicy.requireOwnership(sourceWallet, memberId);
         WalletAccount targetWallet = findOperableWallet(command.targetWalletId());
         WalletBalance sourceBalance = walletCommandRepository.findBalance(sourceWallet.walletId())
                 .orElseThrow(() -> new WalletNotFoundException(sourceWallet.walletId()));

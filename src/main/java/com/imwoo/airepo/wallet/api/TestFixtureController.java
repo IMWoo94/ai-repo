@@ -37,6 +37,7 @@ public class TestFixtureController {
     @PostMapping("/outbox-events/manual-review")
     public ResponseEntity<ManualReviewFixtureResponse> createManualReviewFixture() {
         WalletCommandResult commandResult = walletCommandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(
                         new Money(BigDecimal.ONE, "KRW"),

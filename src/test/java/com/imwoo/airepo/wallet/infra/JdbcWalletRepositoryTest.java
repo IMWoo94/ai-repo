@@ -78,6 +78,7 @@ class JdbcWalletRepositoryTest {
     @Test
     void chargePersistsBalanceTransactionLedgerAuditAndOperation() {
         WalletCommandResult result = commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전")
         );
@@ -86,7 +87,7 @@ class JdbcWalletRepositoryTest {
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
         assertThat(repository.findTransactions("wallet-001"))
                 .anySatisfy(transaction -> assertThat(transaction.transactionId()).isEqualTo("txn-003"));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001"))
                 .singleElement()
                 .satisfies(ledgerEntry -> {
                     assertThat(ledgerEntry.operationId()).isEqualTo("op-001");
@@ -127,14 +128,14 @@ class JdbcWalletRepositoryTest {
     void repeatedChargeWithSameIdempotencyKeyDoesNotDuplicateLedgerAuditOrBalance() {
         WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전");
 
-        WalletCommandResult first = commandService.charge("wallet-001", command);
-        WalletCommandResult second = commandService.charge("wallet-001", command);
+        WalletCommandResult first = commandService.charge("member-001", "wallet-001", command);
+        WalletCommandResult second = commandService.charge("member-001", "wallet-001", command);
 
         assertThat(first.created()).isTrue();
         assertThat(second.created()).isFalse();
         assertThat(second.operation().operationId()).isEqualTo(first.operation().operationId());
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs("op-001")).hasSize(6);
         assertThat(repository.findOperationOutboxEvents("op-001")).hasSize(1);
@@ -142,7 +143,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxRelayStateTransitions() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
         assertThat(repository.findPendingOutboxEvents(10))
                 .singleElement()
@@ -165,7 +166,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxRelayFailureIncrementsAttemptCount() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
         repository.markOutboxEventFailed(
                 "outbox-001",
@@ -190,8 +191,8 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxClaimMovesReadyEventsToProcessing() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
-        commandService.transfer("wallet-001", new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.transfer("member-001", "wallet-001", new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금"));
 
         assertThat(repository.claimReadyOutboxEvents(
                 1,
@@ -214,7 +215,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxClaimWaitsUntilFailedEventRetryTime() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.markOutboxEventFailed(
                 "outbox-001",
                 "broker unavailable",
@@ -244,7 +245,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxClaimRecoversExpiredProcessingEvent() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.claimReadyOutboxEvents(
                 10,
                 Instant.parse("2026-05-01T00:01:00Z"),
@@ -271,7 +272,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void stalePublishedWriterCannotOverwriteReclaimedOutboxEvent() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         var firstClaim = repository.claimReadyOutboxEvents(
                 10,
                 Instant.parse("2026-05-01T00:01:00Z"),
@@ -304,7 +305,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void staleFailedWriterCannotOverwriteReclaimedOutboxEvent() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         var firstClaim = repository.claimReadyOutboxEvents(
                 10,
                 Instant.parse("2026-05-01T00:01:00Z"),
@@ -340,7 +341,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxFailureMovesToManualReviewAtMaxAttempts() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
@@ -365,7 +366,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxManualReviewCanBeRequeued() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
@@ -411,7 +412,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxManualReviewRequeueCanBeRequestedApprovedAndExecuted() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
@@ -465,7 +466,7 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void outboxManualReviewRequeueRequestCanBeRejected() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);
@@ -837,9 +838,10 @@ class JdbcWalletRepositoryTest {
 
     @Test
     void sameIdempotencyKeyWithDifferentRequestFails() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
 
         assertThatThrownBy(() -> commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("6000"), "charge-db-001", "DB 충전")
         ))
@@ -850,6 +852,7 @@ class JdbcWalletRepositoryTest {
     @Test
     void transferPersistsBothWalletBalancesAndLedgerEntries() {
         WalletCommandResult result = commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "transfer-db-001", "DB 송금")
         );
@@ -857,13 +860,13 @@ class JdbcWalletRepositoryTest {
         assertThat(result.created()).isTrue();
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("100000"));
         assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("55000"));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001"))
                 .singleElement()
                 .satisfies(ledgerEntry -> {
                     assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.DEBIT);
                     assertThat(ledgerEntry.balanceAfter()).isEqualTo(money("100000"));
                 });
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-002"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-002", "wallet-002"))
                 .singleElement()
                 .satisfies(ledgerEntry -> {
                     assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.CREDIT);

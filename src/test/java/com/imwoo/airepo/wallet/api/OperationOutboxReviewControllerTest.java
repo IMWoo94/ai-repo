@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.api;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -331,6 +332,7 @@ class OperationOutboxReviewControllerTest {
 
     private void makeManualReviewEvent() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(jwt().jwt(token -> token.subject("member-001")))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
