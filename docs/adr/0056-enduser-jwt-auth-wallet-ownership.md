@@ -40,3 +40,10 @@ Accepted
 ## 대안
 
 - 컨트롤러 경계 guard 또는 `@PreAuthorize` SpEL: 콜사이트 변경은 0에 가깝지만 서비스 코어 자기방어가 없고 ledger를 별도 처리해야 하며, `@PreAuthorize` 거부는 `@RestControllerAdvice`를 우회해 403/404 응답 shape 제어가 어렵다. 채택하지 않음.
+
+## 리뷰 보강 (2026-06-06)
+
+PR 106 max-effort 코드 리뷰 후속:
+
+- **소유권 체크 순서 재정렬:** `WalletAccessPolicy.findOwnedQueryableWallet`를 추가해 존재 확인 직후 `requireOwnership`를 실행하고, 그다음에 queryable/owner-active를 검사한다. 이전에는 owner-active 검사가 먼저 돌아 비소유자가 "남의 지갑인데 소유자 비활성"을 `409 WALLET_NOT_QUERYABLE`로 구별할 수 있었다(수용한 404/403 트레이드오프를 넘는 3번째 응답). 이제 비소유자는 owner 상태와 무관하게 항상 403을 받는다. transfer의 입금(target) 지갑은 소유 대상이 아니므로 기존 `findQueryableWallet`을 유지한다.
+- **JWT 기본 시크릿 fail-fast:** `JwtSecretGuard`가 `prod` 프로파일에서 빌트인 기본 시크릿(`local-dev-jwt-secret-please-change-32b`)이 그대로면 기동을 실패시킨다(`AI_REPO_AUTH_JWT_SECRET` 필수). 그 외 프로파일은 경고만 남겨 로컬/테스트는 영향 없음. 기본 시크릿은 공개 저장소에 있어 그대로 두면 임의 memberId 토큰을 위조해 소유권 통제를 우회할 수 있기 때문이다.

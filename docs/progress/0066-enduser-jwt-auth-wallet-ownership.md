@@ -40,6 +40,13 @@
 - JWT 만료 후 갱신(refresh) 정책
 - 토큰 secret 운영 주입(현재 local 기본값 override)
 
+## 리뷰 보강 (2026-06-06)
+
+PR 106 max-effort 코드 리뷰에서 확정된 두 결함 수정:
+
+- `WalletAccessPolicy.findOwnedQueryableWallet`로 소유권 검사를 존재 확인 직후·queryable/owner-active 검사 이전으로 옮겨, 비소유자가 소유자 비활성 상태를 `409`로 구별하던 누수를 닫고 항상 403을 반환한다(command/query/ledger 공통).
+- `JwtSecretGuard`가 `prod` 프로파일 + 빌트인 기본 JWT 시크릿이면 기동을 실패시켜, 기본 시크릿으로 인한 토큰 위조(소유권 우회)를 방지한다.
+
 ## 관련 문서
 
 - `docs/adr/0056-enduser-jwt-auth-wallet-ownership.md`
