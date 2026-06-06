@@ -1,6 +1,6 @@
 import { render, screen, waitFor } from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
-import { describe, expect, it, vi } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { App } from './App';
 
 type MockFetchState = {
@@ -81,6 +81,15 @@ function setupFetch(state: MockFetchState = {
   const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
     const url = input.toString();
     const method = init?.method ?? 'GET';
+
+    if (url.endsWith('/api/v1/auth/tokens') && method === 'POST') {
+      const body = JSON.parse(String(init?.body));
+      return jsonResponse({
+        token: `jwt-${body.memberId}`,
+        memberId: body.memberId,
+        expiresAt: '2099-01-01T00:00:00Z',
+      });
+    }
 
     if (url.endsWith('/balance')) {
       return jsonResponse({
@@ -328,6 +337,13 @@ function setupFetch(state: MockFetchState = {
   return fetchMock;
 }
 
+function seedAuth(memberId = 'member-001') {
+  sessionStorage.setItem(
+    'ai-repo.auth',
+    JSON.stringify({ token: `seed-${memberId}`, memberId, expiresAt: '2099-01-01T00:00:00Z' }),
+  );
+}
+
 function jsonResponse(body: unknown, status = 200) {
   return {
     ok: status >= 200 && status < 300,
@@ -400,6 +416,63 @@ function operationResult({
 }
 
 describe('App', () => {
+  beforeEach(() => {
+    seedAuth();
+  });
+
+  it('로그인 전에는 로그인 폼을 보여주고, memberId 로그인 후 wallet 요청에 Bearer 토큰을 싣는다', async () => {
+    sessionStorage.clear();
+    const user = userEvent.setup();
+    const fetchMock = setupFetch();
+
+    render(<App />);
+
+    const memberInput = await screen.findByLabelText('회원 ID');
+    await user.clear(memberInput);
+    await user.type(memberInput, 'member-001');
+    await user.click(screen.getByRole('button', { name: '로그인' }));
+
+    expect(await screen.findByText('125,000 KRW')).toBeVisible();
+
+    const tokenCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/api/v1/auth/tokens'));
+    expect(tokenCall).toBeDefined();
+    expect(JSON.parse(String(tokenCall?.[1]?.body))).toMatchObject({ memberId: 'member-001' });
+
+    const balanceCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/balance'));
+    expect(balanceCall?.[1]?.headers).toMatchObject({ Authorization: 'Bearer jwt-member-001' });
+  });
+
+  it('wallet 요청이 401이면 저장된 memberId로 토큰을 재발급하고 1회 재시도한다', async () => {
+    let balanceCalls = 0;
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? 'GET';
+      if (url.endsWith('/api/v1/auth/tokens') && method === 'POST') {
+        const body = JSON.parse(String(init?.body));
+        return jsonResponse({ token: `fresh-${body.memberId}`, memberId: body.memberId, expiresAt: '2099-01-01T00:00:00Z' });
+      }
+      if (url.endsWith('/balance')) {
+        balanceCalls += 1;
+        if (balanceCalls === 1) {
+          return jsonResponse({ code: 'WALLET_ACCESS_DENIED', message: 'token expired' }, 401);
+        }
+        return jsonResponse({ walletId: 'wallet-001', money: { amount: 125000, currency: 'KRW' }, asOf: '2026-05-02T00:00:00Z' });
+      }
+      if (url.endsWith('/transactions') || url.endsWith('/ledger-entries') || url.endsWith('/audit-events')) {
+        return jsonResponse([]);
+      }
+      throw new Error(`Unhandled request: ${method} ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    expect(await screen.findByText('125,000 KRW')).toBeVisible();
+    const tokenCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/api/v1/auth/tokens'));
+    expect(tokenCall).toBeDefined();
+    expect(balanceCalls).toBeGreaterThanOrEqual(2);
+  });
+
   it('초기 지갑 잔액을 렌더링한다', async () => {
     setupFetch();
 
@@ -457,13 +530,12 @@ describe('App', () => {
 
   it('잔액 부족 송금 오류를 표시한다', async () => {
     const user = userEvent.setup();
+    seedAuth('member-002');
     setupFetch();
 
     render(<App />);
 
     await screen.findByText('125,000 KRW');
-    await user.clear(screen.getByLabelText('송금 출금 지갑 ID'));
-    await user.type(screen.getByLabelText('송금 출금 지갑 ID'), 'wallet-002');
     await user.clear(screen.getByLabelText('송금 입금 지갑 ID'));
     await user.type(screen.getByLabelText('송금 입금 지갑 ID'), 'wallet-001');
     await user.clear(screen.getByLabelText('송금 금액'));

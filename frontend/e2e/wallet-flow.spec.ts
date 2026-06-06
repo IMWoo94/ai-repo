@@ -1,13 +1,18 @@
 import { expect, test } from '@playwright/test';
 
-test('사용자가 지갑 조회, 충전, 송금, 운영 증거 확인을 수행한다', async ({ page }) => {
+test('사용자가 로그인 후 지갑 조회, 충전, 송금, 운영 증거 확인을 수행한다', async ({ page }) => {
   await page.goto('/');
+
+  // 로그인 전에는 wallet 액션 대신 로그인 폼이 보인다.
+  await expect(page.getByRole('heading', { name: '회원 ID로 로그인해 내 지갑을 사용합니다.' })).toBeVisible();
+  await page.getByLabel('회원 ID').fill('member-001');
+  await page.getByRole('button', { name: '로그인' }).click();
 
   await expect(page.getByRole('heading', { name: '돈의 이동을 화면에서 바로 확인합니다.' })).toBeVisible();
   const balanceCard = page.locator('.balance-card');
 
   await expect(balanceCard.getByText('125,000 KRW')).toBeVisible();
-  await expect(page.getByText('초기 데이터를 불러왔습니다.')).toBeVisible();
+  await expect(page.getByText('로그인되었습니다.')).toBeVisible();
 
   const chargeAmount = page.getByLabel('충전 금액');
   const transferAmount = page.getByLabel('송금 금액');
@@ -38,9 +43,11 @@ test('사용자가 지갑 조회, 충전, 송금, 운영 증거 확인을 수행
 test('잔액 부족 송금은 오류 메시지를 표시한다', async ({ page }) => {
   await page.goto('/');
 
-  await expect(page.getByText('초기 데이터를 불러왔습니다.')).toBeVisible();
+  // wallet-002 소유자 member-002로 로그인하면 출금 지갑은 wallet-002로 파생된다.
+  await page.getByLabel('회원 ID').fill('member-002');
+  await page.getByRole('button', { name: '로그인' }).click();
+  await expect(page.getByText('로그인되었습니다.')).toBeVisible();
 
-  await page.getByLabel('송금 출금 지갑 ID').fill('wallet-002');
   await page.getByLabel('송금 입금 지갑 ID').fill('wallet-001');
   await page.getByLabel('송금 금액').fill('999999');
   await page.getByRole('button', { name: '송금하기' }).click();
@@ -75,7 +82,9 @@ test('운영자는 manual review 콘솔의 인증 오류와 empty state를 확�
 });
 
 test('운영자는 manual review event requeue를 요청, 승인, 실행하고 audit trail을 확인한다', async ({ page }) => {
-  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review');
+  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review', {
+    headers: { 'X-Admin-Token': 'local-ops-token', 'X-Operator-Id': 'local-operator' },
+  });
   expect(fixtureResponse.ok()).toBeTruthy();
 
   await page.goto('/');
@@ -126,7 +135,9 @@ test('운영자는 relay health와 pruning 결과를 화면에서 확인한다',
 });
 
 test('운영자는 manual review requeue 요청을 반려하고 audit 없이 상태를 유지한다', async ({ page }) => {
-  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review');
+  const fixtureResponse = await page.request.post('http://127.0.0.1:8080/api/v1/test-fixtures/outbox-events/manual-review', {
+    headers: { 'X-Admin-Token': 'local-ops-token', 'X-Operator-Id': 'local-operator' },
+  });
   expect(fixtureResponse.ok()).toBeTruthy();
 
   await page.goto('/');
