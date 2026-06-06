@@ -119,6 +119,7 @@
 - `0065-admin-api-path-matching-hardening.md`: Admin API path matching hardening 작업 초안
 - `0066-enduser-jwt-auth-wallet-ownership.md`: 엔드유저 JWT 인증과 지갑 소유권 강제 작업 초안
 - `0067-frontend-login-bearer-auth.md`: 프론트엔드 로그인과 Bearer 토큰 부착 작업 초안
+- `0068-audit-events-unauthenticated-exposure.md`: audit-events 미인증 전체 노출 결함 (PR #106 리뷰 후속)
 
 ## GitHub CLI로 생성
 
