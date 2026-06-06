@@ -26,8 +26,7 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     @Override
     public List<LedgerEntry> getLedgerEntries(String memberId, String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
-        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
         return walletLedgerQueryRepository.findLedgerEntries(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(LedgerEntry::occurredAt)
                         .thenComparing(LedgerEntry::ledgerEntryId)

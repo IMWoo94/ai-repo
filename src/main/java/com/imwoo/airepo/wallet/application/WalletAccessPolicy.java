@@ -11,20 +11,36 @@ final class WalletAccessPolicy {
     static WalletAccount findQueryableWallet(WalletQueryRepository walletQueryRepository, String walletId) {
         WalletAccount walletAccount = walletQueryRepository.findWalletAccount(walletId)
                 .orElseThrow(() -> new WalletNotFoundException(walletId));
-        if (!walletAccount.queryable()) {
-            throw new WalletAccountNotQueryableException(walletId);
-        }
-        Member owner = walletQueryRepository.findMember(walletAccount.memberId())
-                .orElseThrow(() -> new WalletAccountNotQueryableException(walletId));
-        if (!owner.active()) {
-            throw new WalletAccountNotQueryableException(walletId);
-        }
+        requireQueryable(walletQueryRepository, walletAccount);
+        return walletAccount;
+    }
+
+    static WalletAccount findOwnedQueryableWallet(
+            WalletQueryRepository walletQueryRepository,
+            String walletId,
+            String memberId
+    ) {
+        WalletAccount walletAccount = walletQueryRepository.findWalletAccount(walletId)
+                .orElseThrow(() -> new WalletNotFoundException(walletId));
+        requireOwnership(walletAccount, memberId);
+        requireQueryable(walletQueryRepository, walletAccount);
         return walletAccount;
     }
 
     static void requireOwnership(WalletAccount walletAccount, String memberId) {
         if (!walletAccount.memberId().equals(memberId)) {
             throw new WalletAccessDeniedException(walletAccount.walletId());
+        }
+    }
+
+    private static void requireQueryable(WalletQueryRepository walletQueryRepository, WalletAccount walletAccount) {
+        if (!walletAccount.queryable()) {
+            throw new WalletAccountNotQueryableException(walletAccount.walletId());
+        }
+        Member owner = walletQueryRepository.findMember(walletAccount.memberId())
+                .orElseThrow(() -> new WalletAccountNotQueryableException(walletAccount.walletId()));
+        if (!owner.active()) {
+            throw new WalletAccountNotQueryableException(walletAccount.walletId());
         }
     }
 }

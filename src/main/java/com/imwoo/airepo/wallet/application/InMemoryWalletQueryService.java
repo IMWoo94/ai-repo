@@ -23,8 +23,7 @@ public class InMemoryWalletQueryService implements WalletQueryService {
     @Override
     public WalletBalance getBalance(String memberId, String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
-        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
         WalletBalance balance = walletQueryRepository.findBalance(walletAccount.walletId())
                 .orElseThrow(() -> walletNotFound(walletId));
         return new WalletBalance(balance.walletId(), balance.money(), Instant.now(clock));
@@ -33,8 +32,7 @@ public class InMemoryWalletQueryService implements WalletQueryService {
     @Override
     public List<TransactionHistoryItem> getTransactions(String memberId, String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
-        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
         return walletQueryRepository.findTransactions(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(TransactionHistoryItem::occurredAt).reversed())
                 .toList();

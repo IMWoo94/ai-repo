@@ -90,6 +90,19 @@ class InMemoryWalletQueryServiceTest {
                 .hasMessage("Wallet is not queryable: wallet-owner-suspended");
     }
 
+    @Test
+    void deniesNonOwnerBeforeLeakingOwnerInactiveState() {
+        InMemoryWalletQueryService inactiveOwnerService = new InMemoryWalletQueryService(
+                Clock.fixed(Instant.parse("2026-05-01T00:00:00Z"), ZoneOffset.UTC),
+                new SuspendedOwnerRepository()
+        );
+
+        // member-001 does not own wallet-owner-suspended (owned by member-suspended);
+        // must get 403 AccessDenied, not a 409 that leaks the owner's inactive state.
+        assertThatThrownBy(() -> inactiveOwnerService.getBalance("member-001", "wallet-owner-suspended"))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
     private static class SuspendedWalletRepository extends InMemoryWalletRepository {
 
         @Override

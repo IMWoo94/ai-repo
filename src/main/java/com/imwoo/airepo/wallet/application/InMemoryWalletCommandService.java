@@ -27,8 +27,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
         validateMoney(command.money());
         validateIdempotencyKey(command.idempotencyKey());
 
-        WalletAccount walletAccount = findOperableWallet(walletId);
-        WalletAccessPolicy.requireOwnership(walletAccount, memberId);
+        WalletAccount walletAccount = findOperableWallet(memberId, walletId);
         String fingerprint = chargeFingerprint(walletAccount.walletId(), command);
         return resolveIdempotency(command.idempotencyKey(), fingerprint)
                 .orElseGet(() -> new WalletCommandResult(
@@ -54,9 +53,8 @@ public class InMemoryWalletCommandService implements WalletCommandService {
             throw new InvalidWalletOperationException("sourceWalletId and targetWalletId must be different");
         }
 
-        WalletAccount sourceWallet = findOperableWallet(sourceWalletId);
-        WalletAccessPolicy.requireOwnership(sourceWallet, memberId);
-        WalletAccount targetWallet = findOperableWallet(command.targetWalletId());
+        WalletAccount sourceWallet = findOperableWallet(memberId, sourceWalletId);
+        WalletAccount targetWallet = WalletAccessPolicy.findQueryableWallet(walletCommandRepository, command.targetWalletId());
         WalletBalance sourceBalance = walletCommandRepository.findBalance(sourceWallet.walletId())
                 .orElseThrow(() -> new WalletNotFoundException(sourceWallet.walletId()));
         if (sourceBalance.money().lessThan(command.money())) {
@@ -89,8 +87,8 @@ public class InMemoryWalletCommandService implements WalletCommandService {
                 });
     }
 
-    private WalletAccount findOperableWallet(String walletId) {
-        return WalletAccessPolicy.findQueryableWallet(walletCommandRepository, walletId);
+    private WalletAccount findOperableWallet(String memberId, String walletId) {
+        return WalletAccessPolicy.findOwnedQueryableWallet(walletCommandRepository, walletId, memberId);
     }
 
     private void validateWalletId(String walletId) {
