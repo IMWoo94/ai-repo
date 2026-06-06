@@ -20,7 +20,9 @@ Deviations from the as-written plan, decided with the maintainer:
 - **Ledger coverage (added):** `getLedgerEntries` was also threaded + ownership-checked; the original plan did not cover the `/api/v1/wallets/{id}/ledger-entries` IDOR.
 - **test-fixtures:** `AdminApiPathMatcher` aligned with the admin chain so fixture POSTs authenticate as ADMIN.
 
-**Pending (Tasks 12–15):** frontend login + Bearer header, frontend E2E auth flow, and the final PR. JWT refresh/expiry policy is also deferred.
+**Frontend complete (Tasks 12–13, 2026-06-06):** `App.tsx` memberId login gate + `sessionStorage` token + Bearer on wallet fetches + 401 auto-reissue/retry (derived read-only walletId); `App.test.tsx` (10 pass incl. login + 401 tests) and `e2e/wallet-flow.spec.ts` (6 pass) updated; Playwright health probe moved to `/actuator/health`. JWT expiry/refresh handled as frontend 401 re-issue (ADR-0057); no backend change. See progress `0067`.
+
+**Pending (Task 15):** final PR. A stronger JWT refresh-token policy and a real member→wallet lookup API remain deferred.
 
 ---
 
@@ -913,8 +915,13 @@ git commit -m "test: thread memberId through all wallet service callers"
 
 ## Task 12: Frontend login + auth header (TDD)
 
+**Approved design (2026-06-06):**
+- **Login gate:** when no token, render a `회원 ID` login form instead of the wallet section; the operator console stays visible. On submit, `POST /api/v1/auth/tokens {memberId}` and store `{token, memberId, expiresAt}` in `sessionStorage` (key `ai-repo.auth`), rehydrated on mount. A logout button clears it.
+- **walletId derived read-only:** the active wallet is derived from the logged-in member (`member-00N` → `wallet-00N`); the free-form charge/transfer source `walletId` inputs are removed. Backend ownership (403) is the real guard.
+- **Bearer + 401 auto-refresh:** wallet requests carry `Authorization: Bearer <token>`. On a `401`, re-issue a token with the stored memberId (password-less), retry the request once; if it still fails, clear the session and show the login form. No backend change. A `useRef` mirror of the session avoids stale-closure reads during re-issue.
+
 **Files:**
-- Modify: `frontend/src/App.tsx`, `frontend/src/App.test.tsx`
+- Modify: `frontend/src/App.tsx`, `frontend/src/App.test.tsx`, `frontend/src/test/setup.ts`
 
 - [ ] **Step 1: Write failing component test**
 

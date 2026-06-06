@@ -64,8 +64,8 @@
 
 ## 다음 후보
 
-- 프론트엔드 로그인 + Bearer 토큰 부착
-- JWT 만료 후 갱신(refresh) 정책
+- JWT refresh token 기반 만료/갱신 정책 강화(현재는 401 시 password-less 재발급)
+- 로그인 회원의 실제 보유 지갑 조회 API(현재는 fixture 기반 파생)
 - broker-specific Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
