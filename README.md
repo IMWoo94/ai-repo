@@ -133,6 +133,16 @@ Outbox relay는 publisher port 뒤에 기본 in-memory adapter와 선택형 HTTP
 
 IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을 따릅니다.
 
+### k8s 배포와 관측 스택
+
+로컬 Docker Desktop k8s에 전체 스택(앱 + Postgres + Prometheus + Grafana + Loki)을 띄우는 구동 방법과 서비스별 접속 URL·계정 정보, 대시보드/LogQL 로그 검색은 [k8s 로컬 배포 + 모니터링 + 로그 검색](docs/development/k8s-local-monitoring.md)을 따릅니다. main 머지 시 자동 배포되는 GitHub Actions → GHCR → ArgoCD 파이프라인은 [CI/CD GitOps](docs/development/ci-cd-gitops.md)를 따릅니다.
+
+```bash
+./scripts/k8s-local-up.sh     # 전체 스택 기동 — 앱 :30080, Prometheus :30990, Grafana :30300
+./scripts/k8s-local-down.sh   # 전체 제거
+./scripts/argocd-install.sh   # (선택) ArgoCD 설치 + GitOps 모드
+```
+
 현재 기능 흐름은 잔액/거래내역 조회, 회원/지갑 계정, 충전/송금, 원장/감사 로그 1차 API를 제공합니다.
 
 - `GET /api/v1/wallets/wallet-001/balance`

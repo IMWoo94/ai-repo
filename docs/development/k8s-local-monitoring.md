@@ -14,11 +14,18 @@ Docker Desktop 내장 Kubernetes에 ai-repo 전체 스택(앱 + Postgres + Prome
 ./scripts/k8s-local-down.sh  # 전체 제거 (namespace 삭제, Postgres 데이터 포함)
 ```
 
-| 서비스 | URL | 비고 |
+## 접속 정보 (URL · 계정)
+
+| 서비스 | URL | 계정 / 인증 |
 | --- | --- | --- |
-| 앱 | http://localhost:30080 | postgres 프로파일, outbox relay scheduler 활성 |
-| Prometheus | http://localhost:30990 | `/targets`에서 ai-repo job UP 확인 |
-| Grafana | http://localhost:30300 | 익명 Admin(로컬 전용), `ai-repo Overview` 대시보드 자동 프로비저닝, Explore에서 Loki 로그 검색 |
+| 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-operator-token`(조회) / `X-Admin-Token: local-ops-token`(변경) + `X-Operator-Id: <이름>` |
+| Prometheus | http://localhost:30990 | 없음 — `/targets`에서 ai-repo job UP 확인 |
+| Grafana | http://localhost:30300 | **익명 Admin, 로그인 불필요**(로컬 전용). `ai-repo Overview` 대시보드 자동 프로비저닝, Explore에서 Loki 로그 검색 |
+| Loki | 클러스터 내부 `http://loki:3100` | 없음. 외부 직접 조회 시 `kubectl -n ai-repo port-forward svc/loki 3100:3100` |
+| Postgres | 클러스터 내부 `postgres:5432` | `ai_repo` / `ai_repo`, DB `ai_repo`. 외부 접속 시 `kubectl -n ai-repo port-forward svc/postgres 5432:5432` |
+| ArgoCD (선택) | `kubectl -n argocd port-forward svc/argocd-server 8443:443` → https://localhost:8443 | `admin` / `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
+
+앱 운영 토큰은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override할 수 있다(`deploy/k8s/app.yaml`). ArgoCD 설치/GitOps 모드는 `docs/development/ci-cd-gitops.md` 참고.
 
 ## 구성
 
