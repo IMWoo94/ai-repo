@@ -91,6 +91,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0075 | [Admin Path Drift Guard](0075-admin-path-drift-guard.md) | 완료 |
 | 0073 | [배포 프로파일 기본 자격증명 fail-fast](0073-default-credential-fail-fast.md) | 완료 |
 | 0076 | [JDBC Persistence Adapter Decomposition](0076-jdbc-persistence-adapter-decomposition.md) | 완료 |
+| 0074 | [Broker Consumer Endpoint Authentication](0074-broker-endpoint-authentication.md) | 완료 |
 
 ## 현재 기준선
 

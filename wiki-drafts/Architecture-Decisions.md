@@ -80,6 +80,7 @@
    - ADR-0055 Admin API Path Matching Hardening
    - ADR-0056 End-User JWT Auth and Wallet Ownership
    - ADR-0057 End-User Login and Bearer Refresh
+   - ADR-0065 Broker Consumer Endpoint Authentication
 8. 구조 경계와 persistence adapter 분해
    - ADR-0063 Application Layer Spring Annotation Policy
    - ADR-0064 JDBC Persistence Adapter Decomposition
@@ -110,6 +111,7 @@
 | Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
 | Admin API path matching hardening | 인증·감사 필터가 공통 segment-aware matcher로 root/sub-path만 운영 API로 분류 | Spring Security matcher 목록과 완전한 단일 source of truth는 후속 과제 |
 | Audit event–wallet 매핑 명시화 | `audit_event_wallets` 매핑 테이블을 쓰기 시점에 영속화(charge 1행/transfer 2행)해 소유자 스코프 audit-events 조회의 ledger 조인 의존을 제거 | 쓰기 경로에 매핑 삽입 1~2행 추가와 정합성 책임 |
+| Broker consumer endpoint 인증 (ADR-0065) | `/internal/broker/**` 전용 SecurityFilterChain(Order 3) + `X-Broker-Token` 상수시간 비교로 미인증 outbox event 주입 차단, publisher가 같은 secret 부착, admin chain의 filter/error-handler 축 재사용 | shared secret은 NetworkPolicy 전제 위 2차 방어선이며, 단일 토큰이라 로테이션은 순단 수용(다중 토큰은 후속) |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 | 로컬 k8s 배포와 관측 스택 (ADR-0059) | Docker Desktop k8s + kustomize + Prometheus/Grafana/Loki, GitHub Actions→GHCR→ArgoCD GitOps, deploy는 CI 성공 게이트(workflow_run) 뒤에서만 실행 | 익명 Grafana/평문 자격증명은 로컬 학습 전용, 원격 전환 시 재설계 |
 | k8s 자격증명 Secret 주입 (ADR-0061) | `deploy/k8s` 평문 env(DB/운영 토큰/JWT)를 `Secret ai-repo-credentials`의 `secretKeyRef`로 전환 | 로컬 고정값 Secret도 평문 커밋 — 목적은 비밀 은닉이 아니라 스테이징 사고 방지+원격 전환 준비 |

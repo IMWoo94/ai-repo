@@ -85,6 +85,24 @@ public class SecurityConfig {
 
     @Bean
     @Order(3)
+    SecurityFilterChain brokerSecurityFilterChain(
+            HttpSecurity http,
+            BrokerTokenAuthenticationFilter brokerTokenAuthenticationFilter
+    ) throws Exception {
+        return http
+                .securityMatcher("/internal/broker/**")
+                .csrf(AbstractHttpConfigurer::disable)
+                .httpBasic(AbstractHttpConfigurer::disable)
+                .formLogin(AbstractHttpConfigurer::disable)
+                .logout(AbstractHttpConfigurer::disable)
+                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .authorizeHttpRequests(authorize -> authorize.anyRequest().permitAll())
+                .addFilterBefore(brokerTokenAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .build();
+    }
+
+    @Bean
+    @Order(4)
     SecurityFilterChain walletSecurityFilterChain(HttpSecurity http, JwtDecoder walletJwtDecoder) throws Exception {
         return http
                 .securityMatcher("/api/v1/wallets/**")
@@ -99,7 +117,7 @@ public class SecurityConfig {
     }
 
     @Bean
-    @Order(4)
+    @Order(5)
     SecurityFilterChain defaultSecurityFilterChain(HttpSecurity http) throws Exception {
         return http
                 .csrf(AbstractHttpConfigurer::disable)

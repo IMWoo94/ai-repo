@@ -113,6 +113,7 @@ class OperationOutboxConsumerMonitoringControllerTest {
     private org.springframework.test.web.servlet.ResultActions consumeEvent() throws Exception {
         return mockMvc.perform(post("/internal/broker/outbox-events")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Broker-Token", "local-broker-token")
                 .header("X-Outbox-Event-Id", "outbox-001")
                 .header("X-Idempotency-Key", "outbox-001")
                 .header("X-Event-Schema-Version", "1")

@@ -80,3 +80,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0062 | 배포 프로파일에서 기본 자격증명 fail-fast | Accepted |
 | ADR-0063 | Application Layer Spring Annotation Policy | Accepted |
 | ADR-0064 | JDBC Persistence Adapter Decomposition | Accepted |
+| ADR-0065 | Broker Consumer Endpoint Authentication | Accepted |

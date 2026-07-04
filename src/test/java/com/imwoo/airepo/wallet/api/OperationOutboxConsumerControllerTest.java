@@ -58,6 +58,7 @@ class OperationOutboxConsumerControllerTest {
     void rejectsHeaderBodyMismatchBeforeSideEffect() throws Exception {
         mockMvc.perform(post("/internal/broker/outbox-events")
                         .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Broker-Token", "local-broker-token")
                         .header("X-Outbox-Event-Id", "outbox-001")
                         .header("X-Idempotency-Key", "outbox-999")
                         .header("X-Event-Schema-Version", "1")
@@ -69,9 +70,41 @@ class OperationOutboxConsumerControllerTest {
         org.assertj.core.api.Assertions.assertThat(receiptRepository.findConsumerReceipt("outbox-001")).isEmpty();
     }
 
+    @Test
+    void rejectsMissingBrokerTokenWithUnauthorized() throws Exception {
+        mockMvc.perform(post("/internal/broker/outbox-events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Outbox-Event-Id", "outbox-001")
+                        .header("X-Idempotency-Key", "outbox-001")
+                        .header("X-Event-Schema-Version", "1")
+                        .header("X-Event-Type", "CHARGE_COMPLETED")
+                        .content(body()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("BROKER_AUTHENTICATION_REQUIRED"));
+
+        org.assertj.core.api.Assertions.assertThat(receiptRepository.findConsumerReceipt("outbox-001")).isEmpty();
+    }
+
+    @Test
+    void rejectsWrongBrokerTokenWithUnauthorized() throws Exception {
+        mockMvc.perform(post("/internal/broker/outbox-events")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .header("X-Broker-Token", "wrong-token")
+                        .header("X-Outbox-Event-Id", "outbox-001")
+                        .header("X-Idempotency-Key", "outbox-001")
+                        .header("X-Event-Schema-Version", "1")
+                        .header("X-Event-Type", "CHARGE_COMPLETED")
+                        .content(body()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("BROKER_AUTHENTICATION_REQUIRED"));
+
+        org.assertj.core.api.Assertions.assertThat(receiptRepository.findConsumerReceipt("outbox-001")).isEmpty();
+    }
+
     private org.springframework.test.web.servlet.ResultActions consumeEvent() throws Exception {
         return mockMvc.perform(post("/internal/broker/outbox-events")
                 .contentType(MediaType.APPLICATION_JSON)
+                .header("X-Broker-Token", "local-broker-token")
                 .header("X-Outbox-Event-Id", "outbox-001")
                 .header("X-Idempotency-Key", "outbox-001")
                 .header("X-Event-Schema-Version", "1")

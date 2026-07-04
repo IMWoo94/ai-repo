@@ -22,13 +22,17 @@ public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
 
     private static final int EVENT_SCHEMA_VERSION = 1;
 
+    public static final String BROKER_TOKEN_HEADER = "X-Broker-Token";
+
     private final HttpClient httpClient;
     private final URI endpoint;
     private final Duration timeout;
+    private final String brokerToken;
 
     public HttpOperationOutboxPublisher(
             @Value("${ai-repo.outbox.publisher.http.endpoint}") String endpoint,
-            @Value("${ai-repo.outbox.publisher.http.timeout-ms:3000}") long timeoutMillis
+            @Value("${ai-repo.outbox.publisher.http.timeout-ms:3000}") long timeoutMillis,
+            @Value("${ai-repo.outbox.publisher.http.broker-token:local-broker-token}") String brokerToken
     ) {
         if (endpoint == null || endpoint.isBlank()) {
             throw new IllegalArgumentException("ai-repo.outbox.publisher.http.endpoint must not be blank");
@@ -36,11 +40,15 @@ public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
         if (timeoutMillis <= 0) {
             throw new IllegalArgumentException("ai-repo.outbox.publisher.http.timeout-ms must be positive");
         }
+        if (brokerToken == null || brokerToken.isBlank()) {
+            throw new IllegalArgumentException("ai-repo.outbox.publisher.http.broker-token must not be blank");
+        }
         this.httpClient = HttpClient.newBuilder()
                 .connectTimeout(Duration.ofMillis(timeoutMillis))
                 .build();
         this.endpoint = URI.create(endpoint);
         this.timeout = Duration.ofMillis(timeoutMillis);
+        this.brokerToken = brokerToken;
     }
 
     @Override
@@ -48,6 +56,7 @@ public class HttpOperationOutboxPublisher implements OperationOutboxPublisher {
         HttpRequest request = HttpRequest.newBuilder(endpoint)
                 .timeout(timeout)
                 .header("Content-Type", "application/json")
+                .header(BROKER_TOKEN_HEADER, brokerToken)
                 .header("X-Outbox-Event-Id", outboxEvent.outboxEventId())
                 .header("X-Idempotency-Key", outboxEvent.outboxEventId())
                 .header("X-Event-Schema-Version", String.valueOf(EVENT_SCHEMA_VERSION))

@@ -42,6 +42,7 @@ class PostgresWalletScenarioFlowTest {
     private static final String TEST_JWT_SECRET = "postgres-scenario-jwt-secret-32b!!";
     private static final String TEST_ADMIN_TOKEN = "postgres-scenario-admin-token";
     private static final String TEST_OPERATOR_TOKEN = "postgres-scenario-operator-token";
+    private static final String TEST_BROKER_TOKEN = "postgres-scenario-broker-token";
 
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
@@ -81,6 +82,8 @@ class PostgresWalletScenarioFlowTest {
         registry.add("ai-repo.auth.jwt.secret", () -> TEST_JWT_SECRET);
         registry.add("ai-repo.ops.admin-token", () -> TEST_ADMIN_TOKEN);
         registry.add("ai-repo.ops.operator-token", () -> TEST_OPERATOR_TOKEN);
+        registry.add("ai-repo.outbox.consumer.broker-token", () -> TEST_BROKER_TOKEN);
+        registry.add("ai-repo.outbox.publisher.http.broker-token", () -> TEST_BROKER_TOKEN);
     }
 
     @Test
@@ -197,6 +200,7 @@ class PostgresWalletScenarioFlowTest {
     private org.springframework.test.web.servlet.ResultActions consumeBrokerEvent() throws Exception {
         return mockMvc.perform(post("/internal/broker/outbox-events")
                 .contentType("application/json")
+                .header("X-Broker-Token", TEST_BROKER_TOKEN)
                 .header("X-Outbox-Event-Id", "outbox-001")
                 .header("X-Idempotency-Key", "outbox-001")
                 .header("X-Event-Schema-Version", "1")
