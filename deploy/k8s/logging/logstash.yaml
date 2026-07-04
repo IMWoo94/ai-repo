@@ -1,0 +1,83 @@
+# 로컬 학습용 Logstash (2단계 파이프라인: beats 입력 -> grok 파싱 -> Elasticsearch 출력).
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-settings
+  namespace: logging
+data:
+  logstash.yml: |
+    http.host: "0.0.0.0"
+    xpack.monitoring.enabled: false
+    pipeline.ecs_compatibility: disabled
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: logstash-pipeline
+  namespace: logging
+data:
+  pipeline.conf: |
+    input { beats { port => 5044 } }
+    filter {
+      grok {
+        match => { "message" => "%{TIMESTAMP_ISO8601:log_timestamp}%{SPACE}%{LOGLEVEL:level}%{SPACE}%{POSINT:pid}%{SPACE}---%{SPACE}\[%{DATA:appname}\]%{SPACE}\[%{DATA:thread}\]%{SPACE}%{NOTSPACE:logger}%{SPACE}:%{SPACE}%{GREEDYDATA:log_message}" }
+        tag_on_failure => ["_grokparsefailure_spring"]
+      }
+      if [log_timestamp] { date { match => ["log_timestamp","ISO8601"] target => "@timestamp" } mutate { remove_field => ["log_timestamp"] } }
+      mutate { strip => ["thread","logger","level"] }
+    }
+    output { elasticsearch { hosts => ["http://elasticsearch:9200"] index => "spring-logs-%{+YYYY.MM.dd}" } }
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: logstash
+  template:
+    metadata:
+      labels:
+        app: logstash
+    spec:
+      containers:
+        - name: logstash
+          image: docker.elastic.co/logstash/logstash:8.16.1
+          env:
+            - name: LS_JAVA_OPTS
+              value: -Xmx512m -Xms512m
+          ports:
+            - containerPort: 5044
+          resources:
+            requests:
+              memory: 768Mi
+            limits:
+              memory: 1280Mi
+          volumeMounts:
+            - name: pipeline
+              mountPath: /usr/share/logstash/pipeline/
+            - name: settings
+              mountPath: /usr/share/logstash/config/logstash.yml
+              subPath: logstash.yml
+      volumes:
+        - name: pipeline
+          configMap:
+            name: logstash-pipeline
+        - name: settings
+          configMap:
+            name: logstash-settings
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: logstash
+  namespace: logging
+spec:
+  selector:
+    app: logstash
+  ports:
+    - port: 5044
+      targetPort: 5044

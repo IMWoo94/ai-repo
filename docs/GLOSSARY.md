@@ -52,6 +52,19 @@
 | **ownership check** | 토큰 소유자와 지갑 소유자를 대조하는 per-user 접근 정책(`WalletAccessPolicy`). |
 | **admin API access audit** | 운영 API 접근 성공/실패 이력 기록. (ADR-0031) |
 
+## 관측·로그 (opt-in ELK)
+
+기본 로그 스택은 PLG(Loki)이며, 아래 용어는 학습용 **opt-in** ELK 대안 스택에서 쓴다. (ADR-0066, [ELK 학습 문서](learning/elk-stack.md))
+
+| 용어 | 정의 |
+| --- | --- |
+| **ELK / Elastic Stack** | Elasticsearch·Logstash·Kibana(+Beats) 로그 수집·검색·시각화 스택. ai-repo에서는 PLG를 대체하지 않는 **opt-in 학습 스택**으로 병존한다(ArgoCD 미포함, `scripts/elk-local-up.sh` 수동 기동). |
+| **Filebeat** | 노드마다 도는 경량 로그 shipper(DaemonSet). `ai-repo` 파드 로그 파일을 tail해 Logstash로 전송한다. backpressure를 지원해 하류가 밀리면 전송을 늦춘다. |
+| **Logstash** | input→filter→output 파이프라인. `beats:5044` 입력을 받아 **grok** 필터로 Spring 로그를 필드로 파싱하고 Elasticsearch로 출력한다. |
+| **grok** | 정규식 기반 로그 파싱 필터. 이름 붙은 패턴(`%{TIMESTAMP_ISO8601}`, `%{LOGLEVEL}` 등)으로 비정형 로그 라인을 구조화 필드로 분해한다. 파싱 실패 시 원본 `message`는 유지되고 `_grokparsefailure_spring` 태그가 붙는다. |
+| **역색인 (Inverted Index)** | Elasticsearch의 핵심 자료구조. "문서→단어"가 아니라 "단어→그 단어를 포함한 문서 목록"으로 뒤집어 저장해 전문 검색을 빠르게 한다. Loki의 라벨 인덱스(값은 grep)와 대비된다. |
+| **Kibana** | Elasticsearch 위의 검색·시각화 UI. Discover에서 data view(`spring-logs-*`)와 **KQL**(`level: ERROR` 등)로 로그를 탐색한다(NodePort 30561). |
+
 ## 하네스·프로세스
 
 | 용어 | 정의 |

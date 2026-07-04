@@ -153,6 +153,20 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 
 서비스별 전체 접속 정보(Postgres·Loki 포함)와 복사-실행 명령어 모음은 [k8s 로컬 배포 + 모니터링 + 로그 검색](docs/development/k8s-local-monitoring.md)의 "접속 정보"·"전체 명령어 모음" 섹션에 있습니다. 인프라·애플리케이션 구조는 [아키텍처 다이어그램](docs/development/architecture-diagrams.md)(mermaid)을 참고합니다.
 
+#### (선택) ELK 로그 스택 — opt-in 학습용
+
+기본 로그 스택은 위 PLG(Loki)입니다. 로그 파싱·검색을 학습하려면 **opt-in** ELK 스택(Filebeat→Logstash→Elasticsearch→Kibana)을 `logging` 네임스페이스에 별도로 띄울 수 있습니다. PLG를 대체하지 않고 병존하며, ArgoCD(GitOps)에는 포함하지 않고 아래 스크립트로만 수동 기동합니다(ADR-0066). 구동·KQL 검색·트러블슈팅은 [ELK 로컬 로깅 가이드](docs/development/elk-local-logging.md), 개념 학습은 [ELK 학습 문서](docs/learning/elk-stack.md)를 따릅니다.
+
+```bash
+./scripts/elk-local-up.sh     # ELK 스택 기동 (logging 네임스페이스)
+./scripts/elk-local-down.sh   # ELK 스택 제거
+```
+
+| 서비스 | URL | 계정 |
+| --- | --- | --- |
+| Kibana (Discover/KQL) | http://localhost:30561 | 없음 (로컬 학습용 `xpack.security.enabled=false`) |
+| Elasticsearch API | http://localhost:30920 | 없음 (인덱스 패턴 `spring-logs-*`) |
+
 현재 기능 흐름은 잔액/거래내역 조회, 회원/지갑 계정, 충전/송금, 원장/감사 로그 1차 API를 제공합니다.
 
 - `GET /api/v1/wallets/wallet-001/balance`
