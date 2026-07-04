@@ -109,6 +109,7 @@
 | Audit event–wallet 매핑 명시화 | `audit_event_wallets` 매핑 테이블을 쓰기 시점에 영속화(charge 1행/transfer 2행)해 소유자 스코프 audit-events 조회의 ledger 조인 의존을 제거 | 쓰기 경로에 매핑 삽입 1~2행 추가와 정합성 책임 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 | 로컬 k8s 배포와 관측 스택 (ADR-0059) | Docker Desktop k8s + kustomize + Prometheus/Grafana/Loki, GitHub Actions→GHCR→ArgoCD GitOps, deploy는 CI 성공 게이트(workflow_run) 뒤에서만 실행 | 익명 Grafana/평문 자격증명은 로컬 학습 전용, 원격 전환 시 재설계 |
+| 배포 프로파일 기본 자격증명 fail-fast (ADR-0062) | `postgres`/`prod`에서 공개된 기본 JWT secret·운영 토큰이면 기동 실패, `deploy/k8s/app.yaml`에 명시 값 주입 | 배포 프로파일 목록 하드코딩과 `app.yaml` 평문 값(Secret 주입은 #121에서 완결) |
 
 ## 다음 구조 후보
 

@@ -37,6 +37,7 @@
 - 로컬 k8s 배포 스택(Prometheus/Grafana/Loki)과 outbox 커스텀 지표
 - GitHub Actions → GHCR → GitOps → ArgoCD 배포 파이프라인
 - 소유자 스코프 audit-events의 ledger 조인 의존 제거 — `audit_event_wallets` 매핑 테이블을 쓰기 시점에 영속화(charge 1행/transfer 2행)하고 조회를 매핑 기반으로 전환(V18 역채움 포함)
+- 배포 프로파일(`postgres`/`prod`)에서 공개된 기본 JWT secret·운영 토큰 fail-fast 확장(`JwtSecretGuard`/`OpsTokenGuard`)과 `deploy/k8s/app.yaml` 명시 값 주입
 
 ## MVP 출시 판단 기준
 
