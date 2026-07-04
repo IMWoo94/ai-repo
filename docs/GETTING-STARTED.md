@@ -54,7 +54,7 @@ curl -fsS -X POST http://localhost:8080/api/v1/wallets/wallet-001/charges \
 
 ```bash
 docker compose -f compose.yml up -d postgres          # postgres:17
-SPRING_PROFILES_ACTIVE=postgres ./gradlew bootRun     # Flyway V1..V17 적용
+SPRING_PROFILES_ACTIVE=postgres ./gradlew bootRun     # Flyway V1..V18 적용
 ```
 
 인메모리 대신 실제 잠금/동시성 경로(`SELECT..FOR UPDATE`, `lock_timeout`)를 검증할 때 사용합니다.

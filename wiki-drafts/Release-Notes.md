@@ -45,6 +45,7 @@
 - Deploy 파이프라인 CI 성공 게이트(workflow_run)
 - k8s 로컬 스크립트 하드닝(loki/alloy rollout 대기 + Loki ready 스모크, ArgoCD 설치 버전 고정 v3.4.4)
 - JDBC persistence adapter 분해와 ArchUnit 레이어 규칙
+- Broker consumer endpoint 인증 — `/internal/broker/outbox-events`에 `X-Broker-Token` shared secret(전용 Order 3 체인, 상수시간 비교, 미인증 401), publisher 동반 부착, 배포 프로파일 기본 토큰 `BrokerTokenGuard` fail-fast (ADR-0065)
 
 ## 릴리스 후보 검증
 
