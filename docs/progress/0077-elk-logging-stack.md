@@ -11,6 +11,7 @@
 
 - **매니페스트**(`deploy/k8s/logging`, 자기완결적 kustomize overlay): `namespace.yaml`(ns `logging`) + `elasticsearch.yaml`(Deployment + ClusterIP 9200/9300 + NodePort `elasticsearch-nodeport` 9200→30920) + `logstash.yaml`(Deployment + ClusterIP 5044 + `logstash-pipeline`/`logstash-settings` ConfigMap) + `kibana.yaml`(Deployment + NodePort 5601→30561) + `filebeat.yaml`(ServiceAccount + ClusterRole/Binding + `filebeat-config` ConfigMap + DaemonSet) + `kustomization.yaml`.
 - **버전/이미지**: Elastic Stack **8.16.1**(`docker.elastic.co/{elasticsearch,logstash,kibana}/…:8.16.1`, `…/beats/filebeat:8.16.1`).
+- **수집 범위**: Filebeat는 kubernetes autodiscover로 라벨 `app=ai-repo` 파드 컨테이너 로그만 수집한다(파일명이 `<pod>_<namespace>_<container>.log`라 `*ai-repo*` glob은 네임스페이스명까지 매칭해 타 파드 로그가 섞이므로 미사용). 덕분에 grok이 Spring 로그만 파싱한다.
 - **grok 파이프라인**: `input{beats 5044} → filter{grok + date + mutate strip} → output{elasticsearch spring-logs-%{+YYYY.MM.dd}}`. grok 실패 시에도 원본 `message`는 유지되어 ES로 전달되며 `_grokparsefailure_spring` 태그로 식별 가능.
 - **스크립트**: `scripts/elk-local-up.sh`(apply -k + ES→Logstash→Kibana rollout + Filebeat DaemonSet 대기 + 접속 안내), `scripts/elk-local-down.sh`(delete -k). `CONTEXT=${CONTEXT:-docker-desktop}`.
 - **문서**: `docs/adr/0066-elk-logging-stack.md`, `docs/development/elk-local-logging.md`(구동·접속·KQL 검색·트러블슈팅·LogQL↔KQL 치트시트), `docs/learning/elk-stack.md`(4-tier 아키텍처·컴포넌트 심화·grok 원리·PLG vs ELK 비교), progress 0077, issue-draft 0077.
@@ -20,6 +21,7 @@
 1. 학습용 opt-in ELK 로깅 스택(`deploy/k8s/logging`) 신설 — PLG와 병존, ArgoCD 미포함.
 2. Logstash grok 파이프라인으로 Spring 로그 구조화 파싱과 `spring-logs-*` 인덱스 색인.
 3. 기동/제거 스크립트와 학습·가이드 문서 신설.
+4. `AI_REPO_ELK_ENABLED` env 토글(메인 스택과 함께 on/off) + Filebeat를 라벨 `app=ai-repo` autodiscover로 범위 한정(네임스페이스 glob 오매칭 회피).
 
 ## 검증
 

@@ -16,11 +16,12 @@ ai-repo는 기본 관측 스택으로 PLG(Prometheus/Loki/Grafana/Alloy)를 사�
 ## 완료 조건
 
 - [ ] `deploy/k8s/logging` kustomize 스택과 `scripts/elk-local-up.sh`/`elk-local-down.sh`로 기동·제거된다.
-- [ ] Filebeat가 `*ai-repo*` 컨테이너 로그를 수집해 Logstash로 전달하고, grok으로 파싱된 필드가 ES에 색인된다.
+- [ ] Filebeat가 라벨 `app=ai-repo` autodiscover로 앱 컨테이너 로그만 수집해 Logstash로 전달하고, grok으로 파싱된 필드가 ES에 색인된다.
 - [ ] `http://localhost:30920/_cat/indices`에 `spring-logs-YYYY.MM.dd`가 생성된다.
 - [ ] Kibana(`http://localhost:30561`) Discover에서 data view `spring-logs-*`로 `level: ERROR` 등 KQL 검색이 된다.
 - [ ] grok 실패 시에도 원본 `message`가 보존되고 `_grokparsefailure_spring` 태그로 식별된다.
 - [ ] 이 스택이 ArgoCD에 포함되지 않는(opt-in) 상태가 유지된다.
+- [ ] `AI_REPO_ELK_ENABLED=true`로 메인 `k8s-local-up.sh`/`down.sh`와 함께 켜고 끌 수 있다.
 - [ ] ADR-0066, progress 0077, 가이드/학습 문서가 기록된다.
 
 ## 검증
