@@ -26,10 +26,11 @@ CONTEXT=my-cluster ./scripts/elk-local-up.sh   # 다른 context에 기동
 
 ### 켜기 / 끄기 옵션 (토글)
 
-ELK는 두 가지 방식으로 on/off 한다.
+ELK는 세 가지 방식으로 on/off 한다. **하나만 골라 일관되게** 쓴다(스크립트와 ArgoCD를 섞으면 상태가 어긋난다).
 
-1. **독립 제어** — 위 `elk-local-up.sh` / `elk-local-down.sh`. PLG 스택과 무관하게 ELK만 켜고 끈다.
-2. **메인 스택과 함께 (env 플래그)** — `AI_REPO_ELK_ENABLED=true`를 주면 메인 `k8s-local-up.sh`/`k8s-local-down.sh`가 ELK도 함께 기동/정리한다. 기본값은 off라 아무 설정 없이 실행하면 PLG만 뜬다.
+1. **독립 스크립트** — `elk-local-up.sh` / `elk-local-down.sh`. PLG와 무관하게 ELK만 켜고 끈다.
+2. **메인 스택 env 플래그** — `AI_REPO_ELK_ENABLED=true`를 주면 메인 `k8s-local-up.sh`/`k8s-local-down.sh`가 ELK도 함께 기동/정리한다. 기본 off라 아무 설정 없이 실행하면 PLG만 뜬다.
+3. **ArgoCD로 토글(GitOps)** — 아래 별도 섹션. 선언형으로 관리하고 UI/CLI에서 Sync/Delete로 켜고 끈다.
 
 ```bash
 AI_REPO_ELK_ENABLED=true ./scripts/k8s-local-up.sh    # PLG + ELK 함께 기동
@@ -38,6 +39,25 @@ AI_REPO_ELK_ENABLED=true ./scripts/k8s-local-down.sh  # PLG + ELK 함께 정리
 ```
 
 > ELK는 리소스 부담(ES 힙 1g+)이 크므로 **기본 off**로 두고 학습할 때만 켜는 것을 권장한다.
+
+### ArgoCD로 토글 (GitOps, 선택)
+
+스크립트(명령형) 대신 ArgoCD로 선언형 관리하고 싶으면 **ELK 전용 Application**(`deploy/argocd/logging-application.yaml`)을 쓴다. 기존 `ai-repo` App은 `automated+selfHeal`이라 **여기에 ELK를 넣으면 항상 켜져서 opt-in이 깨진다.** 그래서 ELK는 `automated`를 두지 않은 **별도 App(수동 sync)** 으로 분리한다.
+
+```bash
+# ① App 등록(1회) — App만 ArgoCD에 등록될 뿐, 이 시점에 ELK가 배포되지는 않는다(OutOfSync 상태).
+kubectl --context docker-desktop apply -f deploy/argocd/logging-application.yaml
+
+# ② 켜기 — 명시적으로 Sync (ArgoCD UI의 Sync 버튼 또는 CLI)
+argocd app sync ai-repo-logging
+
+# ③ 끄기 — App 삭제(cascade prune)로 logging ns 리소스 제거
+argocd app delete ai-repo-logging --cascade
+```
+
+- **자동복구(selfHeal) 없음**이 핵심이다. `automated`를 넣으면 삭제해도 되살아나 "항상 ON"이 된다.
+- ArgoCD UI에서 diff·헬스·리소스 트리를 보며 토글할 수 있어 **GitOps 학습**에 좋다.
+- 이 방식을 쓸 때는 위 스크립트 토글(1·2)과 **병행하지 않는다**(수동 delete와 ArgoCD 상태 불일치 방지).
 
 ### 로그 수집 범위 (autodiscover)
 

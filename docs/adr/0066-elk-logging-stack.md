@@ -62,5 +62,5 @@ ELK는 상시 켜두기에 무겁다(ES JVM 힙 1g + Logstash/Kibana). 학습 �
 
 - **PLG로 통일(ELK 미도입)**: 가장 단순하고 운영 스택이 하나로 유지되지만, 역색인·grok 파싱을 학습할 수단이 없어 이 결정의 학습 목표를 충족하지 못한다.
 - **ELK 1단계(Filebeat → ES 직접, Logstash 생략)**: 구성이 가볍지만 grok 파싱 계층 학습이 빠진다. ES Ingest Pipeline으로 파싱을 대체할 수 있으나, 파이프라인 학습 관점에서 독립 Logstash를 두는 편이 명확하다.
-- **ELK 상시 배포(ArgoCD 포함)**: 항상 최신 로그를 검색할 수 있으나 학습용 스택이 상시 리소스를 점유해 로컬 부담이 크다. opt-in 의도와 맞지 않는다. 대신 `AI_REPO_ELK_ENABLED` env 플래그로 메인 스택과 함께 on/off 하거나 독립 스크립트로 제어한다.
+- **ELK 상시 배포(ArgoCD 포함)**: 항상 최신 로그를 검색할 수 있으나 학습용 스택이 상시 리소스를 점유해 로컬 부담이 크다. opt-in 의도와 맞지 않는다. 대신 `AI_REPO_ELK_ENABLED` env 플래그·독립 스크립트로 제어하거나, `automated`(selfHeal)를 두지 않은 **별도 ArgoCD Application**(`deploy/argocd/logging-application.yaml`)으로 UI/CLI에서 수동 Sync/Delete 토글한다. 기존 `ai-repo` App(automated)에 편입하면 항상 켜져 opt-in이 깨지므로 분리한다.
 - **보안 활성화 구성**: 프로덕션에 가깝지만 인증서·자격증명 설정 비용이 커 로컬 학습 진입장벽을 높인다. 범위 밖으로 둔다.
