@@ -36,7 +36,7 @@
 | **리스 (Lease)** | 릴레이가 이벤트를 점유하는 시간 창(60초). 만료 시 다른 릴레이가 회수 가능 → 중복/유실 없이 재처리. (ADR-0017) |
 | **수동 검토 (Manual Review)** | 최대 시도 소진된 이벤트가 가는 상태. 운영자 개입 대상. (ADR-0018) |
 | **4-eyes / requeue 승인 워크플로우** | 수동 검토 이벤트 재투입 절차: `REQUESTED → APPROVED → EXECUTED`. **승인자·반려자는 요청자와 달라야 함**. 직접 requeue API는 폐기(`410 Gone`). (ADR-0038/0040) |
-| **컨슈머 (Consumer)** | 발행된 이벤트를 수신·처리(`POST /internal/broker/outbox-events`). 멱등 dedup, receipt/delivery metric 기록. (ADR-0043~0046) |
+| **컨슈머 (Consumer)** | 발행된 이벤트를 수신·처리(`POST /internal/broker/outbox-events`). `X-Broker-Token` shared secret 인증 필요(미인증 401). 멱등 dedup, receipt/delivery metric 기록. (ADR-0043~0046, 0065) |
 | **receipt** | 컨슈머가 이벤트를 처리했다는 영수증 기록. 재처리 판별·모니터링에 사용. |
 | **스텝로그 (Step Log)** | 하나의 명령이 거친 단계 감사기록(`OperationStepLog`, `BALANCE_LOCKED..IDEMPOTENCY_RECORDED`). tx 내 감사 목적이며 **보상 saga가 아님**. (ADR-0013) |
 
@@ -45,6 +45,7 @@
 | 용어 | 정의 |
 | --- | --- |
 | **operator / admin 토큰** | 운영 API 접근 헤더 토큰. 조회는 operator, 변경(requeue 승인·pruning)은 admin. 상수시간 비교. (ADR-0037) |
+| **broker 토큰 / X-Broker-Token** | broker→consumer shared secret 헤더. `/internal/broker/**` 전용 Order 3 체인이 상수시간 비교로 검증(미인증 401), publisher가 같은 값 부착. 기본 토큰은 `BrokerTokenGuard`가 배포 프로파일(postgres/prod)에서 차단. (ADR-0065) |
 | **operational alert** | relay/consumer health 경보 레코드. 같은 source/severity/reasons는 기본 15분 suppression. Slack webhook 또는 Noop로 발행. (ADR-0052~0054) |
 | **pruning** | 오래된 관측 로그(relay-run, access-audit, processed-event, receipt, delivery metric)를 보존기간 후 정리. 스케줄러는 기본 비활성. (ADR-0032/0048/0051/0053) |
 | **엔드유저 JWT** | 회원 로그인 토큰(HS256, sub=memberId). Bearer로 지갑 API 호출, 서비스 계층 소유권 검사. (ADR-0056/0057) |

@@ -22,7 +22,7 @@ flowchart TB
     INFRA -->|"@Profile"| DB
     DB{{"Repository"}}
     DB -->|"!postgres"| MEM["InMemory (synchronized)"]
-    DB -->|"postgres"| PG[("PostgreSQL 17<br/>Flyway V1..V17")]
+    DB -->|"postgres"| PG[("PostgreSQL 17<br/>Flyway V1..V18")]
     INFRA -->|"HTTP publish"| BROKER["외부 broker (HTTP)"]
     INFRA -->|"Slack webhook"| SLACK["Slack (alert)"]
 
@@ -70,7 +70,7 @@ flowchart LR
     RELAY -->|소진| MR["MANUAL_REVIEW"]
     RELAY -->|publish| PUB["OperationOutboxPublisher(port)"]
     PUB -->|http| BR["외부 broker"]
-    BR --> CONS["POST /internal/broker/outbox-events<br/>OperationOutboxConsumerService<br/>멱등 dedup · receipts · delivery metrics"]
+    BR --> CONS["POST /internal/broker/outbox-events<br/>X-Broker-Token 인증(Order 3)<br/>OperationOutboxConsumerService<br/>멱등 dedup · receipts · delivery metrics"]
     MR -.4-eyes.-> REQ["requeue 승인 워크플로우<br/>REQUESTED→APPROVED→EXECUTED<br/>(승인자 ≠ 요청자)"]
     RELAY --> HEALTH["relay-run health / operational-alert → Slack/Noop"]
 
@@ -94,16 +94,20 @@ flowchart TD
     subgraph OP["운영/어드민"]
       H["X-Operator-Token / X-Admin-Token / X-Operator-Id<br/>(constant-time compare)"] --> RB["역할 기반 authz<br/>조회=operator, 변경=admin"]
     end
+    subgraph BRK["broker→consumer"]
+      BT["X-Broker-Token<br/>(constant-time, 전용 Order 3 체인)"] --> BC["/internal/broker/** 인증<br/>미인증 401 · BrokerTokenGuard fail-fast(postgres/prod)"]
+    end
 ```
 
 - 엔드유저: HS256 JWT(subject=memberId), TTL, active-member 게이팅, 서비스 계층 소유권 검사. `JwtSecretGuard`가 기본 secret 차단.
 - 운영/어드민: 헤더 토큰 기반(상수시간 비교). ⚠️ 현재 운영자 신원은 **헤더 기반이라 위조 가능** — 진짜 운영자 principal화는 개선 후보.
+- broker→consumer: shared secret `X-Broker-Token`(상수시간 비교, 전용 `SecurityFilterChain` Order 3), 미인증 401. publisher가 같은 secret 부착, `BrokerTokenGuard`가 배포 프로파일(`postgres`/`prod`)에서 기본 토큰을 차단. (ADR-0065)
 
 ## 6. 영속성
 
 - **프로필**: 기본 `InMemory`(synchronized), `postgres` 프로필에서 `Jdbc`(행 잠금). H2는 테스트 기본.
 - **동시성**: `SELECT..FOR UPDATE` + 2-wallet 결정적 lock 순서 + `SET LOCAL lock_timeout` → 경합 시 `WALLET_BALANCE_BUSY`. 멀티 인스턴스 안전성은 postgres 프로필에서만 성립.
-- **스키마**: Flyway `V1..V17` (`src/main/resources/db/migration`). 기본 실행(H2)은 `spring.flyway.enabled=false`.
+- **스키마**: Flyway `V1..V18` (`src/main/resources/db/migration`). 기본 실행(H2)은 `spring.flyway.enabled=false`.
 
 ## 7. 프런트엔드
 
