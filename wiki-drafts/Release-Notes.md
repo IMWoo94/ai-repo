@@ -40,6 +40,9 @@
 - PostgreSQL scenario Testcontainers CI gate
 - MVP local smoke script
 - Wiki draft 최신화와 sync workflow
+- 로컬 k8s 배포 스택(Prometheus/Grafana/Loki)과 outbox 커스텀 지표
+- GitHub Actions → GHCR({version}-{sha8}) → GitOps → ArgoCD 배포 파이프라인
+- Deploy 파이프라인 CI 성공 게이트(workflow_run)
 
 ## 릴리스 후보 검증
 

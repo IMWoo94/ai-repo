@@ -33,6 +33,7 @@
 - 엔드유저 memberId JWT 인증과 wallet ownership 서비스계층 강제(IDOR 차단, 비소유자 403, ledger-entries 포함)
 - 프론트엔드 memberId 로그인 + Bearer 토큰 부착 + 401 자동 재발급/재시도
 - audit-events/step-logs/outbox-events 미인증 노출 차단(operator 게이팅)과 소유자 스코프 `GET /wallets/{walletId}/audit-events` 추가
+- 사용자 흐름 e2e 증거 단언을 원장+감사 로그 기준으로 교체(step log/outbox 패널 제거 후속)
 - 로컬 k8s 배포 스택(Prometheus/Grafana/Loki)과 outbox 커스텀 지표
 - GitHub Actions → GHCR → GitOps → ArgoCD 배포 파이프라인
 

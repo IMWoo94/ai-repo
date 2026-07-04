@@ -32,3 +32,7 @@ scripts/check-dev-rules.sh
 ```
 
 관련: PR #106, ADR-0056, progress 0066.
+
+## 후속 (main 머지 후)
+
+- 사용자 흐름 e2e의 step log/outbox 단언을 원장+감사 로그 단언으로 교체(패널 제거에 따른 CI e2e 실패 복구).

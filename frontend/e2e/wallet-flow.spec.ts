@@ -28,8 +28,9 @@ test('사용자가 로그인 후 지갑 조회, 충전, 송금, 운영 증거 �
   await expect(page.getByText('충전이 완료되었습니다.')).toBeVisible();
   await expect(balanceCard.getByText('132,000 KRW')).toBeVisible();
   await expect(page.getByText(/최근 operation: op-\d+ · CHARGE · COMPLETED/)).toBeVisible();
-  await expect(page.getByText(/LEDGER_RECORDED · COMPLETED/)).toBeVisible();
-  await expect(page.getByText(/CHARGE_COMPLETED · PENDING/)).toBeVisible();
+  // 사용자 증거는 원장 + 소유자 스코프 감사 로그로 확인한다(step log/outbox는 운영자 전용).
+  await expect(page.getByText(/op-\d+ · CREDIT · 잔액 132,000 KRW/)).toBeVisible();
+  await expect(page.getByText(/op-\d+ · CHARGE_COMPLETED · /)).toBeVisible();
 
   await transferAmount.fill('3000');
   await page.getByRole('button', { name: '송금하기' }).click();
@@ -37,7 +38,8 @@ test('사용자가 로그인 후 지갑 조회, 충전, 송금, 운영 증거 �
   await expect(page.getByText('송금이 완료되었습니다.')).toBeVisible();
   await expect(balanceCard.getByText('129,000 KRW')).toBeVisible();
   await expect(page.getByText(/최근 operation: op-\d+ · TRANSFER · COMPLETED/)).toBeVisible();
-  await expect(page.getByText(/TRANSFER_COMPLETED · PENDING/)).toBeVisible();
+  // ADR-0058 수용된 노출: transfer 감사 detail에 양쪽 walletId가 보인다.
+  await expect(page.getByText(/op-\d+ · TRANSFER_COMPLETED · Transfer completed from wallet-001 to wallet-002/)).toBeVisible();
 });
 
 test('잔액 부족 송금은 오류 메시지를 표시한다', async ({ page }) => {

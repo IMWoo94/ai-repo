@@ -107,6 +107,7 @@
 | Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
 | Admin API path matching hardening | 인증·감사 필터가 공통 segment-aware matcher로 root/sub-path만 운영 API로 분류 | Spring Security matcher 목록과 완전한 단일 source of truth는 후속 과제 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
+| 로컬 k8s 배포와 관측 스택 (ADR-0059) | Docker Desktop k8s + kustomize + Prometheus/Grafana/Loki, GitHub Actions→GHCR→ArgoCD GitOps, deploy는 CI 성공 게이트(workflow_run) 뒤에서만 실행 | 익명 Grafana/평문 자격증명은 로컬 학습 전용, 원격 전환 시 재설계 |
 
 ## 다음 구조 후보
 
