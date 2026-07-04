@@ -8,74 +8,105 @@ data:
     {
       "uid": "ai-repo-overview",
       "title": "ai-repo Overview",
-      "tags": ["ai-repo"],
+      "tags": [
+        "ai-repo"
+      ],
       "timezone": "browser",
       "schemaVersion": 39,
       "refresh": "15s",
-      "time": { "from": "now-30m", "to": "now" },
+      "time": {
+        "from": "now-30m",
+        "to": "now"
+      },
       "panels": [
         {
+          "type": "row",
+          "title": "애플리케이션 자원 (HTTP · JVM · Outbox)",
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 0
+          }
+        },
+        {
           "type": "timeseries",
-          "title": "HTTP 요청률 (by uri)",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
+          "title": "앱 가용성 (up)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "min": 0,
+              "max": 1
+            },
+            "overrides": []
+          },
           "targets": [
             {
-              "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"ai-repo\", uri!~\"/actuator.*\"}[1m]))",
-              "legendFormat": "{{uri}}"
+              "expr": "up{job=\"ai-repo\"}",
+              "legendFormat": "up"
             }
           ]
         },
         {
           "type": "timeseries",
-          "title": "HTTP p95 / p99 지연시간",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 0 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "title": "프로세스 CPU",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 1
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "percentunit",
+              "max": 1
+            },
+            "overrides": []
+          },
           "targets": [
             {
-              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"ai-repo\", uri!~\"/actuator.*\"}[5m])))",
-              "legendFormat": "p95"
+              "expr": "process_cpu_usage{job=\"ai-repo\"}",
+              "legendFormat": "process"
             },
             {
-              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"ai-repo\", uri!~\"/actuator.*\"}[5m])))",
-              "legendFormat": "p99"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "지갑 거래 요청률 (charge/transfer/payment)",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{job=\"ai-repo\", method=\"POST\", uri=~\"/api/v1/wallets/.*(charges|transfers|payments).*\"}[1m]))",
-              "legendFormat": "{{uri}} [{{status}}]"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "HTTP 오류율 (4xx/5xx)",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 8 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "reqps" }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"ai-repo\", status=~\"4..|5..\"}[1m]))",
-              "legendFormat": "{{status}}"
+              "expr": "system_cpu_usage{job=\"ai-repo\"}",
+              "legendFormat": "system"
             }
           ]
         },
         {
           "type": "timeseries",
           "title": "JVM Heap 사용량",
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "bytes" }, "overrides": [] },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 9
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "bytes"
+            },
+            "overrides": []
+          },
           "targets": [
             {
               "expr": "sum(jvm_memory_used_bytes{job=\"ai-repo\", area=\"heap\"})",
@@ -90,9 +121,22 @@ data:
         {
           "type": "timeseries",
           "title": "GC Pause",
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "s" }, "overrides": [] },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 9
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
           "targets": [
             {
               "expr": "sum by (action, cause) (rate(jvm_gc_pause_seconds_sum{job=\"ai-repo\"}[5m]))",
@@ -102,9 +146,331 @@ data:
         },
         {
           "type": "timeseries",
+          "title": "HTTP 요청률 (by uri)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 17
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (uri) (rate(http_server_requests_seconds_count{job=\"ai-repo\", uri!~\"/actuator.*\"}[1m]))",
+              "legendFormat": "{{uri}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP p95 / p99 지연시간",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 17
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "s"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "histogram_quantile(0.95, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"ai-repo\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p95"
+            },
+            {
+              "expr": "histogram_quantile(0.99, sum by (le) (rate(http_server_requests_seconds_bucket{job=\"ai-repo\", uri!~\"/actuator.*\"}[5m])))",
+              "legendFormat": "p99"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "HTTP 오류율 (4xx/5xx)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 25
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (status) (rate(http_server_requests_seconds_count{job=\"ai-repo\", status=~\"4..|5..\"}[1m]))",
+              "legendFormat": "{{status}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "지갑 거래 요청률 (charge/transfer/payment)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 25
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "reqps"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (uri, status) (rate(http_server_requests_seconds_count{job=\"ai-repo\", method=\"POST\", uri=~\"/api/v1/wallets/.*(charges|transfers|payments).*\"}[1m]))",
+              "legendFormat": "{{uri}} [{{status}}]"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "릴레이 실행률 (by result)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 33
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (result) (rate(ai_repo_outbox_relay_runs_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{result}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "릴레이 발행 이벤트율 (by outcome)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 12,
+            "y": 33
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (outcome) (rate(ai_repo_outbox_relay_published_events_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "미발행 Outbox 이벤트 (pending)",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 41
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "ai_repo_outbox_relay_pending_events{job=\"ai-repo\"}",
+              "legendFormat": "pending"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "릴레이 헬스 (0=ok,1=warn,2=crit)",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 8,
+            "y": 41
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "max": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 2
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "max(ai_repo_outbox_relay_health_status{job=\"ai-repo\"})",
+              "legendFormat": "relay"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "컨슈머 헬스 (0=ok,1=warn,2=crit)",
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 16,
+            "y": 41
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "max": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  {
+                    "color": "green",
+                    "value": null
+                  },
+                  {
+                    "color": "yellow",
+                    "value": 1
+                  },
+                  {
+                    "color": "red",
+                    "value": 2
+                  }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "max(ai_repo_outbox_consumer_health_status{job=\"ai-repo\"})",
+              "legendFormat": "consumer"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "컨슈머 처리율 (by outcome)",
+          "gridPos": {
+            "h": 8,
+            "w": 12,
+            "x": 0,
+            "y": 49
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "ops"
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "sum by (outcome) (rate(ai_repo_outbox_consumer_events_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
+        },
+        {
+          "type": "row",
+          "title": "DB (커넥션 풀)",
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 57
+          }
+        },
+        {
+          "type": "timeseries",
           "title": "Hikari DB 커넥션",
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 16 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "gridPos": {
+            "h": 8,
+            "w": 8,
+            "x": 0,
+            "y": 58
+          },
+          "datasource": {
+            "type": "prometheus",
+            "uid": "prometheus"
+          },
           "targets": [
             {
               "expr": "hikaricp_connections_active{job=\"ai-repo\"}",
@@ -121,183 +487,112 @@ data:
           ]
         },
         {
-          "type": "timeseries",
-          "title": "프로세스 CPU",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "percentunit", "max": 1 }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "process_cpu_usage{job=\"ai-repo\"}",
-              "legendFormat": "process"
-            },
-            {
-              "expr": "system_cpu_usage{job=\"ai-repo\"}",
-              "legendFormat": "system"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "앱 가용성 (up)",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 24 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "min": 0, "max": 1 }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "up{job=\"ai-repo\"}",
-              "legendFormat": "up"
-            }
-          ]
-        },
-        {
-          "type": "row",
-          "title": "Outbox 릴레이 / 컨슈머",
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }
-        },
-        {
-          "type": "timeseries",
-          "title": "릴레이 실행률 (by result)",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "sum by (result) (rate(ai_repo_outbox_relay_runs_total{job=\"ai-repo\"}[5m]))",
-              "legendFormat": "{{result}}"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "릴레이 발행 이벤트율 (by outcome)",
-          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "sum by (outcome) (rate(ai_repo_outbox_relay_published_events_total{job=\"ai-repo\"}[5m]))",
-              "legendFormat": "{{outcome}}"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "미발행 Outbox 이벤트 (pending)",
-          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 41 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "ai_repo_outbox_relay_pending_events{job=\"ai-repo\"}",
-              "legendFormat": "pending"
-            }
-          ]
-        },
-        {
-          "type": "stat",
-          "title": "릴레이 헬스 (0=ok,1=warn,2=crit)",
-          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 41 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "min": 0,
-              "max": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 1 },
-                  { "color": "red", "value": 2 }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "targets": [
-            {
-              "expr": "max(ai_repo_outbox_relay_health_status{job=\"ai-repo\"})",
-              "legendFormat": "relay"
-            }
-          ]
-        },
-        {
-          "type": "stat",
-          "title": "컨슈머 헬스 (0=ok,1=warn,2=crit)",
-          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 41 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": {
-            "defaults": {
-              "unit": "short",
-              "min": 0,
-              "max": 2,
-              "thresholds": {
-                "mode": "absolute",
-                "steps": [
-                  { "color": "green", "value": null },
-                  { "color": "yellow", "value": 1 },
-                  { "color": "red", "value": 2 }
-                ]
-              }
-            },
-            "overrides": []
-          },
-          "targets": [
-            {
-              "expr": "max(ai_repo_outbox_consumer_health_status{job=\"ai-repo\"})",
-              "legendFormat": "consumer"
-            }
-          ]
-        },
-        {
-          "type": "timeseries",
-          "title": "컨슈머 처리율 (by outcome)",
-          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 49 },
-          "datasource": { "type": "prometheus", "uid": "prometheus" },
-          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
-          "targets": [
-            {
-              "expr": "sum by (outcome) (rate(ai_repo_outbox_consumer_events_total{job=\"ai-repo\"}[5m]))",
-              "legendFormat": "{{outcome}}"
-            }
-          ]
-        },
-        {
           "type": "row",
           "title": "로그 (Loki)",
-          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 57 }
+          "collapsed": false,
+          "gridPos": {
+            "h": 1,
+            "w": 24,
+            "x": 0,
+            "y": 66
+          }
         },
         {
           "type": "timeseries",
           "title": "로그 볼륨 (level별, ai-repo) — Loki 로그→시계열",
-          "gridPos": { "h": 7, "w": 24, "x": 0, "y": 58 },
-          "datasource": { "type": "loki", "uid": "loki" },
-          "fieldConfig": { "defaults": { "unit": "logs", "custom": { "drawStyle": "bars", "fillOpacity": 60, "stacking": { "mode": "normal" } } }, "overrides": [] },
+          "gridPos": {
+            "h": 7,
+            "w": 24,
+            "x": 0,
+            "y": 67
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "logs",
+              "custom": {
+                "drawStyle": "bars",
+                "fillOpacity": 60,
+                "stacking": {
+                  "mode": "normal"
+                }
+              }
+            },
+            "overrides": []
+          },
           "targets": [
-            { "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bERROR\\b` [1m]))", "legendFormat": "ERROR", "queryType": "range" },
-            { "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bWARN\\b` [1m]))", "legendFormat": "WARN", "queryType": "range" },
-            { "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bINFO\\b` [1m]))", "legendFormat": "INFO", "queryType": "range" }
+            {
+              "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bERROR\\b` [1m]))",
+              "legendFormat": "ERROR",
+              "queryType": "range"
+            },
+            {
+              "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bWARN\\b` [1m]))",
+              "legendFormat": "WARN",
+              "queryType": "range"
+            },
+            {
+              "expr": "sum(count_over_time({app=\"ai-repo\"} |~ `(?i)\\bINFO\\b` [1m]))",
+              "legendFormat": "INFO",
+              "queryType": "range"
+            }
           ]
         },
         {
           "type": "logs",
           "title": "애플리케이션 로그 스트림 (ai-repo)",
-          "gridPos": { "h": 12, "w": 24, "x": 0, "y": 65 },
-          "datasource": { "type": "loki", "uid": "loki" },
-          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true, "dedupStrategy": "none" },
+          "gridPos": {
+            "h": 12,
+            "w": 24,
+            "x": 0,
+            "y": 74
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending",
+            "enableLogDetails": true,
+            "dedupStrategy": "none"
+          },
           "targets": [
-            { "expr": "{app=\"ai-repo\"}", "queryType": "range" }
+            {
+              "expr": "{app=\"ai-repo\"}",
+              "queryType": "range"
+            }
           ]
         },
         {
           "type": "logs",
           "title": "경고·오류 로그만 (ERROR/WARN)",
-          "gridPos": { "h": 10, "w": 24, "x": 0, "y": 77 },
-          "datasource": { "type": "loki", "uid": "loki" },
-          "options": { "showTime": true, "wrapLogMessage": true, "sortOrder": "Descending", "enableLogDetails": true, "dedupStrategy": "none" },
+          "gridPos": {
+            "h": 10,
+            "w": 24,
+            "x": 0,
+            "y": 86
+          },
+          "datasource": {
+            "type": "loki",
+            "uid": "loki"
+          },
+          "options": {
+            "showTime": true,
+            "wrapLogMessage": true,
+            "sortOrder": "Descending",
+            "enableLogDetails": true,
+            "dedupStrategy": "none"
+          },
           "targets": [
-            { "expr": "{app=\"ai-repo\"} |~ `(?i)\\b(ERROR|WARN)\\b`", "queryType": "range" }
+            {
+              "expr": "{app=\"ai-repo\"} |~ `(?i)\\b(ERROR|WARN)\\b`",
+              "queryType": "range"
+            }
           ]
         }
       ]
