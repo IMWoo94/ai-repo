@@ -73,3 +73,10 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0055 | Admin API Path Matching Hardening | Accepted |
 | ADR-0056 | End-User JWT Authentication and Wallet Ownership | Accepted |
 | ADR-0057 | Frontend Member Login and Bearer Token with 401 Re-issue | Accepted |
+| ADR-0058 | Audit Events and Operation Log Authorization | Accepted |
+| ADR-0059 | 로컬 k8s 배포와 관측(모니터링·로그·GitOps) 스택 | Accepted |
+| ADR-0060 | Audit Event–Wallet Mapping 명시화 | Accepted |
+| ADR-0061 | k8s 자격증명 Secret 주입 전환 | Accepted |
+| ADR-0062 | 배포 프로파일에서 기본 자격증명 fail-fast | Accepted |
+| ADR-0063 | Application Layer Spring Annotation Policy | Accepted |
+| ADR-0064 | JDBC Persistence Adapter Decomposition | Accepted |

@@ -80,6 +80,9 @@
    - ADR-0055 Admin API Path Matching Hardening
    - ADR-0056 End-User JWT Auth and Wallet Ownership
    - ADR-0057 End-User Login and Bearer Refresh
+8. 구조 경계와 persistence adapter 분해
+   - ADR-0063 Application Layer Spring Annotation Policy
+   - ADR-0064 JDBC Persistence Adapter Decomposition
 
 ## 중요한 트레이드오프
 
@@ -111,6 +114,8 @@
 | 로컬 k8s 배포와 관측 스택 (ADR-0059) | Docker Desktop k8s + kustomize + Prometheus/Grafana/Loki, GitHub Actions→GHCR→ArgoCD GitOps, deploy는 CI 성공 게이트(workflow_run) 뒤에서만 실행 | 익명 Grafana/평문 자격증명은 로컬 학습 전용, 원격 전환 시 재설계 |
 | k8s 자격증명 Secret 주입 (ADR-0061) | `deploy/k8s` 평문 env(DB/운영 토큰/JWT)를 `Secret ai-repo-credentials`의 `secretKeyRef`로 전환 | 로컬 고정값 Secret도 평문 커밋 — 목적은 비밀 은닉이 아니라 스테이징 사고 방지+원격 전환 준비 |
 | 배포 프로파일 기본 자격증명 fail-fast (ADR-0062) | `postgres`/`prod`에서 공개된 기본 JWT secret·운영 토큰이면 기동 실패, `deploy/k8s/app.yaml`에 명시 값 주입 | 배포 프로파일 목록 하드코딩과 `app.yaml` 평문 값(Secret 주입은 #121에서 완결) |
+| Application layer Spring annotation policy (ADR-0063) | `@Service`, policy/properties `@Component`/`@Value`, 필요한 `@Transactional`을 제한적으로 허용하고 adapter 의존은 금지 | framework-free usecase 분리는 후속 전환 ADR 필요 |
+| JDBC persistence adapter decomposition (ADR-0064) | `JdbcWalletRepository`는 Spring composite bean으로 유지하고 SQL은 wallet/ledger, outbox relay, outbox consumer, operational alert, admin audit adapter로 분리 | composite가 여러 port를 계속 구현하는 절충은 유지 |
 
 ## 다음 구조 후보
 
@@ -120,3 +125,4 @@
 - pruning 실행 이력 저장과 조회 API
 - Slack 발행 실패 record와 재시도 정책
 - 실제 운영자 identity와 role scope 분리
+- context별 JDBC adapter slice test 분리

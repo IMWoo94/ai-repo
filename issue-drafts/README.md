@@ -132,6 +132,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/124
 - `0073-default-credential-fail-fast.md`: 배포 프로파일(postgres/prod)에서 기본 JWT secret·운영 토큰 fail-fast 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/122
+- `0076-jdbc-persistence-adapter-decomposition.md`: JdbcWalletRepository bounded-context 분해와 ArchUnit 레이어 규칙 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/125
 
 ## GitHub CLI로 생성
 
