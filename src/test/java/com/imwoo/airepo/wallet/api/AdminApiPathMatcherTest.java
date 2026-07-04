@@ -24,6 +24,10 @@ class AdminApiPathMatcherTest {
             "/api/v1/admin-api-access-audits",
             "/api/v1/operational-alerts",
             "/api/v1/operational-log-pruning-runs",
+            "/api/v1/audit-events",
+            "/api/v1/operations",
+            "/api/v1/operations/op-001/step-logs",
+            "/api/v1/operations/op-001/outbox-events",
             "/api/v1/test-fixtures",
             "/api/v1/test-fixtures/outbox-events/manual-review"
     })
@@ -41,6 +45,9 @@ class AdminApiPathMatcherTest {
             "/api/v1/admin-api-access-audits-export",
             "/api/v1/operational-alerts-public",
             "/api/v1/operational-log-pruning-runs-preview",
+            "/api/v1/audit-events-export",
+            "/api/v1/operations-summary",
+            "/api/v1/wallets/wallet-001/audit-events",
             "/api/v1/wallets/wallet-001/balance"
     })
     void rejectsLookalikePrefixesAndPublicPaths(String requestUri) {

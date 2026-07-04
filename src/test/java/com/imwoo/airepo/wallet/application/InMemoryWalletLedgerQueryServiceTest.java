@@ -84,6 +84,25 @@ class InMemoryWalletLedgerQueryServiceTest {
     }
 
     @Test
+    void returnsWalletScopedAuditEventsForOwnerExcludingOtherWallets() {
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-002", "wallet-002", new WalletChargeCommand(money("7000"), "charge-002", "다른 지갑 충전"));
+
+        assertThat(ledgerQueryService.getAuditEvents("member-001", "wallet-001"))
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.type().name()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(event.operationId()).isEqualTo("op-001");
+                });
+    }
+
+    @Test
+    void rejectsWalletScopedAuditEventsWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> ledgerQueryService.getAuditEvents("member-002", "wallet-001"))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
+    @Test
     void returnsOperationStepLogsByProcessOrder() {
         WalletCommandResult result = commandService.charge(
                 "member-001",

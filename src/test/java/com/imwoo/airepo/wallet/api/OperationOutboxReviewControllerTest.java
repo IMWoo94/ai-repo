@@ -98,7 +98,9 @@ class OperationOutboxReviewControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(1))
                 .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"));
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"))
                 .andExpect(jsonPath("$[0].attemptCount").value(3))
@@ -167,7 +169,9 @@ class OperationOutboxReviewControllerTest {
                         .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("EXECUTED"));
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
         mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")
@@ -247,7 +251,9 @@ class OperationOutboxReviewControllerTest {
                 .andExpect(jsonPath("$.rejectedBy").value("ops-rejector"))
                 .andExpect(jsonPath("$.rejectionReason").value("원인 조치 미확인"));
 
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, OPERATOR_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("MANUAL_REVIEW"));
         mockMvc.perform(get("/api/v1/outbox-events/outbox-001/requeue-audits")

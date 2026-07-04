@@ -26,6 +26,8 @@ public class SecurityConfig {
             "/api/v1/outbox-relay-runs/**",
             "/api/v1/admin-api-access-audits/**",
             "/api/v1/operational-alerts/**",
+            "/api/v1/audit-events/**",
+            "/api/v1/operations/**",
             "/api/v1/test-fixtures/**"
     };
 

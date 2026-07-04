@@ -11,6 +11,8 @@ final class AdminApiPathMatcher {
             "/api/v1/admin-api-access-audits",
             "/api/v1/operational-alerts",
             "/api/v1/operational-log-pruning-runs",
+            "/api/v1/audit-events",
+            "/api/v1/operations",
             "/api/v1/test-fixtures"
     );
 

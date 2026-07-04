@@ -12,6 +12,8 @@ public interface WalletLedgerQueryService {
 
     List<AuditEvent> getAuditEvents();
 
+    List<AuditEvent> getAuditEvents(String memberId, String walletId);
+
     List<OperationStepLog> getOperationStepLogs(String operationId);
 
     List<OperationOutboxEvent> getOperationOutboxEvents(String operationId);

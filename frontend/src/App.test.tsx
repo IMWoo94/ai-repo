@@ -119,7 +119,15 @@ function setupFetch(state: MockFetchState = {
     }
 
     if (url.endsWith('/audit-events')) {
-      return jsonResponse([]);
+      return jsonResponse(state.operationId ? [
+        {
+          auditEventId: 'audit-001',
+          operationId: state.operationId,
+          type: `${state.operationType}_COMPLETED`,
+          detail: '감사 로그가 기록되었습니다.',
+          occurredAt: '2026-05-02T00:00:00Z',
+        },
+      ] : []);
     }
 
     if (url.includes('/outbox-events/manual-review')) {
@@ -265,31 +273,6 @@ function setupFetch(state: MockFetchState = {
         reason: body.reason,
       });
       return emptyResponse(204);
-    }
-
-    if (url.endsWith('/step-logs')) {
-      return jsonResponse(state.operationId ? [
-        {
-          operationStepLogId: 'step-001',
-          operationId: state.operationId,
-          step: 'LEDGER_RECORDED',
-          status: 'COMPLETED',
-          detail: 'Ledger entry recorded for wallet wallet-001',
-        },
-      ] : []);
-    }
-
-    if (url.endsWith('/outbox-events')) {
-      return jsonResponse(state.operationId ? [
-        {
-          outboxEventId: 'outbox-001',
-          operationId: state.operationId,
-          eventType: `${state.operationType}_COMPLETED`,
-          status: 'PENDING',
-          attemptCount: 0,
-          lastError: null,
-        },
-      ] : []);
     }
 
     if (url.endsWith('/charges') && method === 'POST') {
@@ -440,6 +423,10 @@ describe('App', () => {
 
     const balanceCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/balance'));
     expect(balanceCall?.[1]?.headers).toMatchObject({ Authorization: 'Bearer jwt-member-001' });
+
+    const auditEventsCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/audit-events'));
+    expect(auditEventsCall?.[0]?.toString()).toBe('/api/v1/wallets/wallet-001/audit-events');
+    expect(auditEventsCall?.[1]?.headers).toMatchObject({ Authorization: 'Bearer jwt-member-001' });
   });
 
   it('wallet 요청이 401이면 저장된 memberId로 토큰을 재발급하고 1회 재시도한다', async () => {
@@ -517,7 +504,7 @@ describe('App', () => {
     await screen.findByText('충전이 완료되었습니다.');
     expect(screen.getByText('132,000 KRW')).toBeVisible();
     expect(screen.getByText(/최근 operation: op-001 · CHARGE · COMPLETED/)).toBeVisible();
-    expect(screen.getByText(/CHARGE_COMPLETED · PENDING/)).toBeVisible();
+    expect(screen.getByText(/op-001 · CHARGE_COMPLETED · 감사 로그가 기록되었습니다./)).toBeVisible();
 
     const chargeCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/charges'));
     expect(chargeCall).toBeDefined();

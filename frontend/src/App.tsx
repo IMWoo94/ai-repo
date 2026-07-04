@@ -53,14 +53,6 @@ type AuditEvent = {
   occurredAt: string;
 };
 
-type OperationStepLog = {
-  operationStepLogId: string;
-  operationId: string;
-  step: string;
-  status: string;
-  detail: string;
-};
-
 type OperationOutboxEvent = {
   outboxEventId: string;
   operationId: string;
@@ -150,16 +142,12 @@ type ApiState = {
   transactions: TransactionHistoryItem[];
   ledgerEntries: LedgerEntry[];
   auditEvents: AuditEvent[];
-  stepLogs: OperationStepLog[];
-  outboxEvents: OperationOutboxEvent[];
 };
 
 const initialApiState: ApiState = {
   transactions: [],
   ledgerEntries: [],
   auditEvents: [],
-  stepLogs: [],
-  outboxEvents: [],
 };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -367,24 +355,15 @@ export function App() {
 
   async function loadWalletEvidence(
     nextWalletId = authRef.current ? walletIdForMember(authRef.current.memberId) : walletId,
-    nextOperationId = operationId,
   ) {
     const [balance, transactions, ledgerEntries, auditEvents] = await Promise.all([
       walletRequest<WalletBalance>(`/api/v1/wallets/${nextWalletId}/balance`),
       walletRequest<TransactionHistoryItem[]>(`/api/v1/wallets/${nextWalletId}/transactions`),
       walletRequest<LedgerEntry[]>(`/api/v1/wallets/${nextWalletId}/ledger-entries`),
-      requestJson<AuditEvent[]>('/api/v1/audit-events'),
+      walletRequest<AuditEvent[]>(`/api/v1/wallets/${nextWalletId}/audit-events`),
     ]);
 
-    const trimmedOperationId = nextOperationId.trim();
-    const [stepLogs, outboxEvents] = trimmedOperationId
-      ? await Promise.all([
-        requestJson<OperationStepLog[]>(`/api/v1/operations/${trimmedOperationId}/step-logs`),
-        requestJson<OperationOutboxEvent[]>(`/api/v1/operations/${trimmedOperationId}/outbox-events`),
-      ])
-      : [[], []];
-
-    setApiState({ balance, transactions, ledgerEntries, auditEvents, stepLogs, outboxEvents });
+    setApiState({ balance, transactions, ledgerEntries, auditEvents });
   }
 
   async function loadManualReviewEvents() {
@@ -534,7 +513,7 @@ export function App() {
       });
       setLastOperation(result);
       setOperationId(result.operationId);
-      await loadWalletEvidence(walletId, result.operationId);
+      await loadWalletEvidence(walletId);
     }, '충전이 완료되었습니다.');
   }
 
@@ -553,13 +532,13 @@ export function App() {
       });
       setLastOperation(result);
       setOperationId(result.operationId);
-      await loadWalletEvidence(walletId, result.operationId);
+      await loadWalletEvidence(walletId);
     }, '송금이 완료되었습니다.');
   }
 
   useEffect(() => {
     if (authRef.current) {
-      void runAction(() => loadWalletEvidence(walletIdForMember(authRef.current!.memberId), ''), '초기 데이터를 불러왔습니다.');
+      void runAction(() => loadWalletEvidence(walletIdForMember(authRef.current!.memberId)), '초기 데이터를 불러왔습니다.');
     }
   }, []);
 
@@ -952,8 +931,6 @@ export function App() {
         <EvidencePanel title="거래내역" items={apiState.transactions.map((item) => `${item.type} · ${item.direction} · ${formatMoney(item.money)} · ${item.description}`)} />
         <EvidencePanel title="원장" items={apiState.ledgerEntries.map((item) => `${item.operationId} · ${item.direction} · 잔액 ${formatMoney(item.balanceAfter)}`)} />
         <EvidencePanel title="감사 로그" items={apiState.auditEvents.map((item) => `${item.operationId} · ${item.type} · ${item.detail}`)} />
-        <EvidencePanel title="Step Log" items={apiState.stepLogs.map((item) => `${item.step} · ${item.status} · ${item.detail}`)} />
-        <EvidencePanel title="Outbox" items={apiState.outboxEvents.map((item) => `${item.outboxEventId} · ${item.eventType} · ${item.status} · attempt ${item.attemptCount}`)} />
       </section>
     </main>
   );

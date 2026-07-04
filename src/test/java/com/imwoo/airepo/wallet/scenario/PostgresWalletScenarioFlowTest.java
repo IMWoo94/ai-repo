@@ -133,13 +133,19 @@ class PostgresWalletScenarioFlowTest {
         mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        mockMvc.perform(get("/api/v1/audit-events"))
+        mockMvc.perform(get("/api/v1/audit-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        mockMvc.perform(get("/api/v1/operations/op-001/step-logs"))
+        mockMvc.perform(get("/api/v1/operations/op-001/step-logs")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(6)));
-        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -151,10 +157,14 @@ class PostgresWalletScenarioFlowTest {
                     assertThat(result.failedCount()).isZero();
                 });
 
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
-        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
     }

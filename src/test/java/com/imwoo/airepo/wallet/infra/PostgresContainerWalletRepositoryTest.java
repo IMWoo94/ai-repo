@@ -98,6 +98,32 @@ class PostgresContainerWalletRepositoryTest {
     }
 
     @Test
+    void findAuditEventsByWalletReturnsOnlyOwningWalletEventsInRealPostgres() {
+        WalletCommandResult walletAResult = commandService.charge(
+                "member-001",
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "postgres-audit-scope-001", "PostgreSQL wallet-A 충전")
+        );
+        WalletCommandResult walletBResult = commandService.charge(
+                "member-002",
+                "wallet-002",
+                new WalletChargeCommand(money("7000"), "postgres-audit-scope-002", "PostgreSQL wallet-B 충전")
+        );
+
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .singleElement()
+                .satisfies(auditEvent -> assertThat(auditEvent.operationId())
+                        .isEqualTo(walletAResult.operation().operationId()));
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .noneMatch(auditEvent -> auditEvent.operationId()
+                        .equals(walletBResult.operation().operationId()));
+        assertThat(repository.findAuditEventsByWallet("wallet-002"))
+                .singleElement()
+                .satisfies(auditEvent -> assertThat(auditEvent.operationId())
+                        .isEqualTo(walletBResult.operation().operationId()));
+    }
+
+    @Test
     void transferPersistsThroughRealPostgres() {
         WalletCommandResult result = commandService.transfer(
                 "member-001",

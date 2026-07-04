@@ -28,6 +28,11 @@ public class WalletLedgerController {
         return walletLedgerQueryService.getLedgerEntries(WalletPrincipal.memberId(jwt), walletId);
     }
 
+    @GetMapping("/wallets/{walletId}/audit-events")
+    public List<AuditEvent> walletAuditEvents(@AuthenticationPrincipal Jwt jwt, @PathVariable String walletId) {
+        return walletLedgerQueryService.getAuditEvents(WalletPrincipal.memberId(jwt), walletId);
+    }
+
     @GetMapping("/audit-events")
     public List<AuditEvent> auditEvents() {
         return walletLedgerQueryService.getAuditEvents();

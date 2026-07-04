@@ -44,6 +44,17 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     }
 
     @Override
+    public List<AuditEvent> getAuditEvents(String memberId, String walletId) {
+        validateWalletId(walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
+        return walletLedgerQueryRepository.findAuditEventsByWallet(walletAccount.walletId()).stream()
+                .sorted(Comparator.comparing(AuditEvent::occurredAt)
+                        .thenComparing(AuditEvent::auditEventId)
+                        .reversed())
+                .toList();
+    }
+
+    @Override
     public List<OperationStepLog> getOperationStepLogs(String operationId) {
         validateOperationId(operationId);
         validateOperationExists(operationId);
