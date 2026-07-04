@@ -54,6 +54,7 @@ class PostgresContainerWalletRepositoryTest {
     private InMemoryWalletCommandService commandService;
     private InMemoryWalletLedgerQueryService ledgerQueryService;
     private DriverManagerDataSource dataSource;
+    private JdbcTemplate jdbcTemplate;
 
     @BeforeEach
     void setUp() {
@@ -64,7 +65,7 @@ class PostgresContainerWalletRepositoryTest {
 
         resetDatabase(dataSource);
 
-        JdbcTemplate jdbcTemplate = new JdbcTemplate(dataSource);
+        jdbcTemplate = new JdbcTemplate(dataSource);
 
         repository = new JdbcWalletRepository(
                 jdbcTemplate,
@@ -121,6 +122,62 @@ class PostgresContainerWalletRepositoryTest {
                 .singleElement()
                 .satisfies(auditEvent -> assertThat(auditEvent.operationId())
                         .isEqualTo(walletBResult.operation().operationId()));
+    }
+
+    @Test
+    void findAuditEventsByWalletReturnsBackfilledLegacyEventInRealPostgres() {
+        // 매핑 테이블 없이 존재하던 레거시 audit_event + ledger_entry를 직접 심는다.
+        jdbcTemplate.update(
+                """
+                        insert into ledger_entries (
+                            ledger_entry_id, operation_id, wallet_id, occurred_at, type, direction,
+                            amount, currency, balance_after_amount, balance_after_currency, description
+                        )
+                        values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """,
+                "ledger-legacy-001",
+                "op-legacy-001",
+                "wallet-001",
+                java.sql.Timestamp.from(Instant.parse("2026-04-01T00:00:00Z")),
+                "CHARGE",
+                "CREDIT",
+                new BigDecimal("1000"),
+                "KRW",
+                new BigDecimal("1000"),
+                "KRW",
+                "레거시 충전"
+        );
+        jdbcTemplate.update(
+                """
+                        insert into audit_events (audit_event_id, operation_id, type, occurred_at, detail)
+                        values (?, ?, ?, ?, ?)
+                        """,
+                "audit-legacy-001",
+                "op-legacy-001",
+                "CHARGE_COMPLETED",
+                java.sql.Timestamp.from(Instant.parse("2026-04-01T00:00:00Z")),
+                "레거시 충전 완료"
+        );
+
+        // 매핑이 없으면 소유자 스코프 조회가 비어 있어야 한다.
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .noneMatch(auditEvent -> auditEvent.auditEventId().equals("audit-legacy-001"));
+
+        // V18 마이그레이션의 역채움 SQL을 재실행해 레거시 매핑을 복원한다.
+        jdbcTemplate.update(
+                """
+                        insert into audit_event_wallets (audit_event_id, wallet_id)
+                        select distinct ae.audit_event_id, le.wallet_id
+                        from audit_events ae
+                        join ledger_entries le on le.operation_id = ae.operation_id
+                        on conflict do nothing
+                        """
+        );
+
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .anyMatch(auditEvent -> auditEvent.auditEventId().equals("audit-legacy-001"));
+        assertThat(repository.findAuditEventsByWallet("wallet-002"))
+                .noneMatch(auditEvent -> auditEvent.auditEventId().equals("audit-legacy-001"));
     }
 
     @Test

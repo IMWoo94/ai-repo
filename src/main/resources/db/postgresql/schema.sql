@@ -72,6 +72,15 @@ CREATE TABLE IF NOT EXISTS audit_events (
     detail VARCHAR(255) NOT NULL
 );
 
+CREATE TABLE IF NOT EXISTS audit_event_wallets (
+    audit_event_id VARCHAR(64) NOT NULL REFERENCES audit_events(audit_event_id),
+    wallet_id VARCHAR(64) NOT NULL REFERENCES wallet_accounts(wallet_id),
+    PRIMARY KEY (audit_event_id, wallet_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_audit_event_wallets_wallet_id
+    ON audit_event_wallets (wallet_id);
+
 CREATE TABLE IF NOT EXISTS operation_step_logs (
     operation_step_log_id VARCHAR(64) PRIMARY KEY,
     operation_id VARCHAR(64) NOT NULL,

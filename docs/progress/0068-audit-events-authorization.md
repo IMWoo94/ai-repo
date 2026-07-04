@@ -36,7 +36,7 @@
 
 ## 남은 일
 
-- `audit_events` wallet_id 비정규화로 ledger 조인 제거(현재는 조인 의존)
+- ~~`audit_events` wallet_id 비정규화로 ledger 조인 제거(현재는 조인 의존)~~ → 완료(참조 0070, `audit_event_wallets` 매핑 테이블로 해소)
 - 소유자 스코프 step-logs/outbox-events가 필요하면 별도 후속 검토
 - Docker 환경에서 `./gradlew postgresScenarioTest` 실행으로 신규 JDBC 테스트 검증(작성 시점 Docker 미가동으로 컴파일만 확인)
 
