@@ -124,6 +124,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/110
 - `0070-audit-event-wallet-mapping.md`: audit-event↔wallet 매핑 명시화(ledger 조인 제거) 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/117
+- `0072-k8s-secret-injection.md`: k8s 자격증명 Secret 주입(DB/운영 토큰) 전환 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/121
 
 ## GitHub CLI로 생성
 
