@@ -6,17 +6,21 @@ main 브랜치 push가 이미지 빌드부터 로컬 k8s 배포까지 자동으�
 
 ```
 main push
-  → GitHub Actions (.github/workflows/deploy.yml)
-      1. build.gradle version + 커밋 sha 앞 8자리 → 태그 {version}-{sha8} (예: 0.7.0-a1b2c3d4)
-      2. Docker 이미지 빌드 → ghcr.io/imwoo94/ai-repo:{tag} push
-      3. deploy/gitops/kustomization.yaml의 newTag 갱신 → "[skip ci]" 커밋 push
+  → GitHub Actions CI (.github/workflows/ci.yml: gradle check/scenario/frontend)
+      성공(conclusion == 'success')해야만 아래 deploy가 트리거된다
+  → GitHub Actions Deploy (.github/workflows/deploy.yml, workflow_run 트리거)
+      1. CI run의 head_sha를 체크아웃 (main HEAD가 그 사이 움직여도 검증된 커밋 그대로)
+      2. build.gradle version + head_sha 앞 8자리 → 태그 {version}-{sha8} (예: 0.7.0-a1b2c3d4)
+      3. Docker 이미지 빌드 → ghcr.io/imwoo94/ai-repo:{tag} push
+      4. origin/main 최신으로 재설정 후 deploy/gitops/kustomization.yaml의 newTag 갱신 → "[skip ci]" 커밋 push
   → ArgoCD (로컬 docker-desktop 클러스터)
       deploy/gitops 변화 감지 → ai-repo 네임스페이스에 자동 sync (prune + selfHeal)
 ```
 
-- **이미지 태그 규칙**: 반드시 `{version}-{sha8}`. `latest` 사용 금지.
-- **재트리거 방지**: deploy.yml은 `deploy/gitops/kustomization.yaml`을 paths-ignore하고, 매니페스트 커밋 메시지에 `[skip ci]`를 붙여 CI/deploy 루프를 차단한다.
-- CI 검증(ci.yml: gradle check/scenario/frontend)과 deploy는 독립 실행이다. 학습 랩 단순화를 위한 선택으로, 배포 전 CI 게이트가 필요해지면 `workflow_run` 트리거로 전환한다.
+- **이미지 태그 규칙**: 반드시 `{version}-{sha8}`. `latest` 사용 금지. sha8은 CI run의 `head_sha` 앞 8자리다.
+- **CI 게이트**: deploy는 CI("CI" 워크플로우)가 성공했을 때만 실행된다(`workflow_run` + `if: conclusion == 'success'`). 깨진 커밋(테스트/빌드 실패)은 배포되지 않는다.
+- **재트리거 방지**: 매니페스트 커밋 메시지에 `[skip ci]`를 붙이면 CI가 아예 돌지 않으므로 CI→deploy 루프가 차단된다. (`workflow_run` 트리거에는 paths 필터가 없어 기존 `paths-ignore` 블록은 제거했다.)
+- **동작 변화**: paths 필터가 없어져, CI를 통과한 docs-only push도 이제 이미지 빌드+배포를 트리거한다.
 
 ## 디렉토리
 

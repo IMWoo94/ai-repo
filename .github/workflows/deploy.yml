@@ -1,14 +1,12 @@
 name: Deploy
 
 on:
-  push:
+  workflow_run:
+    workflows: ["CI"]
+    types:
+      - completed
     branches:
       - main
-    paths-ignore:
-      - 'docs/**'
-      - 'wiki-drafts/**'
-      - 'issue-drafts/**'
-      - 'deploy/gitops/kustomization.yaml' # CI 자체 갱신 커밋 재트리거 방지
 
 permissions:
   contents: write
@@ -25,16 +23,26 @@ jobs:
   build-push-sync:
     name: Build, Push, Update GitOps Manifest
     runs-on: ubuntu-latest
+    # CI("CI" 워크플로우)가 성공했을 때만 배포한다. 깨진 커밋은 배포되지 않는다.
+    if: github.event.workflow_run.conclusion == 'success'
 
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          # workflow_run 이벤트는 기본적으로 default branch HEAD를 체크아웃하므로,
+          # 그 사이 main이 움직였을 수 있다. CI가 검증한 정확한 커밋을 체크아웃한다.
+          ref: ${{ github.event.workflow_run.head_sha }}
 
       - name: Resolve image tag ({version}-{sha8})
         id: meta
+        env:
+          # workflow_run 컨텍스트에서 GITHUB_SHA는 default branch HEAD이므로
+          # CI run이 검증한 커밋(head_sha)의 앞 8자리를 태그에 사용한다.
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
         run: |
           VERSION=$(sed -n "s/^version = '\(.*\)'/\1/p" build.gradle)
-          SHA8=${GITHUB_SHA:0:8}
+          SHA8=${HEAD_SHA:0:8}
           echo "tag=${VERSION}-${SHA8}" >> "$GITHUB_OUTPUT"
 
       - name: Login to GHCR
@@ -51,15 +59,16 @@ jobs:
           push: true
           tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
 
-      - name: Update GitOps manifest
-        run: |
-          sed -i "s|newTag: .*|newTag: ${{ steps.meta.outputs.tag }}|" deploy/gitops/kustomization.yaml
-          git diff --stat deploy/gitops/kustomization.yaml
-
       - name: Commit and push manifest
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "github-actions[bot]@users.noreply.github.com"
+          # 체크아웃이 head_sha에 detached 상태이므로, origin/main 최신을 가져와
+          # main 브랜치로 재설정한 뒤 그 위에 매니페스트 커밋을 올린다.
+          git fetch origin main
+          git checkout -B main origin/main
+          sed -i "s|newTag: .*|newTag: ${{ steps.meta.outputs.tag }}|" deploy/gitops/kustomization.yaml
+          git diff --stat deploy/gitops/kustomization.yaml
           git add deploy/gitops/kustomization.yaml
           git commit -m "chore: deploy ${{ steps.meta.outputs.tag }} [skip ci]" || { echo "no change"; exit 0; }
-          git push
+          git push origin main

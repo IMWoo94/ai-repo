@@ -18,7 +18,7 @@ ai-repo는 지금까지 `compose.yml`(Postgres 단독)과 로컬 프로세스 �
 | 커스텀 지표 | outbox 릴레이/컨슈머를 비침습 브리지로 노출 — 게이지는 `OutboxMetricsBinder`가 기존 모니터링 서비스를 스크레이프 시점에 읽고, 릴레이 카운터는 `OutboxRelayMetricsRecorder` 포트로 기록 시점 증가(실행 저장소가 최근 샘플만 보관해 사후 누적 불가하므로) |
 | 로그 | Loki(single binary, filesystem, 72h) + Grafana Alloy가 k8s API로 파드 로그 tail(호스트 마운트 없음). Grafana Explore에서 LogQL 검색 |
 | 대시보드 | Grafana 프로비저닝(ConfigMap) — `ai-repo Overview`: HTTP/지갑거래/JVM/Hikari/CPU + Outbox row |
-| CI/CD | GitHub Actions(main push) → 이미지 태그 `{version}-{sha8}` → ghcr.io push → `deploy/gitops/kustomization.yaml` newTag 갱신 커밋(`[skip ci]`) |
+| CI/CD | GitHub Actions CI 성공 후 deploy가 `workflow_run`으로 트리거(`if: conclusion == 'success'`) → CI run의 `head_sha` 체크아웃 → 이미지 태그 `{version}-{sha8}` → ghcr.io push → `deploy/gitops/kustomization.yaml` newTag 갱신 커밋(`[skip ci]`) |
 | GitOps | ArgoCD(로컬 설치, `--server-side` apply)가 `deploy/gitops`를 자동 sync(prune+selfHeal). 오버레이는 `../k8s` base + ghcr 이미지 교체 |
 | 모드 분리 | 같은 네임스페이스를 관리하므로 로컬 수동 모드(`k8s-local-up.sh`)와 GitOps 모드는 택1 |
 
@@ -33,7 +33,7 @@ ai-repo는 지금까지 `compose.yml`(Postgres 단독)과 로컬 프로세스 �
 ### 비용
 
 - 익명 Grafana Admin·평문 자격증명·단일 replica는 로컬 학습 전용 구성이다. 원격 전환 시 Secret/인증/HA 재설계가 필요하다.
-- CI 검증(ci.yml)과 deploy가 독립이라 깨진 커밋도 배포될 수 있다 — 필요 시 `workflow_run` 게이트로 전환한다.
+- deploy는 CI(ci.yml) 성공 시에만 `workflow_run`으로 트리거되어 깨진 커밋은 배포되지 않는다. 대신 paths 필터가 없어 CI를 통과한 docs-only push도 이미지 빌드+배포를 트리거한다(로컬 학습 랩 규모에서는 무해).
 - Alloy가 k8s API로 로그를 tail하므로 초대형 로그 볼륨에는 부적합하다(로컬 규모에서는 무해).
 
 ## 대안
