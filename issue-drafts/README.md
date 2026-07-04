@@ -124,6 +124,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/110
 - `0070-audit-event-wallet-mapping.md`: audit-event↔wallet 매핑 명시화(ledger 조인 제거) 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/117
+- `0075-admin-path-drift-guard.md`: SecurityConfig↔AdminApiPathMatcher 운영 API 목록 drift 방지 테스트 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/124
 
 ## GitHub CLI로 생성
 

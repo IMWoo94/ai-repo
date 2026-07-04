@@ -112,7 +112,7 @@
 
 ## 다음 구조 후보
 
-- Spring Security matcher와 운영 API matcher 목록 동기화 테스트
+- Spring Security matcher와 운영 API matcher 목록을 단일 source of truth 상수로 통합(현재는 `OperationalApiPathDriftGuardTest`가 두 목록 동기화를 검증)
 - broker-specific adapter와 Testcontainers contract
 - broker replay window별 retention 권장값
 - pruning 실행 이력 저장과 조회 API
