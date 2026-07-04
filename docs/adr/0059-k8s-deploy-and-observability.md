@@ -17,6 +17,8 @@ ai-repo는 지금까지 `compose.yml`(Postgres 단독)과 로컬 프로세스 �
 | 메트릭 | micrometer-registry-prometheus, `/actuator/prometheus`를 Prometheus가 15s 스크랩. HTTP 지연 분위수는 percentiles-histogram |
 | 커스텀 지표 | outbox 릴레이/컨슈머를 비침습 브리지로 노출 — 게이지는 `OutboxMetricsBinder`가 기존 모니터링 서비스를 스크레이프 시점에 읽고, 릴레이 카운터는 `OutboxRelayMetricsRecorder` 포트로 기록 시점 증가(실행 저장소가 최근 샘플만 보관해 사후 누적 불가하므로) |
 | 로그 | Loki(single binary, filesystem, 72h) + Grafana Alloy가 k8s API로 파드 로그 tail(호스트 마운트 없음). Grafana Explore에서 LogQL 검색 |
+| 로컬 up 대기 범위 | `k8s-local-up.sh`가 postgres/app/prometheus/**loki/alloy**/grafana 전체 rollout을 대기하고, Loki `svc/loki` port-forward + `/ready` curl 스모크로 관측 스택 기동을 확인 |
+| ArgoCD 설치 | 재현성을 위해 설치 매니페스트를 고정 버전(`v3.4.4`) URL로 apply — 이동하는 `stable` 태그 금지 |
 | 대시보드 | Grafana 프로비저닝(ConfigMap) — `ai-repo Overview`: HTTP/지갑거래/JVM/Hikari/CPU + Outbox row |
 | CI/CD | GitHub Actions CI 성공 후 deploy가 `workflow_run`으로 트리거(`if: conclusion == 'success'`) → CI run의 `head_sha` 체크아웃 → 이미지 태그 `{version}-{sha8}` → ghcr.io push → `deploy/gitops/kustomization.yaml` newTag 갱신 커밋(`[skip ci]`) |
 | GitOps | ArgoCD(로컬 설치, `--server-side` apply)가 `deploy/gitops`를 자동 sync(prune+selfHeal). 오버레이는 `../k8s` base + ghcr 이미지 교체 |

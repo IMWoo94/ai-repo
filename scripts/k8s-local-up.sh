@@ -20,7 +20,22 @@ echo "==> 롤아웃 대기"
 kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/postgres --timeout=180s
 kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/ai-repo --timeout=300s
 kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/prometheus --timeout=180s
+kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/loki --timeout=180s
+kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/alloy --timeout=180s
 kubectl --context "$CONTEXT" -n ai-repo rollout status deployment/grafana --timeout=180s
+
+echo "==> Loki 스모크 (ready)"
+kubectl --context "$CONTEXT" -n ai-repo port-forward svc/loki 3100:3100 >/dev/null 2>&1 &
+PF_PID=$!
+trap 'kill "$PF_PID" 2>/dev/null || true' EXIT
+for i in $(seq 1 10); do
+  curl -sf http://localhost:3100/ready >/dev/null 2>&1 && break
+  [[ $i -eq 10 ]] && { echo "Loki /ready 응답 없음 (port-forward svc/loki 3100)."; exit 1; }
+  sleep 2
+done
+echo "Loki ready OK"
+kill "$PF_PID" 2>/dev/null || true
+trap - EXIT
 
 cat <<'EOF'
 
@@ -28,4 +43,5 @@ cat <<'EOF'
   앱          http://localhost:30080          (health: /actuator/health, metrics: /actuator/prometheus)
   Prometheus  http://localhost:30990          (targets: /targets)
   Grafana     http://localhost:30300          (익명 Admin, 대시보드: ai-repo Overview)
+  Loki        Grafana Explore(Loki)에서 LogQL — Alloy가 파드 로그 수집
 EOF
