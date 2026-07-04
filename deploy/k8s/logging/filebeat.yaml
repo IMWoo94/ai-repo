@@ -34,13 +34,21 @@ metadata:
   namespace: logging
 data:
   filebeat.yml: |
-    filebeat.inputs:
-      - type: container
-        paths: ["/var/log/containers/*ai-repo*.log"]
-    processors:
-      - add_kubernetes_metadata:
-          host: ${NODE_NAME}
-          matchers: [ { logs_path: { logs_path: "/var/log/containers/" } } ]
+    # autodiscover: label `app=ai-repo` 파드의 컨테이너 로그만 수집한다.
+    # (paths glob은 네임스페이스명 'ai-repo'까지 매칭해 alloy/loki 등 타 파드 로그가 섞이므로 사용하지 않음)
+    filebeat.autodiscover:
+      providers:
+        - type: kubernetes
+          node: ${NODE_NAME}
+          hints.enabled: false
+          templates:
+            - condition:
+                equals:
+                  kubernetes.labels.app: ai-repo
+              config:
+                - type: container
+                  paths:
+                    - /var/log/containers/*-${data.kubernetes.container.id}.log
     output.logstash:
       hosts: ["logstash:5044"]
     logging.level: info

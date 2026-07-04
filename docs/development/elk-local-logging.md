@@ -24,6 +24,25 @@
 CONTEXT=my-cluster ./scripts/elk-local-up.sh   # 다른 context에 기동
 ```
 
+### 켜기 / 끄기 옵션 (토글)
+
+ELK는 두 가지 방식으로 on/off 한다.
+
+1. **독립 제어** — 위 `elk-local-up.sh` / `elk-local-down.sh`. PLG 스택과 무관하게 ELK만 켜고 끈다.
+2. **메인 스택과 함께 (env 플래그)** — `AI_REPO_ELK_ENABLED=true`를 주면 메인 `k8s-local-up.sh`/`k8s-local-down.sh`가 ELK도 함께 기동/정리한다. 기본값은 off라 아무 설정 없이 실행하면 PLG만 뜬다.
+
+```bash
+AI_REPO_ELK_ENABLED=true ./scripts/k8s-local-up.sh    # PLG + ELK 함께 기동
+AI_REPO_ELK_ENABLED=true ./scripts/k8s-local-down.sh  # PLG + ELK 함께 정리
+./scripts/k8s-local-up.sh                             # (기본) PLG만 — ELK off
+```
+
+> ELK는 리소스 부담(ES 힙 1g+)이 크므로 **기본 off**로 두고 학습할 때만 켜는 것을 권장한다.
+
+### 로그 수집 범위 (autodiscover)
+
+Filebeat는 `paths` glob 대신 **kubernetes autodiscover**로 라벨 `app=ai-repo` 파드의 컨테이너 로그만 수집한다. (파일명이 `<pod>_<namespace>_<container>.log` 형식이라 `*ai-repo*` glob은 네임스페이스명 `ai-repo`까지 매칭해 alloy/loki 등 타 파드 로그가 섞이므로 사용하지 않는다.) 덕분에 Logstash grok은 Spring Boot 로그만 파싱한다.
+
 ## 접속 정보 (URL · 인증)
 
 | 서비스 | URL | 인증 |

@@ -44,4 +44,14 @@ cat <<'EOF'
   Prometheus  http://localhost:30990          (targets: /targets)
   Grafana     http://localhost:30300          (익명 Admin, 대시보드: ai-repo Overview)
   Loki        Grafana Explore(Loki)에서 LogQL — Alloy가 파드 로그 수집
+
+  (opt-in) ELK  AI_REPO_ELK_ENABLED=true 로 함께 기동 — Kibana http://localhost:30561
 EOF
+
+# opt-in ELK 로깅 스택 — AI_REPO_ELK_ENABLED=true 일 때만 함께 기동한다 (기본 off).
+# 독립 제어는 scripts/elk-local-up.sh / elk-local-down.sh 로도 가능하다.
+if [[ "${AI_REPO_ELK_ENABLED:-false}" == "true" ]]; then
+  echo ""
+  echo "==> (opt-in) ELK 로깅 스택 기동 — AI_REPO_ELK_ENABLED=true"
+  "$(dirname "$0")/elk-local-up.sh"
+fi
