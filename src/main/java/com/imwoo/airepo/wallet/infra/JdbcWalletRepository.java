@@ -163,8 +163,8 @@ public class JdbcWalletRepository implements
                 """
                         select ae.audit_event_id, ae.operation_id, ae.type, ae.occurred_at, ae.detail
                         from audit_events ae
-                        where ae.operation_id in (
-                            select operation_id from ledger_entries where wallet_id = ?
+                        where ae.audit_event_id in (
+                            select audit_event_id from audit_event_wallets where wallet_id = ?
                         )
                         """,
                 auditEventMapper(),
@@ -1226,7 +1226,8 @@ public class JdbcWalletRepository implements
                     operationId,
                     AuditEventType.CHARGE_COMPLETED,
                     occurredAt,
-                    "Charge completed for wallet " + walletId
+                    "Charge completed for wallet " + walletId,
+                    List.of(walletId)
             );
             insertOperationStepLog(
                     operationId,
@@ -1365,7 +1366,8 @@ public class JdbcWalletRepository implements
                     operationId,
                     AuditEventType.TRANSFER_COMPLETED,
                     occurredAt,
-                    "Transfer completed from " + sourceWalletId + " to " + targetWalletId
+                    "Transfer completed from " + sourceWalletId + " to " + targetWalletId,
+                    List.of(sourceWalletId, targetWalletId)
             );
             insertOperationStepLog(
                     operationId,
@@ -1545,7 +1547,14 @@ public class JdbcWalletRepository implements
         );
     }
 
-    private void insertAuditEvent(String auditEventId, String operationId, AuditEventType type, Instant occurredAt, String detail) {
+    private void insertAuditEvent(
+            String auditEventId,
+            String operationId,
+            AuditEventType type,
+            Instant occurredAt,
+            String detail,
+            List<String> walletIds
+    ) {
         jdbcTemplate.update(
                 """
                         insert into audit_events (audit_event_id, operation_id, type, occurred_at, detail)
@@ -1557,6 +1566,16 @@ public class JdbcWalletRepository implements
                 timestamp(occurredAt),
                 detail
         );
+        for (String walletId : walletIds) {
+            jdbcTemplate.update(
+                    """
+                            insert into audit_event_wallets (audit_event_id, wallet_id)
+                            values (?, ?)
+                            """,
+                    auditEventId,
+                    walletId
+            );
+        }
     }
 
     private void insertOperation(WalletOperationRecord record) {

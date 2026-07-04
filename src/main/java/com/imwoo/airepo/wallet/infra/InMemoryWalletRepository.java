@@ -52,7 +52,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
-import java.util.stream.Collectors;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -79,6 +78,7 @@ public class InMemoryWalletRepository implements
     private final Map<String, List<TransactionHistoryItem>> transactions = new HashMap<>();
     private final Map<String, List<LedgerEntry>> ledgerEntries = new HashMap<>();
     private final List<AuditEvent> auditEvents = new ArrayList<>();
+    private final Map<String, List<String>> auditEventIdsByWallet = new HashMap<>();
     private final Map<String, List<OperationStepLog>> operationStepLogs = new HashMap<>();
     private final Map<String, List<OperationOutboxEvent>> operationOutboxEvents = new HashMap<>();
     private final Map<String, List<OperationOutboxRequeueAudit>> outboxRequeueAudits = new HashMap<>();
@@ -207,11 +207,9 @@ public class InMemoryWalletRepository implements
 
     @Override
     public synchronized List<AuditEvent> findAuditEventsByWallet(String walletId) {
-        Set<String> operationIds = ledgerEntries.getOrDefault(walletId, List.of()).stream()
-                .map(LedgerEntry::operationId)
-                .collect(Collectors.toSet());
+        Set<String> auditEventIds = Set.copyOf(auditEventIdsByWallet.getOrDefault(walletId, List.of()));
         return auditEvents.stream()
-                .filter(auditEvent -> operationIds.contains(auditEvent.operationId()))
+                .filter(auditEvent -> auditEventIds.contains(auditEvent.auditEventId()))
                 .toList();
     }
 
@@ -839,12 +837,14 @@ public class InMemoryWalletRepository implements
         );
         ledgerEntries.computeIfAbsent(walletId, ignored -> new ArrayList<>()).add(ledgerEntry);
         addStepLog(operationId, OperationStep.LEDGER_RECORDED, occurredAt, "Ledger entry recorded for wallet " + walletId);
-        auditEvents.add(auditEvent(
+        AuditEvent chargeAuditEvent = auditEvent(
                 operationId,
                 AuditEventType.CHARGE_COMPLETED,
                 occurredAt,
                 "Charge completed for wallet " + walletId
-        ));
+        );
+        auditEvents.add(chargeAuditEvent);
+        mapAuditEventToWallets(chargeAuditEvent.auditEventId(), List.of(walletId));
         addStepLog(operationId, OperationStep.AUDIT_RECORDED, occurredAt, "Audit event recorded for operation " + operationId);
 
         WalletOperationResult result = new WalletOperationResult(
@@ -939,12 +939,14 @@ public class InMemoryWalletRepository implements
         ledgerEntries.computeIfAbsent(sourceWalletId, ignored -> new ArrayList<>()).add(sourceLedgerEntry);
         ledgerEntries.computeIfAbsent(targetWalletId, ignored -> new ArrayList<>()).add(targetLedgerEntry);
         addStepLog(operationId, OperationStep.LEDGER_RECORDED, occurredAt, "Ledger entries recorded for transfer " + sourceWalletId + " to " + targetWalletId);
-        auditEvents.add(auditEvent(
+        AuditEvent transferAuditEvent = auditEvent(
                 operationId,
                 AuditEventType.TRANSFER_COMPLETED,
                 occurredAt,
                 "Transfer completed from " + sourceWalletId + " to " + targetWalletId
-        ));
+        );
+        auditEvents.add(transferAuditEvent);
+        mapAuditEventToWallets(transferAuditEvent.auditEventId(), List.of(sourceWalletId, targetWalletId));
         addStepLog(operationId, OperationStep.AUDIT_RECORDED, occurredAt, "Audit event recorded for operation " + operationId);
 
         WalletOperationResult result = new WalletOperationResult(
@@ -1152,6 +1154,12 @@ public class InMemoryWalletRepository implements
                 balanceAfter,
                 description
         );
+    }
+
+    private void mapAuditEventToWallets(String auditEventId, List<String> walletIds) {
+        for (String walletId : walletIds) {
+            auditEventIdsByWallet.computeIfAbsent(walletId, ignored -> new ArrayList<>()).add(auditEventId);
+        }
     }
 
     private AuditEvent auditEvent(
