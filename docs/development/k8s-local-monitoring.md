@@ -18,7 +18,7 @@ Docker Desktop 내장 Kubernetes에 ai-repo 전체 스택(앱 + Postgres + Prome
 
 | 서비스 | URL | 계정 / 인증 |
 | --- | --- | --- |
-| 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-operator-token`(조회) / `X-Admin-Token: local-ops-token`(변경) + `X-Operator-Id: <이름>` |
+| 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-k8s-ops-operator-token`(조회) / `X-Admin-Token: local-k8s-ops-admin-token`(변경) + `X-Operator-Id: <이름>`. k8s 배포는 기본 자격증명 fail-fast(ADR-0062) 때문에 비-기본 값을 쓰며, 고정값 출처는 `deploy/k8s/secrets.yaml`(Secret `ai-repo-credentials`) |
 | 앱 health | http://localhost:30080/actuator/health | 없음 |
 | 앱 메트릭 | http://localhost:30080/actuator/prometheus | 없음 |
 | Prometheus | http://localhost:30990 | 없음 |
@@ -27,10 +27,10 @@ Docker Desktop 내장 Kubernetes에 ai-repo 전체 스택(앱 + Postgres + Prome
 | Grafana 대시보드 (ai-repo Overview) | http://localhost:30300/d/ai-repo-overview | 익명 Admin |
 | Grafana Explore (Loki 로그 검색) | http://localhost:30300/explore | 익명 Admin |
 | Loki API | 클러스터 내부 http://loki:3100 — 외부는 port-forward 후 http://localhost:3100 | 없음 |
-| Postgres | 클러스터 내부 postgres:5432 — 외부는 port-forward 후 localhost:5432 | 사용자 `ai_repo` / 비밀번호 `ai_repo` / DB `ai_repo` |
+| Postgres | 클러스터 내부 postgres:5432 — 외부는 port-forward 후 localhost:5432 | 사용자 `ai_repo` / 비밀번호 `ai_repo` / DB `ai_repo` — 고정값 출처는 `deploy/k8s/secrets.yaml`(Secret `ai-repo-credentials`) |
 | ArgoCD UI (선택) | port-forward 후 https://localhost:8443 | `admin` / 초기 비밀번호는 아래 명령으로 조회 |
 
-앱 운영 토큰은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override할 수 있다(`deploy/k8s/app.yaml`). ArgoCD 설치/GitOps 모드는 `docs/development/ci-cd-gitops.md` 참고.
+DB 자격증명·운영 토큰(`AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN`)·JWT 서명 비밀(`AI_REPO_AUTH_JWT_SECRET`)은 평문 env가 아니라 Secret `ai-repo-credentials`(`deploy/k8s/secrets.yaml`)에서 `secretKeyRef`로 주입된다. 값을 바꾸려면 `secrets.yaml`을 수정한다(로컬 전용 고정값이며, 원격에서는 별도 주입). ArgoCD 설치/GitOps 모드는 `docs/development/ci-cd-gitops.md` 참고.
 
 ## 전체 명령어 모음 (리포 루트 기준, 복사-실행)
 
@@ -51,7 +51,7 @@ curl -s -X POST http://localhost:30080/api/v1/wallets/wallet-001/charges \
 
 # 운영 API 예시 — relay health (operator 토큰)
 curl -s http://localhost:30080/api/v1/outbox-relay-runs/health \
-  -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Token: local-k8s-ops-operator-token" \
   -H "X-Operator-Id: local-dev"
 
 # ── Prometheus ───────────────────────────────────────────────────
@@ -92,7 +92,8 @@ kubectl --context docker-desktop -n ai-repo get events --sort-by=.lastTimestamp
 deploy/k8s/
 ├── kustomization.yaml
 ├── namespace.yaml          # ai-repo 네임스페이스
-├── postgres.yaml           # postgres:17-alpine + PVC(1Gi), compose.yml과 동일 자격증명
+├── secrets.yaml            # Secret ai-repo-credentials — DB·운영 토큰·JWT 로컬 고정값(원격은 별도 주입)
+├── postgres.yaml           # postgres:17-alpine + PVC(1Gi), 자격증명은 secrets.yaml에서 secretKeyRef 주입
 ├── app.yaml                # ai-repo:local 이미지(imagePullPolicy: Never), NodePort 30080
 ├── prometheus.yaml         # /actuator/prometheus 15s 스크랩, 3d 보존, NodePort 30990
 ├── loki.yaml               # Loki 3.5 single binary, filesystem 저장, 72h 보존
@@ -104,7 +105,7 @@ deploy/k8s/
 - **메트릭 노출**: `micrometer-registry-prometheus` + `management.endpoints.web.exposure.include: health,prometheus`. HTTP 지연시간 분위수(p95/p99)를 위해 `percentiles-histogram.http.server.requests: true`.
 - **대시보드 패널**: HTTP 요청률/오류율/p95·p99, 지갑 거래 요청률(charge·transfer·payment POST), JVM Heap/GC, Hikari 커넥션, CPU, up + Outbox 릴레이/컨슈머 row(아래 커스텀 지표).
 - **이미지 태그**: 로컬은 `ai-repo:local`. GitOps 배포는 `ghcr.io/imwoo94/ai-repo:{version}-{sha8}` — `docs/development/ci-cd-gitops.md` 참고.
-- **보안 주의**: 익명 Grafana Admin, 평문 DB 자격증명은 로컬 학습 환경 전용이다. 원격 클러스터에 그대로 쓰지 않는다.
+- **보안 주의**: 자격증명은 Secret `ai-repo-credentials`(`deploy/k8s/secrets.yaml`)로 분리했으나 로컬 학습 편의를 위해 평문으로 커밋한 고정값이다. 익명 Grafana Admin과 함께 로컬 학습 환경 전용이며, 원격 클러스터에서는 Secret을 별도 주입(External Secrets/SealedSecrets 등)한다.
 
 ## Outbox 커스텀 지표
 

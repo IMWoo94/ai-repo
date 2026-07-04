@@ -145,7 +145,7 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 
 | 서비스 | URL | 계정 |
 | --- | --- | --- |
-| 앱 API | http://localhost:30080 | 운영 API 헤더: `X-Operator-Token: local-operator-token` / `X-Admin-Token: local-ops-token` |
+| 앱 API | http://localhost:30080 | 운영 API 헤더: `X-Operator-Token: local-k8s-ops-operator-token` / `X-Admin-Token: local-k8s-ops-admin-token` (`deploy/k8s/secrets.yaml`, ADR-0062 fail-fast로 비-기본 값) |
 | Grafana 대시보드 | http://localhost:30300/d/ai-repo-overview | 익명 Admin (로그인 불필요) |
 | Grafana 로그 검색 | http://localhost:30300/explore | 익명 Admin (로그인 불필요) |
 | Prometheus | http://localhost:30990 | 없음 |

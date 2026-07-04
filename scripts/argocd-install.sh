@@ -4,11 +4,13 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 CONTEXT=docker-desktop
+# 재현성: 설치 매니페스트는 고정 버전을 사용한다(stable 태그는 이동하므로 금지).
+ARGOCD_VERSION=v3.4.4
 
-echo "==> ArgoCD 설치"
+echo "==> ArgoCD 설치 (${ARGOCD_VERSION})"
 kubectl --context "$CONTEXT" create namespace argocd --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
 # --server-side: ArgoCD CRD가 client-side apply 주석 크기 제한(256KiB)을 초과하므로 필수
-kubectl --context "$CONTEXT" apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+kubectl --context "$CONTEXT" apply -n argocd --server-side --force-conflicts -f "https://raw.githubusercontent.com/argoproj/argo-cd/${ARGOCD_VERSION}/manifests/install.yaml"
 
 echo "==> ArgoCD 서버 대기"
 kubectl --context "$CONTEXT" -n argocd rollout status deployment/argocd-server --timeout=300s
