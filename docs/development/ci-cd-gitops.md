@@ -35,8 +35,10 @@ scripts/argocd-install.sh      # 로컬 ArgoCD 설치 + Application 등록
 
 ## ArgoCD 설치 / 접속
 
+설치 매니페스트는 재현성을 위해 고정 버전(현재 `v3.4.4`)을 apply한다. `stable` 태그는 릴리스마다 이동하므로 쓰지 않는다. 버전 갱신은 `scripts/argocd-install.sh`의 `ARGOCD_VERSION`만 바꾼다.
+
 ```bash
-./scripts/argocd-install.sh    # --server-side apply (CRD 크기 제한 때문에 필수)
+./scripts/argocd-install.sh    # ArgoCD v3.4.4, --server-side apply (CRD 크기 제한 때문에 필수)
 
 # UI
 kubectl -n argocd port-forward svc/argocd-server 8443:443

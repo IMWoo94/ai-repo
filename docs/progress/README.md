@@ -86,6 +86,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0068 | [Audit Events and Operation Log Authorization](0068-audit-events-authorization.md) | 완료 |
 | 0069 | [로컬 k8s 배포와 관측 스택](0069-k8s-deploy-and-observability.md) | 완료 |
 | 0070 | [Audit Event–Wallet Mapping 명시화](0070-audit-event-wallet-mapping.md) | 완료 |
+| 0071 | [k8s 로컬 스크립트 하드닝](0071-k8s-script-hardening.md) | 완료 |
 
 ## 현재 기준선
 

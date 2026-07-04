@@ -124,6 +124,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/110
 - `0070-audit-event-wallet-mapping.md`: audit-event↔wallet 매핑 명시화(ledger 조인 제거) 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/117
+- `0071-k8s-script-hardening.md`: k8s 로컬 스크립트 하드닝(loki/alloy 대기 + ArgoCD 버전 고정) 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/120
 
 ## GitHub CLI로 생성
 
