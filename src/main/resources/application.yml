@@ -35,11 +35,14 @@ ai-repo:
   test-fixtures:
     enabled: ${AI_REPO_TEST_FIXTURES_ENABLED:false}
   outbox:
+    consumer:
+      broker-token: ${AI_REPO_OUTBOX_CONSUMER_BROKER_TOKEN:local-broker-token}
     publisher:
       type: ${AI_REPO_OUTBOX_PUBLISHER_TYPE:memory}
       http:
         endpoint: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT:http://127.0.0.1:18080/outbox-events}
         timeout-ms: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_TIMEOUT_MS:3000}
+        broker-token: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_BROKER_TOKEN:local-broker-token}
   outbox-relay:
     scheduler:
       enabled: ${AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED:false}

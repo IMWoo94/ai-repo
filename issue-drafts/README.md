@@ -134,6 +134,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/122
 - `0076-jdbc-persistence-adapter-decomposition.md`: JdbcWalletRepository bounded-context 분해와 ArchUnit 레이어 규칙 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/125
+- `0074-broker-endpoint-authentication.md`: `/internal/broker/outbox-events` shared secret 인증과 네트워크 전제 명시 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/123
 
 ## GitHub CLI로 생성
 

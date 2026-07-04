@@ -72,7 +72,8 @@ class HttpOutboxPublishConsumeLoopTest {
                 relayRepository,
                 new HttpOperationOutboxPublisher(
                         "http://127.0.0.1:%d/internal/broker/outbox-events".formatted(port),
-                        3000
+                        3000,
+                        "local-broker-token"
                 )
         );
 

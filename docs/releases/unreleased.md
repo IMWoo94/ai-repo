@@ -42,6 +42,7 @@
 - 운영 API 경로 목록 drift 방지 테스트 — `SecurityConfig`와 `AdminApiPathMatcher` 두 상수 목록이 같은 운영 API root 집합을 다루는지 양방향 검증(불일치 시 누락 경로 명시)
 - 배포 프로파일(`postgres`/`prod`)에서 공개된 기본 JWT secret·운영 토큰 fail-fast 확장(`JwtSecretGuard`/`OpsTokenGuard`)과 `deploy/k8s/app.yaml` 명시 값 주입
 - JDBC persistence adapter 분해 — `JdbcWalletRepository`를 PostgreSQL profile composite bean으로 유지하면서 wallet/ledger, outbox relay, outbox consumer, operational alert, admin audit SQL을 context별 package-private adapter로 분리하고 ArchUnit 레이어 규칙을 추가
+- `POST /internal/broker/outbox-events` shared secret 헤더(`X-Broker-Token`) 인증 — 전용 SecurityFilterChain(Order 3) + 상수시간 토큰 비교로 미인증 event 주입 차단, publisher가 같은 secret 부착(#123)
 
 ## MVP 출시 판단 기준
 

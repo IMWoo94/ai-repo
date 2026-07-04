@@ -29,7 +29,8 @@ class HttpOperationOutboxPublisherContractTest {
         try (BrokerEndpoint brokerEndpoint = BrokerEndpoint.responding(202)) {
             HttpOperationOutboxPublisher publisher = new HttpOperationOutboxPublisher(
                     brokerEndpoint.endpoint(),
-                    3000
+                    3000,
+                    "contract-broker-token"
             );
 
             publisher.publish(outboxEvent());
@@ -37,6 +38,7 @@ class HttpOperationOutboxPublisherContractTest {
             assertThat(brokerEndpoint.method()).isEqualTo("POST");
             assertThat(brokerEndpoint.path()).isEqualTo("/outbox-events");
             assertThat(brokerEndpoint.header("Content-Type")).isEqualTo("application/json");
+            assertThat(brokerEndpoint.header("X-Broker-Token")).isEqualTo("contract-broker-token");
             assertThat(brokerEndpoint.header("X-Outbox-Event-Id")).isEqualTo("outbox-001");
             assertThat(brokerEndpoint.header("X-Idempotency-Key")).isEqualTo("outbox-001");
             assertThat(brokerEndpoint.header("X-Event-Schema-Version")).isEqualTo("1");
@@ -59,7 +61,8 @@ class HttpOperationOutboxPublisherContractTest {
         try (BrokerEndpoint brokerEndpoint = BrokerEndpoint.responding(503)) {
             HttpOperationOutboxPublisher publisher = new HttpOperationOutboxPublisher(
                     brokerEndpoint.endpoint(),
-                    3000
+                    3000,
+                    "contract-broker-token"
             );
 
             assertThatThrownBy(() -> publisher.publish(outboxEvent()))
@@ -84,7 +87,7 @@ class HttpOperationOutboxPublisherContractTest {
             OperationOutboxRelayService relayService = new OperationOutboxRelayService(
                     Clock.fixed(Instant.parse("2026-05-01T00:01:00Z"), ZoneOffset.UTC),
                     repository,
-                    new HttpOperationOutboxPublisher(brokerEndpoint.endpoint(), 3000)
+                    new HttpOperationOutboxPublisher(brokerEndpoint.endpoint(), 3000, "contract-broker-token")
             );
 
             OperationOutboxPublishBatchResult result = relayService.publishReadyEvents(10);
@@ -167,6 +170,7 @@ class HttpOperationOutboxPublisherContractTest {
                     exchange.getRequestMethod(),
                     exchange.getRequestURI().getPath(),
                     exchange.getRequestHeaders().getFirst("Content-Type"),
+                    exchange.getRequestHeaders().getFirst("X-Broker-Token"),
                     exchange.getRequestHeaders().getFirst("X-Outbox-Event-Id"),
                     exchange.getRequestHeaders().getFirst("X-Idempotency-Key"),
                     exchange.getRequestHeaders().getFirst("X-Event-Schema-Version"),
@@ -184,6 +188,7 @@ class HttpOperationOutboxPublisherContractTest {
             String method,
             String path,
             String contentType,
+            String brokerToken,
             String outboxEventId,
             String idempotencyKey,
             String eventSchemaVersion,
@@ -194,6 +199,9 @@ class HttpOperationOutboxPublisherContractTest {
         String header(String name) {
             if ("Content-Type".equals(name)) {
                 return contentType;
+            }
+            if ("X-Broker-Token".equals(name)) {
+                return brokerToken;
             }
             if ("X-Outbox-Event-Id".equals(name)) {
                 return outboxEventId;
