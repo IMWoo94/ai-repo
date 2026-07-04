@@ -4,6 +4,7 @@ import com.imwoo.airepo.wallet.domain.AuditEvent;
 import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
+import com.imwoo.airepo.wallet.domain.WalletAccount;
 import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Service;
@@ -23,10 +24,10 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     }
 
     @Override
-    public List<LedgerEntry> getLedgerEntries(String walletId) {
+    public List<LedgerEntry> getLedgerEntries(String memberId, String walletId) {
         validateWalletId(walletId);
-        String queryableWalletId = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId).walletId();
-        return walletLedgerQueryRepository.findLedgerEntries(queryableWalletId).stream()
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
+        return walletLedgerQueryRepository.findLedgerEntries(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(LedgerEntry::occurredAt)
                         .thenComparing(LedgerEntry::ledgerEntryId)
                         .reversed())
@@ -36,6 +37,17 @@ public class InMemoryWalletLedgerQueryService implements WalletLedgerQueryServic
     @Override
     public List<AuditEvent> getAuditEvents() {
         return walletLedgerQueryRepository.findAuditEvents().stream()
+                .sorted(Comparator.comparing(AuditEvent::occurredAt)
+                        .thenComparing(AuditEvent::auditEventId)
+                        .reversed())
+                .toList();
+    }
+
+    @Override
+    public List<AuditEvent> getAuditEvents(String memberId, String walletId) {
+        validateWalletId(walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
+        return walletLedgerQueryRepository.findAuditEventsByWallet(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(AuditEvent::occurredAt)
                         .thenComparing(AuditEvent::auditEventId)
                         .reversed())

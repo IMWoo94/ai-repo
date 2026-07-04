@@ -81,11 +81,14 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0063 | [Operational Alert Suppression and Pruning](0063-operational-alert-suppression-pruning.md) | 완료 |
 | 0064 | [Slack Webhook Operational Alert Publisher](0064-slack-webhook-operational-alert-publisher.md) | 완료 |
 | 0065 | [Admin API Path Matching Hardening](0065-admin-api-path-matching-hardening.md) | 완료 |
+| 0066 | [End-User JWT Auth and Wallet Ownership](0066-enduser-jwt-auth-wallet-ownership.md) | 완료 |
+| 0067 | [Frontend Login and Bearer Auth](0067-frontend-login-bearer-auth.md) | 완료 |
+| 0068 | [Audit Events and Operation Log Authorization](0068-audit-events-authorization.md) | 완료 |
 | 0069 | [로컬 k8s 배포와 관측 스택](0069-k8s-deploy-and-observability.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: 로컬 k8s 배포와 관측 스택
+- 최신 완료 기능: Audit Events and Operation Log Authorization
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결
+- 아직 미완료: JWT 만료 후 갱신 정책, Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결

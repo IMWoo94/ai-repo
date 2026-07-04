@@ -24,6 +24,7 @@ class InMemoryWalletCommandServiceTest {
     @Test
     void chargeIncreasesBalanceAndRecordsTransaction() {
         WalletCommandResult result = service.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
         );
@@ -41,8 +42,8 @@ class InMemoryWalletCommandServiceTest {
     void sameChargeIdempotencyKeyReturnsExistingResultWithoutIncreasingBalanceAgain() {
         WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전");
 
-        WalletCommandResult first = service.charge("wallet-001", command);
-        WalletCommandResult second = service.charge("wallet-001", command);
+        WalletCommandResult first = service.charge("member-001", "wallet-001", command);
+        WalletCommandResult second = service.charge("member-001", "wallet-001", command);
 
         assertThat(first.created()).isTrue();
         assertThat(second.created()).isFalse();
@@ -52,9 +53,10 @@ class InMemoryWalletCommandServiceTest {
 
     @Test
     void sameIdempotencyKeyWithDifferentChargeRequestFails() {
-        service.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        service.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
 
         assertThatThrownBy(() -> service.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("6000"), "charge-001", "테스트 충전")
         ))
@@ -65,6 +67,7 @@ class InMemoryWalletCommandServiceTest {
     @Test
     void transferMovesMoneyBetweenWalletsAndRecordsTransactions() {
         WalletCommandResult result = service.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "transfer-001", "테스트 송금")
         );
@@ -84,6 +87,7 @@ class InMemoryWalletCommandServiceTest {
     @Test
     void transferRejectsInsufficientBalance() {
         assertThatThrownBy(() -> service.transfer(
+                "member-002",
                 "wallet-002",
                 new WalletTransferCommand("wallet-001", money("30001"), "transfer-001", "테스트 송금")
         ))
@@ -94,6 +98,7 @@ class InMemoryWalletCommandServiceTest {
     @Test
     void transferRejectsSameSourceAndTargetWallet() {
         assertThatThrownBy(() -> service.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-001", money("1000"), "transfer-001", "테스트 송금")
         ))
@@ -102,8 +107,29 @@ class InMemoryWalletCommandServiceTest {
     }
 
     @Test
+    void chargeRejectsWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> service.charge(
+                "member-002",
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
+        ))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
+    @Test
+    void transferRejectsWhenMemberDoesNotOwnSourceWallet() {
+        assertThatThrownBy(() -> service.transfer(
+                "member-002",
+                "wallet-001",
+                new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
+        ))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
+    @Test
     void chargeRejectsZeroAmount() {
         assertThatThrownBy(() -> service.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("0"), "charge-001", "테스트 충전")
         ))
@@ -114,6 +140,7 @@ class InMemoryWalletCommandServiceTest {
     @Test
     void chargeRejectsUnsupportedCurrency() {
         assertThatThrownBy(() -> service.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(new Money(new BigDecimal("1000"), "USD"), "charge-001", "테스트 충전")
         ))

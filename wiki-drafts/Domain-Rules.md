@@ -442,3 +442,14 @@
 - approve/reject/execute는 DB row lock과 update count 검증으로 하나의 상태 전이만 성공해야 한다.
 - 인증/인가는 operator/admin token 기반이며, 실제 로그인 identity 연결은 후속 작업으로 남긴다.
 - 기준 결정은 ADR-0019를 따른다.
+
+### End-User JWT Auth와 Wallet Ownership 구현 기준
+
+- 엔드유저는 `POST /api/v1/auth/tokens`로 활성 회원 memberId 기반 HS256 JWT를 발급받는다. 미존재/비활성 회원은 404/409다.
+- `/api/v1/wallets/**`는 유효한 JWT가 있어야 접근 가능하며, 없으면 401이다.
+- 인증 회원은 본인 소유 지갑에만 충전, 송금, 잔액 조회, 거래내역 조회, 원장(ledger-entries) 조회를 수행한다.
+- 타인 지갑 접근은 `WalletAccessDeniedException` → HTTP 403 `WALLET_ACCESS_DENIED`다.
+- transfer는 출금(source) 지갑 소유권만 검사하고, 입금 대상 지갑은 제한하지 않는다.
+- 소유권은 command/query/ledger 서비스 계층에서 `WalletAccessPolicy.requireOwnership`로 강제한다(HTTP 경계가 아닌 use-case 계층).
+- 비소유자 응답은 403이며, "없는 지갑(404)"과 구별 가능한 점은 수용한 tradeoff다.
+- 기준 결정은 ADR-0056을 따른다.

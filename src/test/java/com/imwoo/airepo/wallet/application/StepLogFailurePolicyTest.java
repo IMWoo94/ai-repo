@@ -22,6 +22,7 @@ class StepLogFailurePolicyTest {
     @Test
     void insufficientBalanceTransferDoesNotLeaveStepLogOrOutboxEvent() {
         assertThatThrownBy(() -> commandService.transfer(
+                "member-002",
                 "wallet-002",
                 new WalletTransferCommand("wallet-001", money("30001"), "transfer-fail-001", "잔액 부족 송금")
         )).isInstanceOf(InsufficientBalanceException.class);
@@ -33,6 +34,7 @@ class StepLogFailurePolicyTest {
     @Test
     void zeroAmountChargeDoesNotLeaveStepLogOrOutboxEvent() {
         assertThatThrownBy(() -> commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("0"), "charge-fail-zero", "0원 충전")
         )).isInstanceOf(InvalidWalletOperationException.class);
@@ -44,6 +46,7 @@ class StepLogFailurePolicyTest {
     @Test
     void unsupportedCurrencyChargeDoesNotLeaveStepLogOrOutboxEvent() {
         assertThatThrownBy(() -> commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(new Money(new BigDecimal("1000"), "USD"), "charge-fail-usd", "USD 충전")
         )).isInstanceOf(InvalidWalletOperationException.class);
@@ -55,6 +58,7 @@ class StepLogFailurePolicyTest {
     @Test
     void idempotencyConflictRetryDoesNotLeaveAdditionalStepLogOrOutboxEvent() {
         commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "charge-conflict", "정상 충전")
         );
@@ -62,6 +66,7 @@ class StepLogFailurePolicyTest {
         long firstOutboxEventCount = allStoredOutboxEventCount();
 
         assertThatThrownBy(() -> commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("6000"), "charge-conflict", "다른 금액")
         )).isInstanceOf(IdempotencyKeyConflictException.class);

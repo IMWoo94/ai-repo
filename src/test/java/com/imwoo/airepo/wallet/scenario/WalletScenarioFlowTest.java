@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -24,6 +25,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @Tag("scenario")
 @SpringBootTest(classes = {AiRepoApplication.class, WalletScenarioFlowTest.FixedClockConfig.class})
@@ -43,9 +45,13 @@ class WalletScenarioFlowTest {
         this.operationOutboxRelayService = operationOutboxRelayService;
     }
 
+    private static RequestPostProcessor member(String memberId) {
+        return jwt().jwt(token -> token.subject(memberId));
+    }
+
     @Test
     void moneyMovementScenarioCreatesUserLedgerAuditStepAndOutboxEvidence() throws Exception {
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.walletId").value("wallet-001"))
                 .andExpect(jsonPath("$.money.amount").value(125000));
@@ -60,6 +66,7 @@ class WalletScenarioFlowTest {
                 """;
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(chargeRequest))
                 .andExpect(status().isCreated())
@@ -69,6 +76,7 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$.balance.money.amount").value(130000));
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(chargeRequest))
                 .andExpect(status().isOk())
@@ -76,6 +84,7 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$.balance.money.amount").value(130000));
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/transfers")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -92,26 +101,32 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$.direction").value("DEBIT"))
                 .andExpect(jsonPath("$.balance.money.amount").value(105000));
 
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.money.amount").value(105000));
-        mockMvc.perform(get("/api/v1/wallets/wallet-002/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-002/balance").with(member("member-002")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.money.amount").value(55000));
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        mockMvc.perform(get("/api/v1/audit-events"))
+        mockMvc.perform(get("/api/v1/audit-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)))
                 .andExpect(jsonPath("$[0].type").value("TRANSFER_COMPLETED"))
                 .andExpect(jsonPath("$[1].type").value("CHARGE_COMPLETED"));
-        mockMvc.perform(get("/api/v1/operations/op-001/step-logs"))
+        mockMvc.perform(get("/api/v1/operations/op-001/step-logs")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(6)))
                 .andExpect(jsonPath("$[0].step").value("BALANCE_LOCKED"))
                 .andExpect(jsonPath("$[5].step").value("IDEMPOTENCY_RECORDED"));
-        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-002"))
@@ -121,6 +136,7 @@ class WalletScenarioFlowTest {
     @Test
     void outboxOperationsScenarioMovesManualReviewEventBackToPendingWithAuditTrail() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -186,7 +202,9 @@ class WalletScenarioFlowTest {
                 .andExpect(jsonPath("$[0].operator").value("scenario-executor"))
                 .andExpect(jsonPath("$[0].reason").value("broker recovered in scenario"));
 
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].status").value("PENDING"))
@@ -196,6 +214,7 @@ class WalletScenarioFlowTest {
     @Test
     void outboxPublishScenarioMovesReadyEventToPublished() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -215,7 +234,9 @@ class WalletScenarioFlowTest {
                     assertThat(result.failedCount()).isZero();
                 });
 
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header(AdminAuthorizationGuard.OPERATOR_TOKEN_HEADER, "local-operator-token")
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].outboxEventId").value("outbox-001"))

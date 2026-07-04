@@ -51,6 +51,8 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Repository;
 
@@ -201,6 +203,16 @@ public class InMemoryWalletRepository implements
     @Override
     public synchronized List<AuditEvent> findAuditEvents() {
         return List.copyOf(auditEvents);
+    }
+
+    @Override
+    public synchronized List<AuditEvent> findAuditEventsByWallet(String walletId) {
+        Set<String> operationIds = ledgerEntries.getOrDefault(walletId, List.of()).stream()
+                .map(LedgerEntry::operationId)
+                .collect(Collectors.toSet());
+        return auditEvents.stream()
+                .filter(auditEvent -> operationIds.contains(auditEvent.operationId()))
+                .toList();
     }
 
     @Override

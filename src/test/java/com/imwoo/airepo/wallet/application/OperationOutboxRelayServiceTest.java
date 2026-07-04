@@ -31,8 +31,9 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void returnsPendingEventsWithLimit() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
         );
@@ -53,8 +54,9 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void claimsPendingEventsAsProcessingWithLimit() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
         );
@@ -77,7 +79,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void marksEventPublished() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
 
         relayService.markPublished("outbox-001");
 
@@ -97,7 +99,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void marksEventFailedWithAttemptCountAndLastError() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
 
         relayService.markFailed("outbox-001", "broker unavailable");
 
@@ -117,7 +119,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void claimsFailedEventOnlyAfterNextRetryAt() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
 
         assertThat(relayService.claimReadyEvents(10)).isEmpty();
@@ -140,7 +142,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void claimsProcessingEventAgainAfterLeaseExpires() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
 
         relayService.claimReadyEvents(10);
         assertThat(relayService.claimReadyEvents(10)).isEmpty();
@@ -161,7 +163,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void movesEventToManualReviewAfterMaxAttempts() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
 
         OperationOutboxRelayService secondAttemptRelayService = new OperationOutboxRelayService(
@@ -201,8 +203,9 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void publishesReadyEventsAndMarksThemPublished() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
         );
@@ -231,8 +234,9 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void marksPublishFailureAsFailedAndKeepsSuccessfulEventsPublished() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("1000"), "transfer-001", "테스트 송금")
         );
@@ -270,7 +274,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void rejectsStalePublisherAfterLeaseRecovery() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         OperationOutboxPublisher slowPublisher = outboxEvent -> {
             OperationOutboxRelayService laterRelayService = new OperationOutboxRelayService(
                     Clock.fixed(Instant.parse("2026-05-01T00:02:00Z"), ZoneOffset.UTC),
@@ -304,7 +308,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void returnsAndRequeuesManualReviewEvents() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
@@ -343,7 +347,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void requestsApprovesAndExecutesManualReviewRequeue() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
@@ -385,7 +389,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void rejectsSameRequesterAndApprover() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
@@ -402,7 +406,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void rejectsManualReviewRequeueRequest() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
@@ -425,7 +429,7 @@ class OperationOutboxRelayServiceTest {
 
     @Test
     void rejectsSameRequesterAndRejector() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");
         relayService.markFailed("outbox-001", "broker unavailable");

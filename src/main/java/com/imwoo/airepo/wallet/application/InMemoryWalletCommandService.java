@@ -22,12 +22,12 @@ public class InMemoryWalletCommandService implements WalletCommandService {
     }
 
     @Override
-    public synchronized WalletCommandResult charge(String walletId, WalletChargeCommand command) {
+    public synchronized WalletCommandResult charge(String memberId, String walletId, WalletChargeCommand command) {
         validateWalletId(walletId);
         validateMoney(command.money());
         validateIdempotencyKey(command.idempotencyKey());
 
-        WalletAccount walletAccount = findOperableWallet(walletId);
+        WalletAccount walletAccount = findOperableWallet(memberId, walletId);
         String fingerprint = chargeFingerprint(walletAccount.walletId(), command);
         return resolveIdempotency(command.idempotencyKey(), fingerprint)
                 .orElseGet(() -> new WalletCommandResult(
@@ -44,7 +44,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
     }
 
     @Override
-    public synchronized WalletCommandResult transfer(String sourceWalletId, WalletTransferCommand command) {
+    public synchronized WalletCommandResult transfer(String memberId, String sourceWalletId, WalletTransferCommand command) {
         validateWalletId(sourceWalletId);
         validateWalletId(command.targetWalletId());
         validateMoney(command.money());
@@ -53,8 +53,8 @@ public class InMemoryWalletCommandService implements WalletCommandService {
             throw new InvalidWalletOperationException("sourceWalletId and targetWalletId must be different");
         }
 
-        WalletAccount sourceWallet = findOperableWallet(sourceWalletId);
-        WalletAccount targetWallet = findOperableWallet(command.targetWalletId());
+        WalletAccount sourceWallet = findOperableWallet(memberId, sourceWalletId);
+        WalletAccount targetWallet = WalletAccessPolicy.findQueryableWallet(walletCommandRepository, command.targetWalletId());
         WalletBalance sourceBalance = walletCommandRepository.findBalance(sourceWallet.walletId())
                 .orElseThrow(() -> new WalletNotFoundException(sourceWallet.walletId()));
         if (sourceBalance.money().lessThan(command.money())) {
@@ -87,8 +87,8 @@ public class InMemoryWalletCommandService implements WalletCommandService {
                 });
     }
 
-    private WalletAccount findOperableWallet(String walletId) {
-        return WalletAccessPolicy.findQueryableWallet(walletCommandRepository, walletId);
+    private WalletAccount findOperableWallet(String memberId, String walletId) {
+        return WalletAccessPolicy.findOwnedQueryableWallet(walletCommandRepository, walletId, memberId);
     }
 
     private void validateWalletId(String walletId) {

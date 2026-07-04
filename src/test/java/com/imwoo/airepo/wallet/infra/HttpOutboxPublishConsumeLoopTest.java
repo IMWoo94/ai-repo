@@ -59,6 +59,7 @@ class HttpOutboxPublishConsumeLoopTest {
     @Test
     void relayPublishesThroughHttpConsumerAndLeavesOneReceipt() {
         walletCommandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(
                         new Money(new BigDecimal("5000"), "KRW"),

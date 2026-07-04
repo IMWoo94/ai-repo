@@ -21,18 +21,18 @@ public class InMemoryWalletQueryService implements WalletQueryService {
     }
 
     @Override
-    public WalletBalance getBalance(String walletId) {
+    public WalletBalance getBalance(String memberId, String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
         WalletBalance balance = walletQueryRepository.findBalance(walletAccount.walletId())
                 .orElseThrow(() -> walletNotFound(walletId));
         return new WalletBalance(balance.walletId(), balance.money(), Instant.now(clock));
     }
 
     @Override
-    public List<TransactionHistoryItem> getTransactions(String walletId) {
+    public List<TransactionHistoryItem> getTransactions(String memberId, String walletId) {
         validateWalletId(walletId);
-        WalletAccount walletAccount = WalletAccessPolicy.findQueryableWallet(walletQueryRepository, walletId);
+        WalletAccount walletAccount = WalletAccessPolicy.findOwnedQueryableWallet(walletQueryRepository, walletId, memberId);
         return walletQueryRepository.findTransactions(walletAccount.walletId()).stream()
                 .sorted(Comparator.comparing(TransactionHistoryItem::occurredAt).reversed())
                 .toList();

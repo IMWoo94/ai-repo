@@ -2,7 +2,7 @@ package com.imwoo.airepo.wallet.application;
 
 public interface WalletCommandService {
 
-    WalletCommandResult charge(String walletId, WalletChargeCommand command);
+    WalletCommandResult charge(String memberId, String walletId, WalletChargeCommand command);
 
-    WalletCommandResult transfer(String sourceWalletId, WalletTransferCommand command);
+    WalletCommandResult transfer(String memberId, String sourceWalletId, WalletTransferCommand command);
 }
