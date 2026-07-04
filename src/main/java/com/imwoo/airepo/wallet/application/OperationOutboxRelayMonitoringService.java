@@ -18,17 +18,20 @@ public class OperationOutboxRelayMonitoringService {
     private final OperationOutboxRelayRunRepository operationOutboxRelayRunRepository;
     private final OutboxRelayHealthPolicy outboxRelayHealthPolicy;
     private final OperationalAlertService operationalAlertService;
+    private final OutboxRelayMetricsRecorder metricsRecorder;
     private final Clock clock;
 
     public OperationOutboxRelayMonitoringService(
             OperationOutboxRelayRunRepository operationOutboxRelayRunRepository,
             OutboxRelayHealthPolicy outboxRelayHealthPolicy,
             OperationalAlertService operationalAlertService,
+            OutboxRelayMetricsRecorder metricsRecorder,
             Clock clock
     ) {
         this.operationOutboxRelayRunRepository = operationOutboxRelayRunRepository;
         this.outboxRelayHealthPolicy = outboxRelayHealthPolicy;
         this.operationalAlertService = operationalAlertService;
+        this.metricsRecorder = metricsRecorder;
         this.clock = clock;
     }
 
@@ -49,6 +52,7 @@ public class OperationOutboxRelayMonitoringService {
                 result.failedCount(),
                 null
         ));
+        metricsRecorder.recordRelaySuccess(result.publishedCount(), result.failedCount());
     }
 
     public void recordFailure(Instant startedAt, Instant completedAt, int batchSize, String errorMessage) {
@@ -63,6 +67,7 @@ public class OperationOutboxRelayMonitoringService {
                 0,
                 normalizedErrorMessage(errorMessage)
         ));
+        metricsRecorder.recordRelayFailure();
     }
 
     public List<OperationOutboxRelayRun> getRecentRuns(int limit) {

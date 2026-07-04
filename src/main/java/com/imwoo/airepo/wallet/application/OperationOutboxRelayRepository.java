@@ -10,6 +10,8 @@ public interface OperationOutboxRelayRepository {
 
     List<OperationOutboxEvent> findPendingOutboxEvents(int limit);
 
+    long countPendingOutboxEvents();
+
     List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit);
 
     List<OperationOutboxRequeueAudit> findOutboxRequeueAudits(String outboxEventId);

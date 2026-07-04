@@ -37,6 +37,10 @@ public class OperationOutboxRelayService {
         return operationOutboxRelayRepository.findPendingOutboxEvents(limit);
     }
 
+    public long getPendingEventCount() {
+        return operationOutboxRelayRepository.countPendingOutboxEvents();
+    }
+
     public List<OperationOutboxEvent> getManualReviewEvents(int limit) {
         if (limit <= 0) {
             throw new InvalidWalletOperationException("limit must be positive");

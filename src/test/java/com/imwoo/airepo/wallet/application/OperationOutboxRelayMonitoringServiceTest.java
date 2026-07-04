@@ -18,6 +18,7 @@ class OperationOutboxRelayMonitoringServiceTest {
             new OutboxRelayHealthPolicy(5, 2, 3, 50, 15),
             new OperationalAlertService(repository, new OperationalAlertPolicy(15, 30), operationalAlert -> {
             }),
+            OutboxRelayMetricsRecorder.NO_OP,
             Clock.fixed(Instant.parse("2026-05-01T00:20:00Z"), ZoneOffset.UTC)
     );
 

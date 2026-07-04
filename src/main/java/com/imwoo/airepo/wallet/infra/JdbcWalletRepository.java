@@ -216,6 +216,20 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public long countPendingOutboxEvents() {
+        Long count = jdbcTemplate.queryForObject(
+                """
+                        select count(*)
+                        from operation_outbox_events
+                        where status = ?
+                        """,
+                Long.class,
+                OperationOutboxStatus.PENDING.name()
+        );
+        return count == null ? 0L : count;
+    }
+
+    @Override
     public List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit) {
         return jdbcTemplate.query(
                 """

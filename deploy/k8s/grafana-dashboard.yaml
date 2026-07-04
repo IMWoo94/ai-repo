@@ -149,6 +149,119 @@ data:
               "legendFormat": "up"
             }
           ]
+        },
+        {
+          "type": "row",
+          "title": "Outbox 릴레이 / 컨슈머",
+          "gridPos": { "h": 1, "w": 24, "x": 0, "y": 32 }
+        },
+        {
+          "type": "timeseries",
+          "title": "릴레이 실행률 (by result)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 33 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (result) (rate(ai_repo_outbox_relay_runs_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{result}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "릴레이 발행 이벤트율 (by outcome)",
+          "gridPos": { "h": 8, "w": 12, "x": 12, "y": 33 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (outcome) (rate(ai_repo_outbox_relay_published_events_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "미발행 Outbox 이벤트 (pending)",
+          "gridPos": { "h": 8, "w": 8, "x": 0, "y": 41 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "short", "min": 0 }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "ai_repo_outbox_relay_pending_events{job=\"ai-repo\"}",
+              "legendFormat": "pending"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "릴레이 헬스 (0=ok,1=warn,2=crit)",
+          "gridPos": { "h": 8, "w": 8, "x": 8, "y": 41 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "max": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "max(ai_repo_outbox_relay_health_status{job=\"ai-repo\"})",
+              "legendFormat": "relay"
+            }
+          ]
+        },
+        {
+          "type": "stat",
+          "title": "컨슈머 헬스 (0=ok,1=warn,2=crit)",
+          "gridPos": { "h": 8, "w": 8, "x": 16, "y": 41 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": {
+            "defaults": {
+              "unit": "short",
+              "min": 0,
+              "max": 2,
+              "thresholds": {
+                "mode": "absolute",
+                "steps": [
+                  { "color": "green", "value": null },
+                  { "color": "yellow", "value": 1 },
+                  { "color": "red", "value": 2 }
+                ]
+              }
+            },
+            "overrides": []
+          },
+          "targets": [
+            {
+              "expr": "max(ai_repo_outbox_consumer_health_status{job=\"ai-repo\"})",
+              "legendFormat": "consumer"
+            }
+          ]
+        },
+        {
+          "type": "timeseries",
+          "title": "컨슈머 처리율 (by outcome)",
+          "gridPos": { "h": 8, "w": 12, "x": 0, "y": 49 },
+          "datasource": { "type": "prometheus", "uid": "prometheus" },
+          "fieldConfig": { "defaults": { "unit": "ops" }, "overrides": [] },
+          "targets": [
+            {
+              "expr": "sum by (outcome) (rate(ai_repo_outbox_consumer_events_total{job=\"ai-repo\"}[5m]))",
+              "legendFormat": "{{outcome}}"
+            }
+          ]
         }
       ]
     }
