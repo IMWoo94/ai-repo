@@ -120,6 +120,8 @@
 - `0066-enduser-jwt-auth-wallet-ownership.md`: 엔드유저 JWT 인증과 지갑 소유권 강제 작업 초안
 - `0067-frontend-login-bearer-auth.md`: 프론트엔드 로그인과 Bearer 토큰 부착 작업 초안
 - `0068-audit-events-unauthenticated-exposure.md`: audit-events 미인증 전체 노출 결함 (PR #106 리뷰 후속)
+- `0069-k8s-deploy-and-observability.md`: 로컬 k8s 배포와 관측 스택(B4) 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/110
 
 ## GitHub CLI로 생성
 

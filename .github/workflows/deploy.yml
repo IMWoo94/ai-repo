@@ -1,0 +1,65 @@
+name: Deploy
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - 'docs/**'
+      - 'wiki-drafts/**'
+      - 'issue-drafts/**'
+      - 'deploy/gitops/kustomization.yaml' # CI 자체 갱신 커밋 재트리거 방지
+
+permissions:
+  contents: write
+  packages: write
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+env:
+  IMAGE: ghcr.io/imwoo94/ai-repo
+
+jobs:
+  build-push-sync:
+    name: Build, Push, Update GitOps Manifest
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Resolve image tag ({version}-{sha8})
+        id: meta
+        run: |
+          VERSION=$(sed -n "s/^version = '\(.*\)'/\1/p" build.gradle)
+          SHA8=${GITHUB_SHA:0:8}
+          echo "tag=${VERSION}-${SHA8}" >> "$GITHUB_OUTPUT"
+
+      - name: Login to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          push: true
+          tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
+
+      - name: Update GitOps manifest
+        run: |
+          sed -i "s|newTag: .*|newTag: ${{ steps.meta.outputs.tag }}|" deploy/gitops/kustomization.yaml
+          git diff --stat deploy/gitops/kustomization.yaml
+
+      - name: Commit and push manifest
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add deploy/gitops/kustomization.yaml
+          git commit -m "chore: deploy ${{ steps.meta.outputs.tag }} [skip ci]" || { echo "no change"; exit 0; }
+          git push

@@ -242,6 +242,14 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
+    public synchronized long countPendingOutboxEvents() {
+        return operationOutboxEvents.values().stream()
+                .flatMap(List::stream)
+                .filter(outboxEvent -> outboxEvent.status() == OperationOutboxStatus.PENDING)
+                .count();
+    }
+
+    @Override
     public synchronized List<OperationOutboxEvent> findManualReviewOutboxEvents(int limit) {
         return operationOutboxEvents.values().stream()
                 .flatMap(List::stream)

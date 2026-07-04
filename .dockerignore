@@ -1,0 +1,10 @@
+.git
+.gradle
+build
+frontend/node_modules
+frontend/dist
+docs
+wiki-drafts
+issue-drafts
+fintech-harness-spec
+project-skills
