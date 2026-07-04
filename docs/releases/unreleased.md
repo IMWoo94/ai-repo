@@ -40,6 +40,7 @@
 - k8s 로컬 스크립트 하드닝 — `k8s-local-up.sh`가 loki/alloy rollout까지 대기 + Loki `/ready` 스모크, `argocd-install.sh` 설치 매니페스트 버전 고정(v3.4.4)
 - `deploy/k8s` 평문 자격증명 env(DB/운영 토큰/JWT)를 `Secret ai-repo-credentials`의 `secretKeyRef`로 전환(로컬 고정값, 원격 별도 주입)
 - 운영 API 경로 목록 drift 방지 테스트 — `SecurityConfig`와 `AdminApiPathMatcher` 두 상수 목록이 같은 운영 API root 집합을 다루는지 양방향 검증(불일치 시 누락 경로 명시)
+- 배포 프로파일(`postgres`/`prod`)에서 공개된 기본 JWT secret·운영 토큰 fail-fast 확장(`JwtSecretGuard`/`OpsTokenGuard`)과 `deploy/k8s/app.yaml` 명시 값 주입
 
 ## MVP 출시 판단 기준
 

@@ -18,7 +18,7 @@ Docker Desktop 내장 Kubernetes에 ai-repo 전체 스택(앱 + Postgres + Prome
 
 | 서비스 | URL | 계정 / 인증 |
 | --- | --- | --- |
-| 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-operator-token`(조회) / `X-Admin-Token: local-ops-token`(변경) + `X-Operator-Id: <이름>`. 토큰 고정값 출처는 `deploy/k8s/secrets.yaml`(Secret `ai-repo-credentials`) |
+| 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-k8s-ops-operator-token`(조회) / `X-Admin-Token: local-k8s-ops-admin-token`(변경) + `X-Operator-Id: <이름>`. k8s 배포는 기본 자격증명 fail-fast(ADR-0062) 때문에 비-기본 값을 쓰며, 고정값 출처는 `deploy/k8s/secrets.yaml`(Secret `ai-repo-credentials`) |
 | 앱 health | http://localhost:30080/actuator/health | 없음 |
 | 앱 메트릭 | http://localhost:30080/actuator/prometheus | 없음 |
 | Prometheus | http://localhost:30990 | 없음 |
@@ -51,7 +51,7 @@ curl -s -X POST http://localhost:30080/api/v1/wallets/wallet-001/charges \
 
 # 운영 API 예시 — relay health (operator 토큰)
 curl -s http://localhost:30080/api/v1/outbox-relay-runs/health \
-  -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Token: local-k8s-ops-operator-token" \
   -H "X-Operator-Id: local-dev"
 
 # ── Prometheus ───────────────────────────────────────────────────

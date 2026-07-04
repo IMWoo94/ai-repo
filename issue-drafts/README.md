@@ -130,6 +130,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/121
 - `0075-admin-path-drift-guard.md`: SecurityConfig↔AdminApiPathMatcher 운영 API 목록 drift 방지 테스트 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/124
+- `0073-default-credential-fail-fast.md`: 배포 프로파일(postgres/prod)에서 기본 JWT secret·운영 토큰 fail-fast 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/122
 
 ## GitHub CLI로 생성
 

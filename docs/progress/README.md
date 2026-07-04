@@ -89,6 +89,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0071 | [k8s 로컬 스크립트 하드닝](0071-k8s-script-hardening.md) | 완료 |
 | 0072 | [k8s 자격증명 Secret 주입 전환](0072-k8s-secret-injection.md) | 완료 |
 | 0075 | [Admin Path Drift Guard](0075-admin-path-drift-guard.md) | 완료 |
+| 0073 | [배포 프로파일 기본 자격증명 fail-fast](0073-default-credential-fail-fast.md) | 완료 |
 
 ## 현재 기준선
 
