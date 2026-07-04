@@ -106,6 +106,7 @@
 | Operational alert suppression/pruning | 같은 alert의 짧은 시간 중복 저장을 막고 보존 기간 기준으로 삭제 | suppression 기준이 reason 문자열에 의존 |
 | Slack webhook operational alert publisher | Incoming Webhook 호환 text payload로 push channel 계약 고정 | 발행 실패 record와 재시도 정책은 후속 과제 |
 | Admin API path matching hardening | 인증·감사 필터가 공통 segment-aware matcher로 root/sub-path만 운영 API로 분류 | Spring Security matcher 목록과 완전한 단일 source of truth는 후속 과제 |
+| Audit event–wallet 매핑 명시화 | `audit_event_wallets` 매핑 테이블을 쓰기 시점에 영속화(charge 1행/transfer 2행)해 소유자 스코프 audit-events 조회의 ledger 조인 의존을 제거 | 쓰기 경로에 매핑 삽입 1~2행 추가와 정합성 책임 |
 | Wiki는 요약, ADR은 결정 | 포트폴리오 설명성과 PR 검증성 모두 확보 | Wiki 하나에 모든 결정을 몰아넣는 단순성 |
 
 ## 다음 구조 후보
