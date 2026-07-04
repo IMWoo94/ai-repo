@@ -89,4 +89,4 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 - 최신 병합 기준: `main`
 - 최신 완료 기능: Frontend Login and Bearer Auth
 - 현재 릴리스 후보: `v0.7.0`
-- 아직 미완료: 프론트엔드 로그인 + Bearer 토큰 부착, JWT 만료 후 갱신 정책, Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결
+- 아직 미완료: JWT 만료 후 갱신 정책, Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결

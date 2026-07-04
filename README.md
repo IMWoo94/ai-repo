@@ -161,6 +161,8 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 - `GET /api/v1/admin-api-access-audits`
 - `POST /api/v1/operational-log-pruning-runs`
 
+엔드유저 인증(ADR-0056/0057): 회원은 `POST /api/v1/auth/tokens`로 로그인해 HS256 JWT(subject=memberId)를 발급받고, Bearer 토큰으로 지갑 API를 호출합니다. 지갑 조회/명령은 서비스 계층에서 토큰 소유자와 지갑 소유자를 대조하는 per-user ownership 검사를 통과해야 합니다. 기본 JWT secret 사용은 `JwtSecretGuard`가 기동 시 차단합니다. 테스트 픽스처는 `POST /api/v1/test-fixtures`(property로 게이트)로 준비하고, HTTP broker 소비 루프는 `POST /internal/broker/outbox-events`로 이벤트를 수신합니다.
+
 Outbox 운영 API는 `X-Operator-Token`, `X-Admin-Token`, `X-Operator-Id` header를 사용합니다. 조회성 운영 API는 operator token 또는 admin token으로 접근할 수 있고, requeue 승인/실행/반려와 operational log pruning, consumer pruning 같은 변경성 운영 조치는 admin token을 요구합니다. 운영 API 인증 필터와 접근 감사 필터는 root 또는 하위 path segment만 매칭하는 공통 path matcher를 사용해 `/api/v1/outbox-events-v2` 같은 lookalike prefix를 운영 API로 오탐하지 않습니다. 로컬 기본 token은 `local-operator-token`, `local-ops-token`이며, 실제 실행에서는 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override합니다. Manual review requeue는 `REQUESTED -> APPROVED -> EXECUTED`와 `REQUESTED -> REJECTED` 워크플로우를 사용하며, 승인자/반려자는 요청자와 달라야 합니다. 기존 직접 requeue API는 workflow 우회를 막기 위해 `410 Gone`과 `DIRECT_REQUEUE_API_DEPRECATED`를 반환합니다. Requeue audit의 operator는 request body가 아니라 실행 단계의 `X-Operator-Id`에서 기록합니다. 반려 시 outbox event는 `MANUAL_REVIEW` 상태를 유지하고 requeue audit은 남기지 않습니다. Consumer 처리 지표와 duplicate health는 `/api/v1/outbox-consumer/metrics`, `/api/v1/outbox-consumer/window-metrics`, `/api/v1/outbox-consumer/health`에서 조회하고, 최근 receipt는 `/api/v1/outbox-consumer/receipts`에서 조회합니다. 오래된 consumer dedupe/receipt 기록은 `/api/v1/outbox-consumer/pruning-runs`에서 정리합니다. Relay scheduler 실행 결과는 `/api/v1/outbox-relay-runs`에서 최근 이력으로 조회하고, `/api/v1/outbox-relay-runs/health`에서 health summary와 alert 판정을 조회합니다. Warning/Critical health 판정은 운영 alert record로 저장되고 `/api/v1/operational-alerts`에서 조회합니다. 운영 API 접근 성공/실패 이력은 `/api/v1/admin-api-access-audits`에서 조회합니다. 운영 관측 로그 pruning은 `/api/v1/operational-log-pruning-runs`에서 수동 실행합니다.
 
 변경 누락 검사는 `.dev/rules`와 `scripts/check-dev-rules.sh`로 수행합니다. CI의 `Dev Rules Check` job은 코드, DB, 프론트, 운영 스크립트 변경 시 ADR/progress/Wiki/test/release 문서 동기화 누락을 파일 변경 기준으로 탐지합니다.
@@ -193,45 +195,9 @@ README는 저장소의 계약과 방향을 담고, 상세 문서는 GitHub Wiki�
 
 단계별 작업 완료 흔적은 [Progress Reports](docs/progress/README.md)에 남깁니다. ADR이 의사결정 기록이라면, Progress Reports는 각 작업에서 완료된 결과, 검증, 남은 일을 짧게 추적하는 문서입니다.
 
-현재 ADR:
+ADR 전체 목록과 상태는 단일 인덱스에서 관리합니다 (현재 최신 **ADR-0057**): **[ADR Index](docs/adr/README.md)**. README·Wiki는 이 인덱스를 복사하지 않고 링크만 유지해 중복 갱신을 없앱니다.
 
-- [ADR-0001: Documentation Source of Truth](docs/adr/0001-documentation-source-of-truth.md)
-- [ADR-0002: Test Strategy](docs/adr/0002-test-strategy.md)
-- [ADR-0003: Java, Spring Boot, Gradle Baseline](docs/adr/0003-java-spring-boot-gradle-baseline.md)
-- [ADR-0004: Gradle Wrapper for Java 25 Runtime](docs/adr/0004-gradle-wrapper-java25-runtime.md)
-- [ADR-0005: Member Wallet Account Query Policy](docs/adr/0005-member-wallet-account-query-policy.md)
-- [ADR-0006: Charge Transfer Idempotency Policy](docs/adr/0006-charge-transfer-idempotency-policy.md)
-- [ADR-0007: Ledger Audit Log Boundary](docs/adr/0007-ledger-audit-log-boundary.md)
-- [ADR-0008: PostgreSQL Persistence Profile](docs/adr/0008-postgresql-persistence-profile.md)
-- [ADR-0009: PostgreSQL Runtime Verification](docs/adr/0009-postgresql-runtime-verification.md)
-- [ADR-0010: Flyway Schema Migrations](docs/adr/0010-flyway-schema-migrations.md)
-- [ADR-0011: PostgreSQL Balance Row Locking](docs/adr/0011-postgresql-balance-row-locking.md)
-- [ADR-0012: PostgreSQL Lock Timeout Policy](docs/adr/0012-postgresql-lock-timeout-policy.md)
-- [ADR-0013: Operation Step Log Before Outbox and Saga](docs/adr/0013-operation-step-log-before-outbox-saga.md)
-- [ADR-0014: Transactional Outbox Boundary](docs/adr/0014-transactional-outbox-boundary.md)
-- [ADR-0015: Outbox Relay State](docs/adr/0015-outbox-relay-state.md)
-- [ADR-0016: Outbox Claiming and Retry Policy](docs/adr/0016-outbox-claiming-retry-policy.md)
-- [ADR-0017: Outbox Processing Lease Recovery](docs/adr/0017-outbox-processing-lease-recovery.md)
-- [ADR-0018: Outbox Max Attempt and Manual Review](docs/adr/0018-outbox-max-attempt-manual-review.md)
-- [ADR-0019: Outbox Manual Review API](docs/adr/0019-outbox-manual-review-api.md)
-- [ADR-0020: Outbox Requeue Audit Trail](docs/adr/0020-outbox-requeue-audit-trail.md)
-- [ADR-0021: Release Version Baseline](docs/adr/0021-release-version-baseline.md)
-- [ADR-0022: Scenario-Based Test Pipeline](docs/adr/0022-scenario-based-test-pipeline.md)
-- [ADR-0023: Validation Summary Hardening](docs/adr/0023-validation-summary-hardening.md)
-- [ADR-0024: React User Frontend MVP](docs/adr/0024-react-user-frontend-mvp.md)
-- [ADR-0025: Frontend E2E Test Pipeline](docs/adr/0025-frontend-e2e-test-pipeline.md)
-- [ADR-0026: Frontend Component Test Pipeline](docs/adr/0026-frontend-component-test-pipeline.md)
-- [ADR-0027: Outbox Publisher Port](docs/adr/0027-outbox-publisher-port.md)
-- [ADR-0028: Admin API Authz Boundary](docs/adr/0028-admin-api-authz.md)
-- [ADR-0029: Outbox Relay Scheduler](docs/adr/0029-outbox-relay-scheduler.md)
-- [ADR-0030: Outbox Relay Run Monitoring](docs/adr/0030-outbox-relay-run-monitoring.md)
-- [ADR-0031: Admin API Access Audit](docs/adr/0031-admin-api-access-audit.md)
-- [ADR-0032: Operational Log Pruning](docs/adr/0032-operational-log-pruning.md)
-- [ADR-0033: Outbox Relay Health Metrics and Alert](docs/adr/0033-outbox-relay-health-metrics-alert.md)
-- [ADR-0034: Spring Security Role Model](docs/adr/0034-spring-security-role-model.md)
-- [ADR-0035: HTTP Outbox Broker Adapter](docs/adr/0035-http-outbox-broker-adapter.md)
-- [ADR-0036: PostgreSQL Scenario Testcontainers CI Gate](docs/adr/0036-postgresql-scenario-testcontainers-ci.md)
-- [ADR-0037: Operator/Admin Token Split](docs/adr/0037-operator-admin-token-split.md)
+프로젝트 전체 구조·데이터 흐름은 **[Architecture Overview](docs/ARCHITECTURE.md)**, 도메인 용어는 **[Glossary](docs/GLOSSARY.md)**, 처음 실행은 **[Getting Started](docs/GETTING-STARTED.md)**를 참고합니다.
 
 권장 Wiki 구조:
 

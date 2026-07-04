@@ -78,6 +78,8 @@
    - ADR-0053 Operational Alert Suppression and Pruning
    - ADR-0054 Slack Webhook Operational Alert Publisher
    - ADR-0055 Admin API Path Matching Hardening
+   - ADR-0056 End-User JWT Auth and Wallet Ownership
+   - ADR-0057 End-User Login and Bearer Refresh
 
 ## 중요한 트레이드오프
 
