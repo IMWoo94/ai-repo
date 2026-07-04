@@ -7,7 +7,8 @@ CONTEXT=docker-desktop
 
 echo "==> ArgoCD 설치"
 kubectl --context "$CONTEXT" create namespace argocd --dry-run=client -o yaml | kubectl --context "$CONTEXT" apply -f -
-kubectl --context "$CONTEXT" apply -n argocd -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
+# --server-side: ArgoCD CRD가 client-side apply 주석 크기 제한(256KiB)을 초과하므로 필수
+kubectl --context "$CONTEXT" apply -n argocd --server-side --force-conflicts -f https://raw.githubusercontent.com/argoproj/argo-cd/stable/manifests/install.yaml
 
 echo "==> ArgoCD 서버 대기"
 kubectl --context "$CONTEXT" -n argocd rollout status deployment/argocd-server --timeout=300s
