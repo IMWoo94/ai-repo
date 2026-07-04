@@ -23,6 +23,16 @@ class JwtSecretGuardTest {
     }
 
     @Test
+    void failsFastWhenPostgresProfileUsesBuiltInDefaultSecret() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("postgres");
+
+        assertThatThrownBy(() -> new JwtSecretGuard(new AuthTokenProperties(DEFAULT_SECRET, 60), environment))
+                .isInstanceOf(IllegalStateException.class)
+                .hasMessageContaining("AI_REPO_AUTH_JWT_SECRET");
+    }
+
+    @Test
     void allowsProdProfileWithOverriddenSecret() {
         MockEnvironment environment = new MockEnvironment();
         environment.setActiveProfiles("prod");
@@ -32,7 +42,16 @@ class JwtSecretGuardTest {
     }
 
     @Test
-    void allowsNonProdProfileWithBuiltInDefaultSecret() {
+    void allowsPostgresProfileWithOverriddenSecret() {
+        MockEnvironment environment = new MockEnvironment();
+        environment.setActiveProfiles("postgres");
+
+        assertThatCode(() -> new JwtSecretGuard(new AuthTokenProperties(OVERRIDDEN_SECRET, 60), environment))
+                .doesNotThrowAnyException();
+    }
+
+    @Test
+    void allowsNonDeployedProfileWithBuiltInDefaultSecret() {
         MockEnvironment environment = new MockEnvironment();
 
         assertThatCode(() -> new JwtSecretGuard(new AuthTokenProperties(DEFAULT_SECRET, 60), environment))

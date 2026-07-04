@@ -30,6 +30,14 @@ spec:
               value: ai_repo
             - name: AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED
               value: "true"
+            # 로컬 학습 랩 전용 비-기본 값. 기본 자격증명 fail-fast(JwtSecretGuard/OpsTokenGuard)를
+            # 통과하기 위한 명시 값이며, 원격 전환 시 Secret 주입으로 대체한다(#121).
+            - name: AI_REPO_AUTH_JWT_SECRET
+              value: local-k8s-jwt-secret-please-change-32b
+            - name: AI_REPO_OPS_ADMIN_TOKEN
+              value: local-k8s-ops-admin-token
+            - name: AI_REPO_OPS_OPERATOR_TOKEN
+              value: local-k8s-ops-operator-token
           ports:
             - containerPort: 8080
           readinessProbe:
