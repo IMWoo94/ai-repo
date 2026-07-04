@@ -38,7 +38,9 @@ class TestFixtureControllerTest {
 
     @Test
     void createsManualReviewOutboxFixtureForE2e() throws Exception {
-        mockMvc.perform(post("/api/v1/test-fixtures/outbox-events/manual-review"))
+        mockMvc.perform(post("/api/v1/test-fixtures/outbox-events/manual-review")
+                        .header(AdminAuthorizationGuard.ADMIN_TOKEN_HEADER, ADMIN_TOKEN)
+                        .header(AdminAuthorizationGuard.OPERATOR_ID_HEADER, OPERATOR_ID))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.operationId").value("op-001"))
                 .andExpect(jsonPath("$.outboxEventId").value("outbox-001"));

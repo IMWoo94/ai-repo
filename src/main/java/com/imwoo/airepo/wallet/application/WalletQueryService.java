@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface WalletQueryService {
 
-    WalletBalance getBalance(String walletId);
+    WalletBalance getBalance(String memberId, String walletId);
 
-    List<TransactionHistoryItem> getTransactions(String walletId);
+    List<TransactionHistoryItem> getTransactions(String memberId, String walletId);
 }

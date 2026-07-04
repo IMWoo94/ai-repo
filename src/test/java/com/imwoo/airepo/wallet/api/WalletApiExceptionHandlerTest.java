@@ -3,6 +3,7 @@ package com.imwoo.airepo.wallet.api;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.imwoo.airepo.wallet.application.OperationNotFoundException;
+import com.imwoo.airepo.wallet.application.WalletAccessDeniedException;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import java.time.Clock;
 import java.time.Instant;
@@ -55,6 +56,20 @@ class WalletApiExceptionHandlerTest {
         assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
                 "ADMIN_AUTHENTICATION_REQUIRED",
                 "admin token is required",
+                Instant.parse("2026-05-01T00:00:00Z")
+        ));
+    }
+
+    @Test
+    void mapsWalletAccessDeniedToForbidden() {
+        ResponseEntity<ApiErrorResponse> response = exceptionHandler.handleWalletAccessDenied(
+                new WalletAccessDeniedException("wallet-001")
+        );
+
+        assertThat(response.getStatusCode()).isEqualTo(HttpStatus.FORBIDDEN);
+        assertThat(response.getBody()).isEqualTo(new ApiErrorResponse(
+                "WALLET_ACCESS_DENIED",
+                "Wallet access denied: wallet-001",
                 Instant.parse("2026-05-01T00:00:00Z")
         ));
     }

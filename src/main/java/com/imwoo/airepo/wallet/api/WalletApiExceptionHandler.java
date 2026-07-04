@@ -4,7 +4,10 @@ import com.imwoo.airepo.wallet.application.InvalidWalletIdException;
 import com.imwoo.airepo.wallet.application.IdempotencyKeyConflictException;
 import com.imwoo.airepo.wallet.application.InsufficientBalanceException;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
+import com.imwoo.airepo.wallet.application.MemberNotActiveException;
+import com.imwoo.airepo.wallet.application.MemberNotFoundException;
 import com.imwoo.airepo.wallet.application.OperationNotFoundException;
+import com.imwoo.airepo.wallet.application.WalletAccessDeniedException;
 import com.imwoo.airepo.wallet.application.WalletAccountNotQueryableException;
 import com.imwoo.airepo.wallet.application.WalletConcurrencyException;
 import com.imwoo.airepo.wallet.application.WalletNotFoundException;
@@ -34,6 +37,16 @@ public class WalletApiExceptionHandler {
         return error(HttpStatus.NOT_FOUND, "WALLET_NOT_FOUND", exception.getMessage());
     }
 
+    @ExceptionHandler(MemberNotFoundException.class)
+    ResponseEntity<ApiErrorResponse> handleMemberNotFound(MemberNotFoundException exception) {
+        return error(HttpStatus.NOT_FOUND, "MEMBER_NOT_FOUND", exception.getMessage());
+    }
+
+    @ExceptionHandler(MemberNotActiveException.class)
+    ResponseEntity<ApiErrorResponse> handleMemberNotActive(MemberNotActiveException exception) {
+        return error(HttpStatus.CONFLICT, "MEMBER_NOT_ACTIVE", exception.getMessage());
+    }
+
     @ExceptionHandler(OperationNotFoundException.class)
     ResponseEntity<ApiErrorResponse> handleOperationNotFound(OperationNotFoundException exception) {
         return error(HttpStatus.NOT_FOUND, "OPERATION_NOT_FOUND", exception.getMessage());
@@ -42,6 +55,11 @@ public class WalletApiExceptionHandler {
     @ExceptionHandler(WalletAccountNotQueryableException.class)
     ResponseEntity<ApiErrorResponse> handleWalletAccountNotQueryable(WalletAccountNotQueryableException exception) {
         return error(HttpStatus.CONFLICT, "WALLET_NOT_QUERYABLE", exception.getMessage());
+    }
+
+    @ExceptionHandler(WalletAccessDeniedException.class)
+    ResponseEntity<ApiErrorResponse> handleWalletAccessDenied(WalletAccessDeniedException exception) {
+        return error(HttpStatus.FORBIDDEN, "WALLET_ACCESS_DENIED", exception.getMessage());
     }
 
     @ExceptionHandler(InvalidWalletOperationException.class)

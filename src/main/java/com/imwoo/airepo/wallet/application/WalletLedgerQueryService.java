@@ -8,9 +8,11 @@ import java.util.List;
 
 public interface WalletLedgerQueryService {
 
-    List<LedgerEntry> getLedgerEntries(String walletId);
+    List<LedgerEntry> getLedgerEntries(String memberId, String walletId);
 
     List<AuditEvent> getAuditEvents();
+
+    List<AuditEvent> getAuditEvents(String memberId, String walletId);
 
     List<OperationStepLog> getOperationStepLogs(String operationId);
 

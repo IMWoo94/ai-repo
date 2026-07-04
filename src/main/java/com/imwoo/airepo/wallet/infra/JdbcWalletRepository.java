@@ -158,6 +158,21 @@ public class JdbcWalletRepository implements
     }
 
     @Override
+    public List<AuditEvent> findAuditEventsByWallet(String walletId) {
+        return jdbcTemplate.query(
+                """
+                        select ae.audit_event_id, ae.operation_id, ae.type, ae.occurred_at, ae.detail
+                        from audit_events ae
+                        where ae.operation_id in (
+                            select operation_id from ledger_entries where wallet_id = ?
+                        )
+                        """,
+                auditEventMapper(),
+                walletId
+        );
+    }
+
+    @Override
     public List<OperationStepLog> findOperationStepLogs(String operationId) {
         return jdbcTemplate.query(
                 """

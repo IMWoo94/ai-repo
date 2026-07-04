@@ -80,6 +80,7 @@ class PostgresContainerWalletRepositoryTest {
     @Test
     void chargePersistsThroughRealPostgres() {
         WalletCommandResult result = commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "postgres-charge-001", "PostgreSQL 충전")
         );
@@ -87,7 +88,7 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(result.created()).isTrue();
         assertThat(result.operation().operationId()).isEqualTo("op-001");
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001"))
                 .singleElement()
                 .satisfies(ledgerEntry -> assertThat(ledgerEntry.balanceAfter()).isEqualTo(money("130000")));
         assertThat(ledgerQueryService.getAuditEvents()).singleElement()
@@ -97,8 +98,35 @@ class PostgresContainerWalletRepositoryTest {
     }
 
     @Test
+    void findAuditEventsByWalletReturnsOnlyOwningWalletEventsInRealPostgres() {
+        WalletCommandResult walletAResult = commandService.charge(
+                "member-001",
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "postgres-audit-scope-001", "PostgreSQL wallet-A 충전")
+        );
+        WalletCommandResult walletBResult = commandService.charge(
+                "member-002",
+                "wallet-002",
+                new WalletChargeCommand(money("7000"), "postgres-audit-scope-002", "PostgreSQL wallet-B 충전")
+        );
+
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .singleElement()
+                .satisfies(auditEvent -> assertThat(auditEvent.operationId())
+                        .isEqualTo(walletAResult.operation().operationId()));
+        assertThat(repository.findAuditEventsByWallet("wallet-001"))
+                .noneMatch(auditEvent -> auditEvent.operationId()
+                        .equals(walletBResult.operation().operationId()));
+        assertThat(repository.findAuditEventsByWallet("wallet-002"))
+                .singleElement()
+                .satisfies(auditEvent -> assertThat(auditEvent.operationId())
+                        .isEqualTo(walletBResult.operation().operationId()));
+    }
+
+    @Test
     void transferPersistsThroughRealPostgres() {
         WalletCommandResult result = commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "postgres-transfer-001", "PostgreSQL 송금")
         );
@@ -106,10 +134,10 @@ class PostgresContainerWalletRepositoryTest {
         assertThat(result.created()).isTrue();
         assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("100000"));
         assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("55000"));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001"))
                 .singleElement()
                 .satisfies(ledgerEntry -> assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.DEBIT));
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-002"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-002", "wallet-002"))
                 .singleElement()
                 .satisfies(ledgerEntry -> assertThat(ledgerEntry.direction()).isEqualTo(TransactionDirection.CREDIT));
         assertThat(repository.findOperationStepLogs(result.operation().operationId())).hasSize(6);
@@ -124,13 +152,13 @@ class PostgresContainerWalletRepositoryTest {
                 "PostgreSQL 충전"
         );
 
-        WalletCommandResult first = commandService.charge("wallet-001", command);
-        WalletCommandResult second = commandService.charge("wallet-001", command);
+        WalletCommandResult first = commandService.charge("member-001", "wallet-001", command);
+        WalletCommandResult second = commandService.charge("member-001", "wallet-001", command);
 
         assertThat(first.created()).isTrue();
         assertThat(second.created()).isFalse();
         assertThat(second.operation().operationId()).isEqualTo(first.operation().operationId());
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(repository.findOperationStepLogs(first.operation().operationId())).hasSize(6);
         assertThat(repository.findOperationOutboxEvents(first.operation().operationId())).hasSize(1);
@@ -168,8 +196,8 @@ class PostgresContainerWalletRepositoryTest {
                             .isInstanceOf(InsufficientBalanceException.class));
             assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("45000"));
             assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("110000"));
-            assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
-            assertThat(ledgerQueryService.getLedgerEntries("wallet-002")).hasSize(1);
+            assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001")).hasSize(1);
+            assertThat(ledgerQueryService.getLedgerEntries("member-002", "wallet-002")).hasSize(1);
             assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
             assertThat(
                     repository.findOperation("postgres-concurrent-transfer-001").isPresent()
@@ -202,7 +230,7 @@ class PostgresContainerWalletRepositoryTest {
                     .hasMessage("Wallet balance is busy. Please retry.");
 
             assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("125000"));
-            assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).isEmpty();
+            assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001")).isEmpty();
             assertThat(ledgerQueryService.getAuditEvents()).isEmpty();
             assertThat(repository.findOperationStepLogs("op-001")).isEmpty();
             assertThat(repository.findOperationOutboxEvents("op-001")).isEmpty();
@@ -272,7 +300,7 @@ class PostgresContainerWalletRepositoryTest {
 
     @Test
     void staleOutboxWriterCannotOverwriteReclaimedEventInRealPostgres() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "postgres-stale-outbox-001", "PostgreSQL stale outbox 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "postgres-stale-outbox-001", "PostgreSQL stale outbox 충전"));
         var firstClaim = repository.claimReadyOutboxEvents(
                 10,
                 Instant.parse("2026-05-01T00:01:00Z"),
@@ -414,7 +442,7 @@ class PostgresContainerWalletRepositoryTest {
     }
 
     private void makeManualReviewOutboxEvent() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "postgres-requeue-charge-001", "PostgreSQL requeue 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "postgres-requeue-charge-001", "PostgreSQL requeue 충전"));
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:01:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:02:30Z"), 3);
         repository.markOutboxEventFailed("outbox-001", "broker unavailable", Instant.parse("2026-05-01T00:03:30Z"), 3);

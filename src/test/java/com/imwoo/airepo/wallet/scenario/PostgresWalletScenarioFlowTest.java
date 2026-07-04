@@ -2,6 +2,7 @@ package com.imwoo.airepo.wallet.scenario;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasSize;
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -25,6 +26,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -60,6 +62,10 @@ class PostgresWalletScenarioFlowTest {
         this.receiptRepository = receiptRepository;
     }
 
+    private static RequestPostProcessor member(String memberId) {
+        return jwt().jwt(token -> token.subject(memberId));
+    }
+
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", POSTGRES::getJdbcUrl);
@@ -72,7 +78,7 @@ class PostgresWalletScenarioFlowTest {
 
     @Test
     void postgresProfileMoneyMovementScenarioKeepsLedgerAuditStepAndOutboxEvidence() throws Exception {
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.walletId").value("wallet-001"))
                 .andExpect(jsonPath("$.money.amount").value(125000));
@@ -87,6 +93,7 @@ class PostgresWalletScenarioFlowTest {
                 """;
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType("application/json")
                         .content(chargeRequest))
                 .andExpect(status().isCreated())
@@ -94,6 +101,7 @@ class PostgresWalletScenarioFlowTest {
                 .andExpect(jsonPath("$.balance.money.amount").value(130000));
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType("application/json")
                         .content(chargeRequest))
                 .andExpect(status().isOk())
@@ -101,6 +109,7 @@ class PostgresWalletScenarioFlowTest {
                 .andExpect(jsonPath("$.balance.money.amount").value(130000));
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/transfers")
+                        .with(member("member-001"))
                         .contentType("application/json")
                         .content("""
                                 {
@@ -115,22 +124,28 @@ class PostgresWalletScenarioFlowTest {
                 .andExpect(jsonPath("$.operationId").value("op-002"))
                 .andExpect(jsonPath("$.balance.money.amount").value(105000));
 
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/balance").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.money.amount").value(105000));
-        mockMvc.perform(get("/api/v1/wallets/wallet-002/balance"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-002/balance").with(member("member-002")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.money.amount").value(55000));
-        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries"))
+        mockMvc.perform(get("/api/v1/wallets/wallet-001/ledger-entries").with(member("member-001")))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        mockMvc.perform(get("/api/v1/audit-events"))
+        mockMvc.perform(get("/api/v1/audit-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
-        mockMvc.perform(get("/api/v1/operations/op-001/step-logs"))
+        mockMvc.perform(get("/api/v1/operations/op-001/step-logs")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(6)));
-        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
                 .andExpect(jsonPath("$[0].status").value("PENDING"));
@@ -142,10 +157,14 @@ class PostgresWalletScenarioFlowTest {
                     assertThat(result.failedCount()).isZero();
                 });
 
-        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
-        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events"))
+        mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
+                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
     }

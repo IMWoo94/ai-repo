@@ -34,13 +34,14 @@ class InMemoryWalletLedgerQueryServiceTest {
 
     @Test
     void returnsLedgerEntriesByLatestFirst() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "transfer-001", "테스트 송금")
         );
 
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001"))
                 .hasSize(2)
                 .satisfies(entries -> {
                     assertThat(entries.get(0).type()).isEqualTo(TransactionType.TRANSFER);
@@ -56,10 +57,10 @@ class InMemoryWalletLedgerQueryServiceTest {
     void idempotentRetryDoesNotCreateDuplicatedLedgerEntry() {
         WalletChargeCommand command = new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전");
 
-        WalletCommandResult first = commandService.charge("wallet-001", command);
-        commandService.charge("wallet-001", command);
+        WalletCommandResult first = commandService.charge("member-001", "wallet-001", command);
+        commandService.charge("member-001", "wallet-001", command);
 
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-001")).hasSize(1);
+        assertThat(ledgerQueryService.getLedgerEntries("member-001", "wallet-001")).hasSize(1);
         assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
         assertThat(ledgerQueryService.getOperationStepLogs(first.operation().operationId())).hasSize(6);
         assertThat(ledgerQueryService.getOperationOutboxEvents(first.operation().operationId())).hasSize(1);
@@ -67,8 +68,9 @@ class InMemoryWalletLedgerQueryServiceTest {
 
     @Test
     void returnsAuditEventsByLatestFirst() {
-        commandService.charge("wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "transfer-001", "테스트 송금")
         );
@@ -82,8 +84,28 @@ class InMemoryWalletLedgerQueryServiceTest {
     }
 
     @Test
+    void returnsWalletScopedAuditEventsForOwnerExcludingOtherWallets() {
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전"));
+        commandService.charge("member-002", "wallet-002", new WalletChargeCommand(money("7000"), "charge-002", "다른 지갑 충전"));
+
+        assertThat(ledgerQueryService.getAuditEvents("member-001", "wallet-001"))
+                .singleElement()
+                .satisfies(event -> {
+                    assertThat(event.type().name()).isEqualTo("CHARGE_COMPLETED");
+                    assertThat(event.operationId()).isEqualTo("op-001");
+                });
+    }
+
+    @Test
+    void rejectsWalletScopedAuditEventsWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> ledgerQueryService.getAuditEvents("member-002", "wallet-001"))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
+    @Test
     void returnsOperationStepLogsByProcessOrder() {
         WalletCommandResult result = commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
         );
@@ -103,6 +125,7 @@ class InMemoryWalletLedgerQueryServiceTest {
     @Test
     void returnsPendingOutboxEventAfterCharge() {
         WalletCommandResult result = commandService.charge(
+                "member-001",
                 "wallet-001",
                 new WalletChargeCommand(money("5000"), "charge-001", "테스트 충전")
         );
@@ -126,7 +149,7 @@ class InMemoryWalletLedgerQueryServiceTest {
                 suspendedRepository
         );
 
-        assertThatThrownBy(() -> service.getLedgerEntries("wallet-suspended"))
+        assertThatThrownBy(() -> service.getLedgerEntries("member-001", "wallet-suspended"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-suspended");
     }
@@ -139,7 +162,7 @@ class InMemoryWalletLedgerQueryServiceTest {
                 closedRepository
         );
 
-        assertThatThrownBy(() -> service.getLedgerEntries("wallet-closed"))
+        assertThatThrownBy(() -> service.getLedgerEntries("member-001", "wallet-closed"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-closed");
     }
@@ -152,7 +175,7 @@ class InMemoryWalletLedgerQueryServiceTest {
                 suspendedOwnerRepository
         );
 
-        assertThatThrownBy(() -> service.getLedgerEntries("wallet-owner-suspended"))
+        assertThatThrownBy(() -> service.getLedgerEntries("member-suspended", "wallet-owner-suspended"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-owner-suspended");
     }
@@ -160,11 +183,12 @@ class InMemoryWalletLedgerQueryServiceTest {
     @Test
     void transferCreatesLedgerEntryOnTargetWallet() {
         commandService.transfer(
+                "member-001",
                 "wallet-001",
                 new WalletTransferCommand("wallet-002", money("25000"), "transfer-001", "테스트 송금")
         );
 
-        assertThat(ledgerQueryService.getLedgerEntries("wallet-002"))
+        assertThat(ledgerQueryService.getLedgerEntries("member-002", "wallet-002"))
                 .singleElement()
                 .satisfies(ledgerEntry -> {
                     assertThat(ledgerEntry.type()).isEqualTo(TransactionType.TRANSFER);
@@ -189,9 +213,15 @@ class InMemoryWalletLedgerQueryServiceTest {
 
     @Test
     void rejectsUnknownWalletLedgerQuery() {
-        assertThatThrownBy(() -> ledgerQueryService.getLedgerEntries("unknown"))
+        assertThatThrownBy(() -> ledgerQueryService.getLedgerEntries("member-001", "unknown"))
                 .isInstanceOf(WalletNotFoundException.class)
                 .hasMessage("Wallet not found: unknown");
+    }
+
+    @Test
+    void rejectsLedgerQueryWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> ledgerQueryService.getLedgerEntries("member-002", "wallet-001"))
+                .isInstanceOf(WalletAccessDeniedException.class);
     }
 
     private Money money(String amount) {

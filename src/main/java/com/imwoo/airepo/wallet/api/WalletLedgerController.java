@@ -6,6 +6,8 @@ import com.imwoo.airepo.wallet.domain.LedgerEntry;
 import com.imwoo.airepo.wallet.domain.OperationOutboxEvent;
 import com.imwoo.airepo.wallet.domain.OperationStepLog;
 import java.util.List;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,8 +24,13 @@ public class WalletLedgerController {
     }
 
     @GetMapping("/wallets/{walletId}/ledger-entries")
-    public List<LedgerEntry> ledgerEntries(@PathVariable String walletId) {
-        return walletLedgerQueryService.getLedgerEntries(walletId);
+    public List<LedgerEntry> ledgerEntries(@AuthenticationPrincipal Jwt jwt, @PathVariable String walletId) {
+        return walletLedgerQueryService.getLedgerEntries(WalletPrincipal.memberId(jwt), walletId);
+    }
+
+    @GetMapping("/wallets/{walletId}/audit-events")
+    public List<AuditEvent> walletAuditEvents(@AuthenticationPrincipal Jwt jwt, @PathVariable String walletId) {
+        return walletLedgerQueryService.getAuditEvents(WalletPrincipal.memberId(jwt), walletId);
     }
 
     @GetMapping("/audit-events")

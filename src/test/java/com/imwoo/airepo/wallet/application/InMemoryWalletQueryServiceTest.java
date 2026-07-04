@@ -24,22 +24,34 @@ class InMemoryWalletQueryServiceTest {
 
     @Test
     void returnsBalanceAsOfCurrentClock() {
-        assertThat(service.getBalance("wallet-001").asOf())
+        assertThat(service.getBalance("member-001", "wallet-001").asOf())
                 .isEqualTo(Instant.parse("2026-05-01T00:00:00Z"));
     }
 
     @Test
     void rejectsBlankWalletId() {
-        assertThatThrownBy(() -> service.getBalance(" "))
+        assertThatThrownBy(() -> service.getBalance("member-001", " "))
                 .isInstanceOf(InvalidWalletIdException.class)
                 .hasMessage("walletId must not be blank");
     }
 
     @Test
     void rejectsUnknownWalletId() {
-        assertThatThrownBy(() -> service.getBalance("unknown"))
+        assertThatThrownBy(() -> service.getBalance("member-001", "unknown"))
                 .isInstanceOf(WalletNotFoundException.class)
                 .hasMessage("Wallet not found: unknown");
+    }
+
+    @Test
+    void rejectsWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> service.getBalance("member-002", "wallet-001"))
+                .isInstanceOf(WalletAccessDeniedException.class);
+    }
+
+    @Test
+    void rejectsTransactionsWhenMemberDoesNotOwnWallet() {
+        assertThatThrownBy(() -> service.getTransactions("member-002", "wallet-001"))
+                .isInstanceOf(WalletAccessDeniedException.class);
     }
 
     @Test
@@ -49,7 +61,7 @@ class InMemoryWalletQueryServiceTest {
                 new SuspendedWalletRepository()
         );
 
-        assertThatThrownBy(() -> suspendedWalletService.getBalance("wallet-suspended"))
+        assertThatThrownBy(() -> suspendedWalletService.getBalance("member-001", "wallet-suspended"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-suspended");
     }
@@ -61,7 +73,7 @@ class InMemoryWalletQueryServiceTest {
                 new ClosedWalletRepository()
         );
 
-        assertThatThrownBy(() -> closedWalletService.getBalance("wallet-closed"))
+        assertThatThrownBy(() -> closedWalletService.getBalance("member-001", "wallet-closed"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-closed");
     }
@@ -73,9 +85,22 @@ class InMemoryWalletQueryServiceTest {
                 new SuspendedOwnerRepository()
         );
 
-        assertThatThrownBy(() -> inactiveOwnerService.getBalance("wallet-owner-suspended"))
+        assertThatThrownBy(() -> inactiveOwnerService.getBalance("member-suspended", "wallet-owner-suspended"))
                 .isInstanceOf(WalletAccountNotQueryableException.class)
                 .hasMessage("Wallet is not queryable: wallet-owner-suspended");
+    }
+
+    @Test
+    void deniesNonOwnerBeforeLeakingOwnerInactiveState() {
+        InMemoryWalletQueryService inactiveOwnerService = new InMemoryWalletQueryService(
+                Clock.fixed(Instant.parse("2026-05-01T00:00:00Z"), ZoneOffset.UTC),
+                new SuspendedOwnerRepository()
+        );
+
+        // member-001 does not own wallet-owner-suspended (owned by member-suspended);
+        // must get 403 AccessDenied, not a 409 that leaks the owner's inactive state.
+        assertThatThrownBy(() -> inactiveOwnerService.getBalance("member-001", "wallet-owner-suspended"))
+                .isInstanceOf(WalletAccessDeniedException.class);
     }
 
     private static class SuspendedWalletRepository extends InMemoryWalletRepository {

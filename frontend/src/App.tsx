@@ -1,4 +1,4 @@
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useRef, useState } from 'react';
 
 type Money = {
   amount: number;
@@ -51,14 +51,6 @@ type AuditEvent = {
   type: string;
   detail: string;
   occurredAt: string;
-};
-
-type OperationStepLog = {
-  operationStepLogId: string;
-  operationId: string;
-  step: string;
-  status: string;
-  detail: string;
 };
 
 type OperationOutboxEvent = {
@@ -150,16 +142,12 @@ type ApiState = {
   transactions: TransactionHistoryItem[];
   ledgerEntries: LedgerEntry[];
   auditEvents: AuditEvent[];
-  stepLogs: OperationStepLog[];
-  outboxEvents: OperationOutboxEvent[];
 };
 
 const initialApiState: ApiState = {
   transactions: [],
   ledgerEntries: [],
   auditEvents: [],
-  stepLogs: [],
-  outboxEvents: [],
 };
 
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
@@ -190,8 +178,36 @@ function uniqueKey(): string {
   return `ui-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 }
 
+type AuthSession = {
+  token: string;
+  memberId: string;
+  expiresAt: string;
+};
+
+const AUTH_STORAGE_KEY = 'ai-repo.auth';
+
+function loadStoredAuth(): AuthSession | null {
+  try {
+    const raw = sessionStorage.getItem(AUTH_STORAGE_KEY);
+    if (!raw) {
+      return null;
+    }
+    const parsed = JSON.parse(raw) as AuthSession;
+    return parsed.token && parsed.memberId ? parsed : null;
+  } catch {
+    return null;
+  }
+}
+
+function walletIdForMember(memberId: string): string {
+  return memberId.replace(/^member-/, 'wallet-');
+}
+
 export function App() {
-  const [walletId, setWalletId] = useState('wallet-001');
+  const [auth, setAuthState] = useState<AuthSession | null>(loadStoredAuth);
+  const authRef = useRef<AuthSession | null>(auth);
+  const [memberId, setMemberId] = useState('member-001');
+  const walletId = auth ? walletIdForMember(auth.memberId) : '';
   const [targetWalletId, setTargetWalletId] = useState('wallet-002');
   const [chargeAmount, setChargeAmount] = useState('5000');
   const [transferAmount, setTransferAmount] = useState('5000');
@@ -258,6 +274,77 @@ export function App() {
     }
   }
 
+  function persistAuth(session: AuthSession | null) {
+    authRef.current = session;
+    setAuthState(session);
+    if (session) {
+      sessionStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(session));
+    } else {
+      sessionStorage.removeItem(AUTH_STORAGE_KEY);
+    }
+  }
+
+  async function issueToken(forMemberId: string): Promise<AuthSession> {
+    const session = await requestJson<AuthSession>('/api/v1/auth/tokens', {
+      method: 'POST',
+      body: JSON.stringify({ memberId: forMemberId }),
+    });
+    persistAuth(session);
+    return session;
+  }
+
+  async function walletRequest<T>(url: string, init?: RequestInit): Promise<T> {
+    const current = authRef.current;
+    if (!current) {
+      throw new Error('UNAUTHENTICATED: 로그인이 필요합니다.');
+    }
+    const send = (token: string) => fetch(url, {
+      ...init,
+      headers: {
+        'Content-Type': 'application/json',
+        ...init?.headers,
+        Authorization: `Bearer ${token}`,
+      },
+    });
+
+    let response = await send(current.token);
+    if (response.status === 401) {
+      let refreshed: AuthSession;
+      try {
+        refreshed = await issueToken(current.memberId);
+      } catch (error) {
+        persistAuth(null);
+        throw error;
+      }
+      response = await send(refreshed.token);
+    }
+
+    if (!response.ok) {
+      if (response.status === 401) {
+        persistAuth(null);
+      }
+      const error = (await response.json()) as ApiError;
+      throw new Error(`${error.code}: ${error.message}`);
+    }
+    return response.json() as Promise<T>;
+  }
+
+  async function submitLogin(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    await runAction(async () => {
+      await issueToken(memberId.trim());
+      await loadWalletEvidence();
+    }, '로그인되었습니다.');
+  }
+
+  function logout() {
+    persistAuth(null);
+    setApiState(initialApiState);
+    setLastOperation(null);
+    setOperationId('');
+    setStatusMessage('로그아웃되었습니다. 회원 ID로 다시 로그인하세요.');
+  }
+
   function operatorHeaders(): HeadersInit {
     return {
       'X-Admin-Token': adminToken,
@@ -266,23 +353,17 @@ export function App() {
     };
   }
 
-  async function loadWalletEvidence(nextWalletId = walletId, nextOperationId = operationId) {
+  async function loadWalletEvidence(
+    nextWalletId = authRef.current ? walletIdForMember(authRef.current.memberId) : walletId,
+  ) {
     const [balance, transactions, ledgerEntries, auditEvents] = await Promise.all([
-      requestJson<WalletBalance>(`/api/v1/wallets/${nextWalletId}/balance`),
-      requestJson<TransactionHistoryItem[]>(`/api/v1/wallets/${nextWalletId}/transactions`),
-      requestJson<LedgerEntry[]>(`/api/v1/wallets/${nextWalletId}/ledger-entries`),
-      requestJson<AuditEvent[]>('/api/v1/audit-events'),
+      walletRequest<WalletBalance>(`/api/v1/wallets/${nextWalletId}/balance`),
+      walletRequest<TransactionHistoryItem[]>(`/api/v1/wallets/${nextWalletId}/transactions`),
+      walletRequest<LedgerEntry[]>(`/api/v1/wallets/${nextWalletId}/ledger-entries`),
+      walletRequest<AuditEvent[]>(`/api/v1/wallets/${nextWalletId}/audit-events`),
     ]);
 
-    const trimmedOperationId = nextOperationId.trim();
-    const [stepLogs, outboxEvents] = trimmedOperationId
-      ? await Promise.all([
-        requestJson<OperationStepLog[]>(`/api/v1/operations/${trimmedOperationId}/step-logs`),
-        requestJson<OperationOutboxEvent[]>(`/api/v1/operations/${trimmedOperationId}/outbox-events`),
-      ])
-      : [[], []];
-
-    setApiState({ balance, transactions, ledgerEntries, auditEvents, stepLogs, outboxEvents });
+    setApiState({ balance, transactions, ledgerEntries, auditEvents });
   }
 
   async function loadManualReviewEvents() {
@@ -421,7 +502,7 @@ export function App() {
   async function submitCharge(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runAction(async () => {
-      const result = await requestJson<WalletOperationResult>(`/api/v1/wallets/${walletId}/charges`, {
+      const result = await walletRequest<WalletOperationResult>(`/api/v1/wallets/${walletId}/charges`, {
         method: 'POST',
         body: JSON.stringify({
           amount: Number(chargeAmount),
@@ -432,14 +513,14 @@ export function App() {
       });
       setLastOperation(result);
       setOperationId(result.operationId);
-      await loadWalletEvidence(walletId, result.operationId);
+      await loadWalletEvidence(walletId);
     }, '충전이 완료되었습니다.');
   }
 
   async function submitTransfer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     await runAction(async () => {
-      const result = await requestJson<WalletOperationResult>(`/api/v1/wallets/${walletId}/transfers`, {
+      const result = await walletRequest<WalletOperationResult>(`/api/v1/wallets/${walletId}/transfers`, {
         method: 'POST',
         body: JSON.stringify({
           targetWalletId,
@@ -451,12 +532,14 @@ export function App() {
       });
       setLastOperation(result);
       setOperationId(result.operationId);
-      await loadWalletEvidence(walletId, result.operationId);
+      await loadWalletEvidence(walletId);
     }, '송금이 완료되었습니다.');
   }
 
   useEffect(() => {
-    void runAction(() => loadWalletEvidence('wallet-001', ''), '초기 데이터를 불러왔습니다.');
+    if (authRef.current) {
+      void runAction(() => loadWalletEvidence(walletIdForMember(authRef.current!.memberId)), '초기 데이터를 불러왔습니다.');
+    }
   }, []);
 
   return (
@@ -466,79 +549,94 @@ export function App() {
         <span>Wallet · Ledger · Outbox</span>
       </nav>
 
-      <section className="hero-tile">
-        <div>
-          <p className="eyebrow">Portfolio banking core</p>
-          <h1>돈의 이동을 화면에서 바로 확인합니다.</h1>
-          <p className="hero-copy">
-            잔액, 거래내역, 원장, 감사 로그, Outbox까지 하나의 흐름으로 보여주는 React 사용자 화면입니다.
-          </p>
-          <div className="hero-actions">
-            <button onClick={() => runAction(() => loadWalletEvidence(), '조회가 완료되었습니다.')} disabled={isLoading}>
-              현재 지갑 조회
-            </button>
-            <a href="#evidence">증거 보기</a>
+      {auth ? (
+        <>
+          <section className="hero-tile">
+            <div>
+              <p className="eyebrow">Portfolio banking core</p>
+              <h1>돈의 이동을 화면에서 바로 확인합니다.</h1>
+              <p className="hero-copy">
+                잔액, 거래내역, 원장, 감사 로그, Outbox까지 하나의 흐름으로 보여주는 React 사용자 화면입니다.
+              </p>
+              <div className="hero-actions">
+                <button onClick={() => runAction(() => loadWalletEvidence(), '조회가 완료되었습니다.')} disabled={isLoading}>
+                  현재 지갑 조회
+                </button>
+                <button type="button" onClick={logout}>로그아웃</button>
+                <a href="#evidence">증거 보기</a>
+              </div>
+            </div>
+            <div className="balance-card">
+              <span>로그인 회원 · {auth.memberId}</span>
+              <strong>{walletId}</strong>
+              <p>{heroBalance}</p>
+              <small>{apiState.balance?.asOf ?? 'API 연결 대기'}</small>
+            </div>
+          </section>
+
+          <section className="workspace-grid">
+            <form className="panel form-panel" onSubmit={submitCharge}>
+              <p className="eyebrow">Charge</p>
+              <h2>충전</h2>
+              <label>
+                금액
+                <input aria-label="충전 금액" value={chargeAmount} type="number" min="1" onChange={(event) => setChargeAmount(event.target.value)} />
+              </label>
+              <label>
+                설명
+                <input aria-label="거래 설명" value={description} onChange={(event) => setDescription(event.target.value)} />
+              </label>
+              <button type="submit" disabled={isLoading}>충전하기</button>
+            </form>
+
+            <form className="panel form-panel dark-panel" onSubmit={submitTransfer}>
+              <p className="eyebrow">Transfer</p>
+              <h2>송금</h2>
+              <label>
+                입금 지갑
+                <input aria-label="송금 입금 지갑 ID" value={targetWalletId} onChange={(event) => setTargetWalletId(event.target.value)} />
+              </label>
+              <label>
+                금액
+                <input aria-label="송금 금액" value={transferAmount} type="number" min="1" onChange={(event) => setTransferAmount(event.target.value)} />
+              </label>
+              <button type="submit" disabled={isLoading}>송금하기</button>
+            </form>
+          </section>
+
+          <section className="status-strip">
+            <span>{isLoading ? '●' : '●'}</span>
+            <p>{statusMessage}</p>
+            <label>
+              Operation ID
+              <input aria-label="Operation ID" value={operationId} onChange={(event) => setOperationId(event.target.value)} placeholder="충전/송금 후 자동 입력" />
+            </label>
+            {lastOperation && (
+              <strong>
+                최근 operation: {lastOperation.operationId} · {lastOperation.type} · {lastOperation.status}
+              </strong>
+            )}
+          </section>
+        </>
+      ) : (
+        <section className="hero-tile login-tile">
+          <div>
+            <p className="eyebrow">Member login</p>
+            <h1>회원 ID로 로그인해 내 지갑을 사용합니다.</h1>
+            <p className="hero-copy">
+              memberId로 단기 JWT를 발급받아 본인 소유 지갑만 충전·송금·조회할 수 있습니다.
+            </p>
+            <form className="panel form-panel" onSubmit={submitLogin}>
+              <label>
+                회원 ID
+                <input aria-label="회원 ID" value={memberId} onChange={(event) => setMemberId(event.target.value)} />
+              </label>
+              <button type="submit" disabled={isLoading}>로그인</button>
+            </form>
+            <StatusCallout message={statusMessage} tone={statusMessage.includes(':') ? 'error' : 'info'} />
           </div>
-        </div>
-        <div className="balance-card">
-          <span>현재 지갑</span>
-          <strong>{walletId}</strong>
-          <p>{heroBalance}</p>
-          <small>{apiState.balance?.asOf ?? 'API 연결 대기'}</small>
-        </div>
-      </section>
-
-      <section className="workspace-grid">
-        <form className="panel form-panel" onSubmit={submitCharge}>
-          <p className="eyebrow">Charge</p>
-          <h2>충전</h2>
-          <label>
-            지갑 ID
-            <input aria-label="충전 지갑 ID" value={walletId} onChange={(event) => setWalletId(event.target.value)} />
-          </label>
-          <label>
-            금액
-            <input aria-label="충전 금액" value={chargeAmount} type="number" min="1" onChange={(event) => setChargeAmount(event.target.value)} />
-          </label>
-          <label>
-            설명
-            <input aria-label="거래 설명" value={description} onChange={(event) => setDescription(event.target.value)} />
-          </label>
-          <button type="submit" disabled={isLoading}>충전하기</button>
-        </form>
-
-        <form className="panel form-panel dark-panel" onSubmit={submitTransfer}>
-          <p className="eyebrow">Transfer</p>
-          <h2>송금</h2>
-          <label>
-            출금 지갑
-            <input aria-label="송금 출금 지갑 ID" value={walletId} onChange={(event) => setWalletId(event.target.value)} />
-          </label>
-          <label>
-            입금 지갑
-            <input aria-label="송금 입금 지갑 ID" value={targetWalletId} onChange={(event) => setTargetWalletId(event.target.value)} />
-          </label>
-          <label>
-            금액
-            <input aria-label="송금 금액" value={transferAmount} type="number" min="1" onChange={(event) => setTransferAmount(event.target.value)} />
-          </label>
-          <button type="submit" disabled={isLoading}>송금하기</button>
-        </form>
-      </section>
-
-      <section className="status-strip">
-        <span>{isLoading ? '●' : '●'}</span>
-        <p>{statusMessage}</p>
-        <label>
-          Operation ID
-          <input aria-label="Operation ID" value={operationId} onChange={(event) => setOperationId(event.target.value)} placeholder="충전/송금 후 자동 입력" />
-        </label>
-        {lastOperation && (
-          <strong>
-            최근 operation: {lastOperation.operationId} · {lastOperation.type} · {lastOperation.status}
-          </strong>
-        )}
-      </section>
+        </section>
+      )}
 
       <section className="operator-console" aria-labelledby="operator-console-title">
         <div className="section-heading">
@@ -833,8 +931,6 @@ export function App() {
         <EvidencePanel title="거래내역" items={apiState.transactions.map((item) => `${item.type} · ${item.direction} · ${formatMoney(item.money)} · ${item.description}`)} />
         <EvidencePanel title="원장" items={apiState.ledgerEntries.map((item) => `${item.operationId} · ${item.direction} · 잔액 ${formatMoney(item.balanceAfter)}`)} />
         <EvidencePanel title="감사 로그" items={apiState.auditEvents.map((item) => `${item.operationId} · ${item.type} · ${item.detail}`)} />
-        <EvidencePanel title="Step Log" items={apiState.stepLogs.map((item) => `${item.step} · ${item.status} · ${item.detail}`)} />
-        <EvidencePanel title="Outbox" items={apiState.outboxEvents.map((item) => `${item.outboxEventId} · ${item.eventType} · ${item.status} · attempt ${item.attemptCount}`)} />
       </section>
     </main>
   );

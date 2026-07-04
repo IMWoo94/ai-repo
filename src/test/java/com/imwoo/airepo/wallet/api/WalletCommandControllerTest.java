@@ -1,5 +1,6 @@
 package com.imwoo.airepo.wallet.api;
 
+import static org.springframework.security.test.web.servlet.request.SecurityMockMvcRequestPostProcessors.jwt;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -18,6 +19,7 @@ import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.request.RequestPostProcessor;
 
 @SpringBootTest(classes = {AiRepoApplication.class, WalletCommandControllerTest.FixedClockConfig.class})
 @AutoConfigureMockMvc
@@ -31,9 +33,14 @@ class WalletCommandControllerTest {
         this.mockMvc = mockMvc;
     }
 
+    private static RequestPostProcessor member(String memberId) {
+        return jwt().jwt(token -> token.subject(memberId));
+    }
+
     @Test
     void chargesWallet() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -62,10 +69,12 @@ class WalletCommandControllerTest {
                 """;
 
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isCreated());
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(body))
                 .andExpect(status().isOk())
@@ -75,6 +84,7 @@ class WalletCommandControllerTest {
     @Test
     void transfersBetweenWallets() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/transfers")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -96,6 +106,7 @@ class WalletCommandControllerTest {
     @Test
     void rejectsInsufficientBalance() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-002/transfers")
+                        .with(member("member-002"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -115,6 +126,7 @@ class WalletCommandControllerTest {
     @Test
     void rejectsNegativeChargeAmountAsBadRequest() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
@@ -127,6 +139,39 @@ class WalletCommandControllerTest {
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"))
                 .andExpect(jsonPath("$.message").value("amount must be positive"));
+    }
+
+    @Test
+    void rejectsChargeWhenMemberDoesNotOwnWallet() throws Exception {
+        mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-002"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": 5000,
+                                  "currency": "KRW",
+                                  "idempotencyKey": "charge-api-001",
+                                  "description": "API 충전"
+                                }
+                                """))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("WALLET_ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value("Wallet access denied: wallet-001"));
+    }
+
+    @Test
+    void rejectsUnauthenticatedRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": 5000,
+                                  "currency": "KRW",
+                                  "idempotencyKey": "charge-api-001",
+                                  "description": "API 충전"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized());
     }
 
     @TestConfiguration
