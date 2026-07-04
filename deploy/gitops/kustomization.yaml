@@ -7,7 +7,7 @@ resources:
 images:
   - name: ai-repo
     newName: ghcr.io/imwoo94/ai-repo
-    newTag: 0.7.0-de29ea7b
+    newTag: 0.7.0-8569c93b
 patches:
   - target:
       kind: Deployment
