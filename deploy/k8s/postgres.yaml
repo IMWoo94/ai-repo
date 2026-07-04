@@ -32,11 +32,20 @@ spec:
           image: postgres:17-alpine
           env:
             - name: POSTGRES_DB
-              value: ai_repo
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: POSTGRES_DB
             - name: POSTGRES_USER
-              value: ai_repo
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: POSTGRES_USER
             - name: POSTGRES_PASSWORD
-              value: ai_repo
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: POSTGRES_PASSWORD
           ports:
             - containerPort: 5432
           readinessProbe:

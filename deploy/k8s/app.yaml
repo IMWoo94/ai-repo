@@ -25,9 +25,30 @@ spec:
             - name: AI_REPO_POSTGRES_URL
               value: jdbc:postgresql://postgres:5432/ai_repo
             - name: AI_REPO_POSTGRES_USERNAME
-              value: ai_repo
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_POSTGRES_USERNAME
             - name: AI_REPO_POSTGRES_PASSWORD
-              value: ai_repo
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_POSTGRES_PASSWORD
+            - name: AI_REPO_OPS_ADMIN_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_OPS_ADMIN_TOKEN
+            - name: AI_REPO_OPS_OPERATOR_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_OPS_OPERATOR_TOKEN
+            - name: AI_REPO_AUTH_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_AUTH_JWT_SECRET
             - name: AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED
               value: "true"
           ports:

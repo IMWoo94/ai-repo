@@ -43,6 +43,7 @@
 - 로컬 k8s 배포 스택(Prometheus/Grafana/Loki)과 outbox 커스텀 지표
 - GitHub Actions → GHCR({version}-{sha8}) → GitOps → ArgoCD 배포 파이프라인
 - Deploy 파이프라인 CI 성공 게이트(workflow_run)
+- k8s 로컬 스크립트 하드닝(loki/alloy rollout 대기 + Loki ready 스모크, ArgoCD 설치 버전 고정 v3.4.4)
 
 ## 릴리스 후보 검증
 
