@@ -7,5 +7,7 @@ frontend/node_modules/
 frontend/dist/
 frontend/playwright-report/
 frontend/test-results/
+
+# Local AI tooling artifacts
 .claude/
 .understand-anything/
