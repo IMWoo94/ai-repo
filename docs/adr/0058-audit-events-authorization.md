@@ -37,7 +37,7 @@ Accepted
 ### 비용
 
 - 소유자 스코프 감사 로그는 `ledger_entries` 조인에 의존하므로 ledger에 남지 않는 operation은 사용자 화면에서 보이지 않는다(현재 감사 대상 흐름은 모두 ledger를 남기므로 무해).
-- step-logs/outbox-events는 operator 전용이 되어 사용자 화면 evidence에서 사라진다.
+- step-logs/outbox-events는 operator 전용이 되어 사용자 화면 evidence에서 사라진다. 사용자 흐름 e2e는 증거를 원장 + 소유자 스코프 감사 로그 단언으로 검증한다.
 - **수용된 노출**: transfer는 operation_id 하나에 양쪽 지갑의 ledger entry가 달리므로, `TRANSFER_COMPLETED` 감사 이벤트(detail: `Transfer completed from {source} to {target}`)가 송신자·수신자 양쪽의 소유자 스코프 조회에 모두 반환되어 상대방 walletId가 노출된다. 이는 의도된 동작으로 수용한다 — 송신자는 이체 시 상대 walletId를 이미 알고 있고, 수신자가 송신자를 보는 것은 은행 입금내역과 동일한 의미론이며, walletId 자체는 소유권 검증(`WalletAccessPolicy`) 때문에 어떤 접근 권한도 부여하지 않는다. 회귀 테스트로 이 동작을 고정한다.
 
 ## 대안

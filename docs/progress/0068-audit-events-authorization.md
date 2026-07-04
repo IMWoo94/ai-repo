@@ -21,6 +21,7 @@
 - **HTTP 레이어 교차 배제 미검증**: `returnsWalletAuditEventsForOwner`에 wallet-002 충전 추가 후 op-002 배제 단언.
 - **프론트 mock 회귀 감지 불가**: `endsWith('/audit-events')`가 구 operator 엔드포인트와도 매치 → 전체 wallet 스코프 URL + Bearer 헤더 단언 추가.
 - **빈 패널 잔존**: 유저 화면의 Step Log/Outbox `EvidencePanel` 제거, 고아가 된 `stepLogs`/`outboxEvents` 상태와 `OperationStepLog` 타입 제거(`OperationOutboxEvent`는 operator manual-review에서 사용 중이라 유지).
+- **e2e 후속(main 머지 후 CI 발견)**: `wallet-flow.spec.ts`의 step log/outbox 단언을 원장(`CREDIT · 잔액`)·감사 로그(`CHARGE_COMPLETED`, transfer 상대방 detail 포함) 단언으로 교체.
 
 ## 개선 건수
 
