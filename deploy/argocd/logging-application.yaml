@@ -1,0 +1,29 @@
+# ArgoCD Application — (opt-in) ELK 로깅 스택. deploy/k8s/logging 을 logging 네임스페이스로 배포한다.
+#
+# 기존 `ai-repo` App(automated+selfHeal)과 달리 automated sync를 두지 않는다(= 수동 sync).
+# ELK는 무거운 학습용 스택이라 "항상 켜짐"을 피하고, ArgoCD에서 명시적으로 Sync해야 배포된다.
+#   등록: kubectl --context docker-desktop apply -f deploy/argocd/logging-application.yaml  (App만 등록)
+#   켜기: argocd app sync ai-repo-logging          (또는 ArgoCD UI의 Sync 버튼)
+#   끄기: argocd app delete ai-repo-logging         (cascade prune → logging ns 리소스 제거)
+#
+# 주의: 이 App으로 관리하기 시작하면 토글 주체를 ArgoCD로 일원화한다.
+#       scripts/elk-local-up.sh / elk-local-down.sh(수동 kubectl)와 병행하면 상태가 어긋날 수 있다.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-repo-logging
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/IMWoo94/ai-repo.git
+    targetRevision: main
+    path: deploy/k8s/logging
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: logging
+  syncPolicy:
+    # automated 블록 없음 = 수동 sync(opt-in). automated(selfHeal)를 넣으면
+    # "항상 ON"이 되어 opt-in 의도가 깨지므로 의도적으로 두지 않는다.
+    syncOptions:
+      - CreateNamespace=true

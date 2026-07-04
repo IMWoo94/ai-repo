@@ -21,7 +21,7 @@
 1. 학습용 opt-in ELK 로깅 스택(`deploy/k8s/logging`) 신설 — PLG와 병존, ArgoCD 미포함.
 2. Logstash grok 파이프라인으로 Spring 로그 구조화 파싱과 `spring-logs-*` 인덱스 색인.
 3. 기동/제거 스크립트와 학습·가이드 문서 신설.
-4. `AI_REPO_ELK_ENABLED` env 토글(메인 스택과 함께 on/off) + Filebeat를 라벨 `app=ai-repo` autodiscover로 범위 한정(네임스페이스 glob 오매칭 회피).
+4. 3-way on/off 토글: `AI_REPO_ELK_ENABLED` env(메인 스택과 함께), 독립 스크립트, `automated` 없는 별도 ArgoCD Application(`deploy/argocd/logging-application.yaml`, 수동 Sync/Delete) + Filebeat를 라벨 `app=ai-repo` autodiscover로 범위 한정(네임스페이스 glob 오매칭 회피).
 
 ## 검증
 

@@ -155,11 +155,16 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 
 #### (선택) ELK 로그 스택 — opt-in 학습용
 
-기본 로그 스택은 위 PLG(Loki)입니다. 로그 파싱·검색을 학습하려면 **opt-in** ELK 스택(Filebeat→Logstash→Elasticsearch→Kibana)을 `logging` 네임스페이스에 별도로 띄울 수 있습니다. PLG를 대체하지 않고 병존하며, ArgoCD(GitOps)에는 포함하지 않고 아래 스크립트로만 수동 기동합니다(ADR-0066). 구동·KQL 검색·트러블슈팅은 [ELK 로컬 로깅 가이드](docs/development/elk-local-logging.md), 개념 학습은 [ELK 학습 문서](docs/learning/elk-stack.md)를 따릅니다.
+기본 로그 스택은 위 PLG(Loki)입니다. 로그 파싱·검색을 학습하려면 **opt-in** ELK 스택(Filebeat→Logstash→Elasticsearch→Kibana)을 `logging` 네임스페이스에 별도로 띄울 수 있습니다. PLG를 대체하지 않고 병존하며, 리소스 부담이 커 **기본 off**입니다(ADR-0066). 구동·KQL 검색·트러블슈팅은 [ELK 로컬 로깅 가이드](docs/development/elk-local-logging.md), 개념 학습은 [ELK 학습 문서](docs/learning/elk-stack.md)를 따릅니다.
+
+on/off는 세 방식 중 하나로 하며(섞지 않음): ① 독립 스크립트, ② 메인 스택 env 플래그 `AI_REPO_ELK_ENABLED=true`, ③ ArgoCD 수동 sync App(`deploy/argocd/logging-application.yaml`, `automated` 없음 — 기존 `ai-repo` App은 항상 켜지므로 분리).
 
 ```bash
-./scripts/elk-local-up.sh     # ELK 스택 기동 (logging 네임스페이스)
-./scripts/elk-local-down.sh   # ELK 스택 제거
+./scripts/elk-local-up.sh                              # ① ELK만 기동 (logging 네임스페이스)
+./scripts/elk-local-down.sh                            # ① ELK만 제거
+AI_REPO_ELK_ENABLED=true ./scripts/k8s-local-up.sh     # ② PLG + ELK 함께
+# ③ ArgoCD(GitOps): App 등록 후 UI/CLI에서 Sync(켜기)/Delete(끄기)
+kubectl apply -f deploy/argocd/logging-application.yaml && argocd app sync ai-repo-logging
 ```
 
 | 서비스 | URL | 계정 |
