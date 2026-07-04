@@ -49,6 +49,16 @@ spec:
                 secretKeyRef:
                   name: ai-repo-credentials
                   key: AI_REPO_AUTH_JWT_SECRET
+            - name: AI_REPO_OUTBOX_CONSUMER_BROKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_OUTBOX_CONSUMER_BROKER_TOKEN
+            - name: AI_REPO_OUTBOX_PUBLISHER_HTTP_BROKER_TOKEN
+              valueFrom:
+                secretKeyRef:
+                  name: ai-repo-credentials
+                  key: AI_REPO_OUTBOX_PUBLISHER_HTTP_BROKER_TOKEN
             - name: AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED
               value: "true"
           ports:
