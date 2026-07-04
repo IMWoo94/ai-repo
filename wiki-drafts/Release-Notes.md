@@ -46,6 +46,8 @@
 - k8s 로컬 스크립트 하드닝(loki/alloy rollout 대기 + Loki ready 스모크, ArgoCD 설치 버전 고정 v3.4.4)
 - JDBC persistence adapter 분해와 ArchUnit 레이어 규칙
 - Broker consumer endpoint 인증 — `/internal/broker/outbox-events`에 `X-Broker-Token` shared secret(전용 Order 3 체인, 상수시간 비교, 미인증 401), publisher 동반 부착, 배포 프로파일 기본 토큰 `BrokerTokenGuard` fail-fast (ADR-0065)
+- Grafana `ai-repo Overview` 대시보드에 Loki 로그 섹션 추가 — 로그 볼륨(level별 시계열)·앱 로그 스트림·오류/경고 로그 패널로 메트릭+로그를 한 화면에서 관측
+- 배포 broker 토큰 주입 — `deploy/k8s` secret/env에 broker 토큰이 없어 `BrokerTokenGuard`가 배포 앱을 CrashLoopBackOff시키던 회귀 수정
 
 ## 릴리스 후보 검증
 
@@ -71,7 +73,7 @@
 
 ## 다음 후보
 
-- opt-in ELK 로깅 스택(Filebeat→Logstash grok→Elasticsearch→Kibana) — `logging` 네임스페이스에 PLG와 병존, ArgoCD 미포함·수동 스크립트(`scripts/elk-local-up.sh`/`down.sh`) 기동, 로그 파싱·역색인 검색 학습용. `AI_REPO_ELK_ENABLED`·독립 스크립트·ArgoCD 수동 sync App 토글 지원 (ADR-0066)
+- opt-in ELK 로깅 스택(Filebeat→Logstash grok→Elasticsearch→Kibana) — `logging` 네임스페이스에 PLG와 병존, 기본 ArgoCD 자동배포에는 미포함(항상 켜짐 방지), 로그 파싱·역색인 검색 학습용. on/off는 독립 스크립트·`AI_REPO_ELK_ENABLED` env·별도 ArgoCD 수동 sync App(`deploy/argocd/logging-application.yaml`) 3가지 중 택1 (ADR-0066)
 - JWT refresh token 기반 만료/갱신 정책 강화(현재는 401 시 password-less 재발급)
 - 로그인 회원의 실제 보유 지갑 조회 API(현재는 fixture 기반 파생)
 - broker-specific Testcontainers contract

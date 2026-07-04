@@ -120,7 +120,7 @@
 | 배포 프로파일 기본 자격증명 fail-fast (ADR-0062) | `postgres`/`prod`에서 공개된 기본 JWT secret·운영 토큰이면 기동 실패, `deploy/k8s/app.yaml`에 명시 값 주입 | 배포 프로파일 목록 하드코딩과 `app.yaml` 평문 값(Secret 주입은 #121에서 완결) |
 | Application layer Spring annotation policy (ADR-0063) | `@Service`, policy/properties `@Component`/`@Value`, 필요한 `@Transactional`을 제한적으로 허용하고 adapter 의존은 금지 | framework-free usecase 분리는 후속 전환 ADR 필요 |
 | JDBC persistence adapter decomposition (ADR-0064) | `JdbcWalletRepository`는 Spring composite bean으로 유지하고 SQL은 wallet/ledger, outbox relay, outbox consumer, operational alert, admin audit adapter로 분리 | composite가 여러 port를 계속 구현하는 절충은 유지 |
-| opt-in ELK 로그 스택 (ADR-0066) | 학습용 ELK(Filebeat→Logstash grok→Elasticsearch 역색인→Kibana)를 `logging` 네임스페이스에 PLG와 **병존**시키되 ArgoCD 미포함·수동 스크립트로만 기동, 2단계(Logstash grok) 토폴로지로 파싱 학습 | 로컬 학습 전용(security off·단일노드·ephemeral)이라 운영 신뢰성은 범위 밖, PLG 대비 리소스 비용이 크고 상시 구동하지 않음 |
+| opt-in ELK 로그 스택 (ADR-0066) | 학습용 ELK(Filebeat→Logstash grok→Elasticsearch 역색인→Kibana)를 `logging` 네임스페이스에 PLG와 **병존**시키되 기본 ArgoCD 자동배포 미포함(항상 켜짐 방지), on/off는 독립 스크립트·env 플래그·별도 ArgoCD 수동 sync App으로 토글, 2단계(Logstash grok) 토폴로지로 파싱 학습 | 로컬 학습 전용(security off·단일노드·ephemeral)이라 운영 신뢰성은 범위 밖, PLG 대비 리소스 비용이 크고 상시 구동하지 않음 |
 
 ## 다음 구조 후보
 
