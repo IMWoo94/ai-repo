@@ -48,7 +48,29 @@ graph TB
     graf -->|PromQL| prom
     graf -->|LogQL| loki
     dev -->|브라우저 localhost:30080 / 30300 / 30990| graf
+
+    classDef actor fill:#fff3cd,stroke:#b45309,stroke-width:2px
+    classDef github fill:#dbeafe,stroke:#1d4ed8
+    classDef registry fill:#ede9fe,stroke:#7c3aed
+    classDef gitopsTool fill:#ffedd5,stroke:#ea580c
+    classDef workload fill:#dcfce7,stroke:#16a34a
+    classDef observability fill:#fce7f3,stroke:#be185d
+    classDef storage fill:#e2e8f0,stroke:#475569
+
+    class dev actor
+    class repo,actions,gitops github
+    class ghcr registry
+    class argocd gitopsTool
+    class app workload
+    class prom,loki,alloy,graf observability
+    class pg storage
+    style GH fill:#eff6ff,stroke:#93c5fd
+    style K8S fill:#f8fafc,stroke:#94a3b8
+    style ARGONS fill:#fff7ed,stroke:#fdba74
+    style NS fill:#f0fdf4,stroke:#86efac
 ```
+
+> 색상: 🟡 개발자 · 🔵 GitHub · 🟣 레지스트리 · 🟠 ArgoCD · 🟢 앱 워크로드 · 🩷 관측(모니터링·로그) · ⚪ 저장소
 
 - 접속 URL·계정: `docs/development/k8s-local-monitoring.md` 접속 정보 표
 - 파이프라인 상세: `docs/development/ci-cd-gitops.md`
@@ -112,7 +134,28 @@ graph TB
     ports -->|구현| pub
     ports -->|구현| slack
     jdbc --> db
+
+    classDef actor fill:#fff3cd,stroke:#b45309,stroke-width:2px
+    classDef apiLayer fill:#dbeafe,stroke:#1d4ed8
+    classDef applLayer fill:#dcfce7,stroke:#16a34a
+    classDef portNode fill:#bbf7d0,stroke:#15803d,stroke-width:2px
+    classDef domainLayer fill:#fef9c3,stroke:#ca8a04,stroke-width:2px
+    classDef infraLayer fill:#ede9fe,stroke:#7c3aed
+    classDef storage fill:#e2e8f0,stroke:#475569
+
+    class user,ops actor
+    class sec,wapi,oapi apiLayer
+    class cmd,qry,relay,cons,alertsvc applLayer
+    class ports portNode
+    class model domainLayer
+    class mem,jdbc,pub,slack infraLayer
+    class db storage
+    style API fill:#eff6ff,stroke:#93c5fd
+    style APPL fill:#f0fdf4,stroke:#86efac
+    style INFRA fill:#f5f3ff,stroke:#c4b5fd
 ```
+
+> 색상: 🟡 액터 · 🔵 api(인바운드) · 🟢 application(유스케이스, 진한 초록 = 포트) · 🟨 domain · 🟣 infra(아웃바운드) · ⚪ DB
 
 - 돈 이동(충전·송금)은 하나의 operation으로 원장 + 감사 로그 + step log + outbox event를 남긴다(증적 원자성).
 - 운영 API는 operator(조회)/admin(변경) 토큰과 접근 감사 필터로 보호된다.
@@ -131,7 +174,22 @@ graph LR
     mm --> act["/actuator/prometheus"]
     act -->|15s 스크랩| prom["Prometheus"]
     prom -->|PromQL| graf["Grafana<br/>ai-repo Overview"]
+
+    classDef driver fill:#fff3cd,stroke:#b45309
+    classDef service fill:#dcfce7,stroke:#16a34a
+    classDef counter fill:#dbeafe,stroke:#1d4ed8
+    classDef gauge fill:#fce7f3,stroke:#be185d
+    classDef expose fill:#ede9fe,stroke:#7c3aed
+
+    class sched driver
+    class relay service
+    class reg counter
+    class binder gauge
+    class mm,act expose
+    class prom,graf expose
 ```
+
+> 색상: 🟡 구동(스케줄러) · 🟢 서비스 · 🔵 카운터 경로(기록 시점) · 🩷 게이지 경로(스크레이프 시점) · 🟣 노출·수집
 
 지표 목록과 대시보드 패널: `docs/development/k8s-local-monitoring.md` Outbox 커스텀 지표 섹션.
 
