@@ -32,6 +32,7 @@
 - Admin API path matching hardening
 - 엔드유저 memberId JWT 인증과 wallet ownership 서비스계층 강제(IDOR 차단, 비소유자 403, ledger-entries 포함)
 - 프론트엔드 memberId 로그인 + Bearer 토큰 부착 + 401 자동 재발급/재시도
+- audit-events/step-logs/outbox-events 미인증 노출 차단(operator 게이팅)과 소유자 스코프 `GET /wallets/{walletId}/audit-events` 추가
 
 ## MVP 출시 판단 기준
 
