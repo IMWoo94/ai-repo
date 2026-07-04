@@ -138,10 +138,20 @@ IntelliJ IDEA 기준 설정은 [Local Setup](docs/development/local-setup.md)을
 로컬 Docker Desktop k8s에 전체 스택(앱 + Postgres + Prometheus + Grafana + Loki)을 띄우는 구동 방법과 서비스별 접속 URL·계정 정보, 대시보드/LogQL 로그 검색은 [k8s 로컬 배포 + 모니터링 + 로그 검색](docs/development/k8s-local-monitoring.md)을 따릅니다. main 머지 시 자동 배포되는 GitHub Actions → GHCR → ArgoCD 파이프라인은 [CI/CD GitOps](docs/development/ci-cd-gitops.md)를 따릅니다.
 
 ```bash
-./scripts/k8s-local-up.sh     # 전체 스택 기동 — 앱 :30080, Prometheus :30990, Grafana :30300
+./scripts/k8s-local-up.sh     # 전체 스택 기동
 ./scripts/k8s-local-down.sh   # 전체 제거
 ./scripts/argocd-install.sh   # (선택) ArgoCD 설치 + GitOps 모드
 ```
+
+| 서비스 | URL | 계정 |
+| --- | --- | --- |
+| 앱 API | http://localhost:30080 | 운영 API 헤더: `X-Operator-Token: local-operator-token` / `X-Admin-Token: local-ops-token` |
+| Grafana 대시보드 | http://localhost:30300/d/ai-repo-overview | 익명 Admin (로그인 불필요) |
+| Grafana 로그 검색 | http://localhost:30300/explore | 익명 Admin (로그인 불필요) |
+| Prometheus | http://localhost:30990 | 없음 |
+| ArgoCD | https://localhost:8443 (port-forward 후) | `admin` / 초기 비밀번호 조회 명령은 가이드 참고 |
+
+서비스별 전체 접속 정보(Postgres·Loki 포함)와 복사-실행 명령어 모음은 [k8s 로컬 배포 + 모니터링 + 로그 검색](docs/development/k8s-local-monitoring.md)의 "접속 정보"·"전체 명령어 모음" 섹션에 있습니다.
 
 현재 기능 흐름은 잔액/거래내역 조회, 회원/지갑 계정, 충전/송금, 원장/감사 로그 1차 API를 제공합니다.
 

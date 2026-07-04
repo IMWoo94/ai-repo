@@ -19,13 +19,72 @@ Docker Desktop 내장 Kubernetes에 ai-repo 전체 스택(앱 + Postgres + Prome
 | 서비스 | URL | 계정 / 인증 |
 | --- | --- | --- |
 | 앱 API | http://localhost:30080 | 사용자 API 인증 없음. 운영 API는 헤더 `X-Operator-Token: local-operator-token`(조회) / `X-Admin-Token: local-ops-token`(변경) + `X-Operator-Id: <이름>` |
-| Prometheus | http://localhost:30990 | 없음 — `/targets`에서 ai-repo job UP 확인 |
-| Grafana | http://localhost:30300 | **익명 Admin, 로그인 불필요**(로컬 전용). `ai-repo Overview` 대시보드 자동 프로비저닝, Explore에서 Loki 로그 검색 |
-| Loki | 클러스터 내부 `http://loki:3100` | 없음. 외부 직접 조회 시 `kubectl -n ai-repo port-forward svc/loki 3100:3100` |
-| Postgres | 클러스터 내부 `postgres:5432` | `ai_repo` / `ai_repo`, DB `ai_repo`. 외부 접속 시 `kubectl -n ai-repo port-forward svc/postgres 5432:5432` |
-| ArgoCD (선택) | `kubectl -n argocd port-forward svc/argocd-server 8443:443` → https://localhost:8443 | `admin` / `kubectl -n argocd get secret argocd-initial-admin-secret -o jsonpath='{.data.password}' \| base64 -d` |
+| 앱 health | http://localhost:30080/actuator/health | 없음 |
+| 앱 메트릭 | http://localhost:30080/actuator/prometheus | 없음 |
+| Prometheus | http://localhost:30990 | 없음 |
+| Prometheus 타겟 상태 | http://localhost:30990/targets | 없음 — ai-repo job UP 확인 |
+| Grafana | http://localhost:30300 | **익명 Admin, 로그인 불필요**(로컬 전용) |
+| Grafana 대시보드 (ai-repo Overview) | http://localhost:30300/d/ai-repo-overview | 익명 Admin |
+| Grafana Explore (Loki 로그 검색) | http://localhost:30300/explore | 익명 Admin |
+| Loki API | 클러스터 내부 http://loki:3100 — 외부는 port-forward 후 http://localhost:3100 | 없음 |
+| Postgres | 클러스터 내부 postgres:5432 — 외부는 port-forward 후 localhost:5432 | 사용자 `ai_repo` / 비밀번호 `ai_repo` / DB `ai_repo` |
+| ArgoCD UI (선택) | port-forward 후 https://localhost:8443 | `admin` / 초기 비밀번호는 아래 명령으로 조회 |
 
 앱 운영 토큰은 `AI_REPO_OPS_OPERATOR_TOKEN`, `AI_REPO_OPS_ADMIN_TOKEN` 환경 변수로 override할 수 있다(`deploy/k8s/app.yaml`). ArgoCD 설치/GitOps 모드는 `docs/development/ci-cd-gitops.md` 참고.
+
+## 전체 명령어 모음 (리포 루트 기준, 복사-실행)
+
+```bash
+# ── 스택 기동 / 제거 ──────────────────────────────────────────────
+./scripts/k8s-local-up.sh                 # 이미지 빌드 → 배포 → 롤아웃 대기
+./scripts/k8s-local-down.sh               # 전체 제거 (Postgres 데이터 포함)
+./scripts/argocd-install.sh               # (선택) ArgoCD 설치 + ai-repo Application 등록
+
+# ── 앱 확인 ──────────────────────────────────────────────────────
+curl -s http://localhost:30080/actuator/health
+curl -s http://localhost:30080/actuator/prometheus | grep ai_repo_outbox
+
+# 사용자 API 예시 — 충전
+curl -s -X POST http://localhost:30080/api/v1/wallets/wallet-001/charges \
+  -H "Content-Type: application/json" \
+  -d '{"amount":1000,"currency":"KRW","idempotencyKey":"smoke-001","description":"스모크 충전"}'
+
+# 운영 API 예시 — relay health (operator 토큰)
+curl -s http://localhost:30080/api/v1/outbox-relay-runs/health \
+  -H "X-Operator-Token: local-operator-token" \
+  -H "X-Operator-Id: local-dev"
+
+# ── Prometheus ───────────────────────────────────────────────────
+open http://localhost:30990/targets                                  # 타겟 UP 확인 (macOS)
+curl -s -G http://localhost:30990/api/v1/query \
+  --data-urlencode 'query=ai_repo_outbox_relay_runs_total'           # 지표 직접 조회
+
+# ── Grafana ──────────────────────────────────────────────────────
+open http://localhost:30300/d/ai-repo-overview                       # 대시보드
+open http://localhost:30300/explore                                  # Loki 로그 검색 (LogQL)
+
+# ── Loki 직접 조회 (Grafana 없이) ────────────────────────────────
+kubectl --context docker-desktop -n ai-repo port-forward svc/loki 3100:3100 &
+curl -s -G http://localhost:3100/loki/api/v1/query_range \
+  --data-urlencode 'query={app="ai-repo"} |= "ERROR"' \
+  --data-urlencode 'limit=20'
+
+# ── Postgres 직접 접속 ───────────────────────────────────────────
+kubectl --context docker-desktop -n ai-repo port-forward svc/postgres 5432:5432 &
+psql -h localhost -p 5432 -U ai_repo -d ai_repo                      # 비밀번호: ai_repo
+
+# ── ArgoCD (선택, GitOps 모드) ───────────────────────────────────
+kubectl --context docker-desktop -n argocd port-forward svc/argocd-server 8443:443 &
+open https://localhost:8443                                          # admin / 아래 비밀번호
+kubectl --context docker-desktop -n argocd get secret argocd-initial-admin-secret \
+  -o jsonpath='{.data.password}' | base64 -d; echo
+kubectl --context docker-desktop -n argocd get application ai-repo   # Synced / Healthy 확인
+
+# ── 파드 상태 / 즉석 로그 ────────────────────────────────────────
+kubectl --context docker-desktop -n ai-repo get pods -o wide
+kubectl --context docker-desktop -n ai-repo logs deploy/ai-repo --tail=100 -f
+kubectl --context docker-desktop -n ai-repo get events --sort-by=.lastTimestamp
+```
 
 ## 구성
 
