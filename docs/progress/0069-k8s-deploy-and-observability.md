@@ -36,6 +36,7 @@
 
 ## 관련 문서
 
+- GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/110
 - `docs/adr/0059-k8s-deploy-and-observability.md`
 - `docs/development/k8s-local-monitoring.md`
 - `docs/development/ci-cd-gitops.md`
