@@ -18,6 +18,7 @@ main push
 ```
 
 - **이미지 태그 규칙**: 반드시 `{version}-{sha8}`. `latest` 사용 금지. sha8은 CI run의 `head_sha` 앞 8자리다.
+- **멀티아치**: jar는 러너에서 네이티브 빌드 후 `Dockerfile.ci`(COPY 전용)로 `linux/amd64,linux/arm64` 동시 push — amd64 단일 이미지는 Apple Silicon 로컬 노드에서 에뮬레이션 기동이 liveness를 초과해 CrashLoopBackOff가 난다(#127). 로컬 빌드는 기존 멀티스테이지 `Dockerfile`을 그대로 쓴다.
 - **CI 게이트**: deploy는 CI("CI" 워크플로우)가 성공했을 때만 실행된다(`workflow_run` + `if: conclusion == 'success'`). 깨진 커밋(테스트/빌드 실패)은 배포되지 않는다.
 - **재트리거 방지**: 매니페스트 커밋 메시지에 `[skip ci]`를 붙이면 CI가 아예 돌지 않으므로 CI→deploy 루프가 차단된다. (`workflow_run` 트리거에는 paths 필터가 없어 기존 `paths-ignore` 블록은 제거했다.)
 - **동작 변화**: paths 필터가 없어져, CI를 통과한 docs-only push도 이제 이미지 빌드+배포를 트리거한다.

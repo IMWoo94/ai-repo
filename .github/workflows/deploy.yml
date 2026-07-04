@@ -45,6 +45,26 @@ jobs:
           SHA8=${HEAD_SHA:0:8}
           echo "tag=${VERSION}-${SHA8}" >> "$GITHUB_OUTPUT"
 
+      - name: Set up Java 25
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '25'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v4
+
+      # jar는 러너에서 네이티브 빌드한다. Dockerfile.ci는 COPY만 하므로
+      # 멀티아치 빌드에서 컴파일이 QEMU 에뮬레이션되지 않는다.
+      - name: Build boot jar
+        run: ./gradlew bootJar
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Login to GHCR
         uses: docker/login-action@v3
         with:
@@ -52,10 +72,15 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Build and push image
+      # arm64(Apple Silicon Docker Desktop 노드)와 amd64를 모두 지원해야 한다.
+      # single-arch amd64 이미지는 arm64 노드에서 에뮬레이션 기동이 liveness를 초과해
+      # CrashLoopBackOff를 일으킨다 (#127).
+      - name: Build and push multi-arch image
         uses: docker/build-push-action@v6
         with:
           context: .
+          file: Dockerfile.ci
+          platforms: linux/amd64,linux/arm64
           push: true
           tags: ${{ env.IMAGE }}:${{ steps.meta.outputs.tag }}
 
