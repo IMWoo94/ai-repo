@@ -1,0 +1,67 @@
+# ai-repo 애플리케이션. 로컬은 ai-repo:local 태그(imagePullPolicy: Never),
+# CI/CD 파이프라인 도입 시 {version}-{sha8} 태그로 GitOps 매니페스트를 갱신한다.
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ai-repo
+  namespace: ai-repo
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ai-repo
+  template:
+    metadata:
+      labels:
+        app: ai-repo
+    spec:
+      containers:
+        - name: ai-repo
+          image: ai-repo:local
+          imagePullPolicy: Never
+          env:
+            - name: SPRING_PROFILES_ACTIVE
+              value: postgres
+            - name: AI_REPO_POSTGRES_URL
+              value: jdbc:postgresql://postgres:5432/ai_repo
+            - name: AI_REPO_POSTGRES_USERNAME
+              value: ai_repo
+            - name: AI_REPO_POSTGRES_PASSWORD
+              value: ai_repo
+            - name: AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED
+              value: "true"
+          ports:
+            - containerPort: 8080
+          readinessProbe:
+            httpGet:
+              path: /actuator/health/readiness
+              port: 8080
+            initialDelaySeconds: 10
+            periodSeconds: 5
+            failureThreshold: 12
+          livenessProbe:
+            httpGet:
+              path: /actuator/health/liveness
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: 250m
+              memory: 512Mi
+            limits:
+              memory: 1Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: ai-repo
+  namespace: ai-repo
+spec:
+  type: NodePort
+  selector:
+    app: ai-repo
+  ports:
+    - port: 8080
+      targetPort: 8080
+      nodePort: 30080

@@ -1,0 +1,18 @@
+# GitOps 배포 오버레이 — ArgoCD가 이 디렉토리를 sync한다.
+# newTag는 GitHub Actions(deploy.yml)가 {version}-{sha8} 형식으로 갱신한다. 수동 수정 금지.
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+resources:
+  - ../k8s
+images:
+  - name: ai-repo
+    newName: ghcr.io/imwoo94/ai-repo
+    newTag: 0.7.0-00000000
+patches:
+  - target:
+      kind: Deployment
+      name: ai-repo
+    patch: |-
+      - op: replace
+        path: /spec/template/spec/containers/0/imagePullPolicy
+        value: IfNotPresent

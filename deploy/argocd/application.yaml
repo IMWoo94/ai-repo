@@ -1,0 +1,21 @@
+# ArgoCD Application — deploy/gitops 오버레이를 ai-repo 네임스페이스로 자동 sync
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: ai-repo
+  namespace: argocd
+spec:
+  project: default
+  source:
+    repoURL: https://github.com/IMWoo94/ai-repo.git
+    targetRevision: main
+    path: deploy/gitops
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: ai-repo
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+    syncOptions:
+      - CreateNamespace=true

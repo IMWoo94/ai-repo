@@ -29,6 +29,8 @@
 - Operational alert suppression and pruning
 - Slack webhook operational alert publisher
 - `.dev/rules` 자동 문서/테스트 동기화 체크
+- 로컬 k8s 배포 스택(Prometheus/Grafana/Loki)과 outbox 커스텀 지표
+- GitHub Actions → GHCR → GitOps → ArgoCD 배포 파이프라인
 
 ## MVP 출시 판단 기준
 
