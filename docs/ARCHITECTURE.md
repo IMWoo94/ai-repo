@@ -82,6 +82,7 @@ flowchart LR
 - **4-eyes requeue**: 승인자/반려자는 요청자와 달라야 함. 직접 requeue API는 `410 Gone`으로 폐기(ADR-0040).
 - **컨슈머**: `@Transactional`, processed-event dedup, receipt/delivery metric 기록, 스키마 버전 1.
 - **관측/운영**: relay-run health, consumer 지표, operational-alert(중복 suppression) → Slack/Noop, admin API 접근 감사, 스케줄러 기반 pruning(모두 기본 비활성).
+- **로그**: 기본은 PLG(Loki) 파드 로그 수집이며, 학습용 **opt-in ELK 대안**(Filebeat→Logstash→ES→Kibana)을 병존 스택으로 둘 수 있다(ArgoCD 미포함, 수동 기동). → [ELK 학습 문서](learning/elk-stack.md)
 
 ## 5. 시큐리티 체인
 

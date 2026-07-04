@@ -193,6 +193,46 @@ graph LR
 
 지표 목록과 대시보드 패널: `docs/development/k8s-local-monitoring.md` Outbox 커스텀 지표 섹션.
 
+## 4. (opt-in) ELK 로그 파이프라인
+
+기본 로그 스택은 PLG(Loki)이며, 학습용으로 **opt-in** ELK 스택을 병존시킬 수 있다. ArgoCD(GitOps)에는 포함하지 않고 `scripts/elk-local-up.sh`로만 수동 기동한다. Filebeat(DaemonSet)가 `ai-repo` 파드 로그를 tail → Logstash가 grok으로 Spring 로그를 파싱 → Elasticsearch 역색인(`spring-logs-YYYY.MM.dd`) → Kibana Discover에서 KQL 검색한다.
+
+```mermaid
+graph LR
+    pods["ai-repo 파드 로그<br/>/var/log/containers/*ai-repo*.log"]
+
+    subgraph LOGGING["logging 네임스페이스 (opt-in · ArgoCD 미포함)"]
+        fb["Filebeat<br/>DaemonSet (노드별 tail)"]
+        ls["Logstash<br/>grok 파싱 :5044"]
+        es[("Elasticsearch<br/>역색인 :9200 / NodePort 30920<br/>index spring-logs-YYYY.MM.dd")]
+        kb["Kibana<br/>Discover/KQL :5601 / NodePort 30561"]
+    end
+
+    dev["개발자<br/>localhost:30561"]
+
+    pods -->|container input| fb
+    fb -->|beats| ls
+    ls -->|bulk index| es
+    kb -->|query| es
+    dev -->|브라우저| kb
+
+    classDef source fill:#e2e8f0,stroke:#475569
+    classDef optin fill:#fce7f3,stroke:#be185d
+    classDef store fill:#fef9c3,stroke:#ca8a04,stroke-width:2px
+    classDef actor fill:#fff3cd,stroke:#b45309,stroke-width:2px
+
+    class pods source
+    class fb,ls,kb optin
+    class es store
+    class dev actor
+    style LOGGING fill:#fdf2f8,stroke:#f9a8d4,stroke-dasharray:5 5
+```
+
+> 색상: ⚪ 로그 소스 · 🩷 ELK 컴포넌트(opt-in, 점선 = ArgoCD 미포함 수동 기동) · 🟨 Elasticsearch 역색인 · 🟡 개발자
+
+- grok 파싱에 실패해도 원본 `message`는 유지되어 ES로 전달된다(`_grokparsefailure_spring` 태그).
+- 기동/제거·접속 URL·KQL 예시: `docs/development/elk-local-logging.md`, 개념 학습: `docs/learning/elk-stack.md`, 결정 배경: `docs/adr/0066-elk-logging-stack.md`.
+
 ## 관련 문서
 
 - `docs/development/k8s-local-monitoring.md` — 접속 정보·명령어·지표·로그 검색
