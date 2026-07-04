@@ -90,10 +90,11 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0072 | [k8s 자격증명 Secret 주입 전환](0072-k8s-secret-injection.md) | 완료 |
 | 0075 | [Admin Path Drift Guard](0075-admin-path-drift-guard.md) | 완료 |
 | 0073 | [배포 프로파일 기본 자격증명 fail-fast](0073-default-credential-fail-fast.md) | 완료 |
+| 0076 | [JDBC Persistence Adapter Decomposition](0076-jdbc-persistence-adapter-decomposition.md) | 완료 |
 
 ## 현재 기준선
 
 - 최신 병합 기준: `main`
-- 최신 완료 기능: Audit Event–Wallet Mapping 명시화
+- 최신 완료 기능: JDBC Persistence Adapter Decomposition
 - 현재 릴리스 후보: `v0.7.0`
 - 아직 미완료: JWT 만료 후 갱신 정책, Kafka/RabbitMQ/SQS adapter, pruning 실행 이력, Slack 발행 실패 record와 재시도 정책, broker-specific Testcontainers 정책, broker replay window별 retention 권장값, 실제 identity/role scope 연동, 운영 alert 화면 연결

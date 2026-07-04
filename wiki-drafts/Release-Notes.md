@@ -44,6 +44,7 @@
 - GitHub Actions → GHCR({version}-{sha8}) → GitOps → ArgoCD 배포 파이프라인
 - Deploy 파이프라인 CI 성공 게이트(workflow_run)
 - k8s 로컬 스크립트 하드닝(loki/alloy rollout 대기 + Loki ready 스모크, ArgoCD 설치 버전 고정 v3.4.4)
+- JDBC persistence adapter 분해와 ArchUnit 레이어 규칙
 
 ## 릴리스 후보 검증
 
@@ -52,6 +53,7 @@
 - `./gradlew check`
 - `./gradlew scenarioTest`
 - `./gradlew postgresScenarioTest`
+- `./gradlew test --tests '*LayerDependencyTest'`
 - `npm --prefix frontend run test`
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run e2e`
@@ -75,3 +77,4 @@
 - pruning 실행 이력 저장과 조회 API
 - Slack 발행 실패 record와 재시도 정책
 - 운영 alert 화면 연결
+- context별 JDBC adapter slice test 분리

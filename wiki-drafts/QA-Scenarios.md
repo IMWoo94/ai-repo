@@ -33,6 +33,8 @@
 | Consumer pruning API | 오래된 processed-event, receipt, delivery metric bucket만 admin 권한으로 삭제한다 | API test, service test, JDBC test |
 | Relay/pruning 운영 화면 | relay health, relay run, pruning 결과를 운영자 화면에서 확인한다 | Frontend unit, E2E |
 | PostgreSQL runtime | `postgres` profile에서 Flyway migration과 대표 흐름이 동작한다 | PostgreSQL scenario CI |
+| 레이어 의존 규칙 | domain/application/api/infra의 핵심 의존 방향이 유지된다 | ArchUnit test |
+| JDBC adapter 분해 회귀 | context별 JDBC adapter로 분해해도 기존 repository contract와 rollback 경계가 유지된다 | JDBC test, PostgreSQL scenario CI |
 
 ## 수동 시연 순서
 
@@ -56,6 +58,7 @@
 - `./gradlew check`
 - `./gradlew scenarioTest`
 - `./gradlew postgresScenarioTest`
+- `./gradlew test --tests '*LayerDependencyTest'`
 - `npm --prefix frontend run test`
 - `npm --prefix frontend run build`
 - `npm --prefix frontend run e2e`

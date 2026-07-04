@@ -39,6 +39,10 @@ import org.testcontainers.utility.DockerImageName;
 @AutoConfigureMockMvc
 class PostgresWalletScenarioFlowTest {
 
+    private static final String TEST_JWT_SECRET = "postgres-scenario-jwt-secret-32b!!";
+    private static final String TEST_ADMIN_TOKEN = "postgres-scenario-admin-token";
+    private static final String TEST_OPERATOR_TOKEN = "postgres-scenario-operator-token";
+
     @Container
     private static final PostgreSQLContainer<?> POSTGRES = new PostgreSQLContainer<>(
             DockerImageName.parse("postgres:17-alpine")
@@ -74,6 +78,9 @@ class PostgresWalletScenarioFlowTest {
         registry.add("spring.datasource.driver-class-name", POSTGRES::getDriverClassName);
         registry.add("spring.flyway.enabled", () -> "true");
         registry.add("spring.flyway.locations", () -> "classpath:db/migration");
+        registry.add("ai-repo.auth.jwt.secret", () -> TEST_JWT_SECRET);
+        registry.add("ai-repo.ops.admin-token", () -> TEST_ADMIN_TOKEN);
+        registry.add("ai-repo.ops.operator-token", () -> TEST_OPERATOR_TOKEN);
     }
 
     @Test
@@ -134,17 +141,17 @@ class PostgresWalletScenarioFlowTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
         mockMvc.perform(get("/api/v1/audit-events")
-                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Token", TEST_OPERATOR_TOKEN)
                         .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(2)));
         mockMvc.perform(get("/api/v1/operations/op-001/step-logs")
-                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Token", TEST_OPERATOR_TOKEN)
                         .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(6)));
         mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
-                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Token", TEST_OPERATOR_TOKEN)
                         .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$", hasSize(1)))
@@ -158,12 +165,12 @@ class PostgresWalletScenarioFlowTest {
                 });
 
         mockMvc.perform(get("/api/v1/operations/op-001/outbox-events")
-                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Token", TEST_OPERATOR_TOKEN)
                         .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
         mockMvc.perform(get("/api/v1/operations/op-002/outbox-events")
-                        .header("X-Operator-Token", "local-operator-token")
+                        .header("X-Operator-Token", TEST_OPERATOR_TOKEN)
                         .header("X-Operator-Id", "postgres-ops"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$[0].status").value("PUBLISHED"));
