@@ -40,7 +40,7 @@ ai-repo:
     publisher:
       type: ${AI_REPO_OUTBOX_PUBLISHER_TYPE:memory}
       http:
-        endpoint: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT:http://127.0.0.1:18080/outbox-events}
+        endpoint: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT:http://127.0.0.1:18080/internal/broker/outbox-events}
         timeout-ms: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_TIMEOUT_MS:3000}
         broker-token: ${AI_REPO_OUTBOX_PUBLISHER_HTTP_BROKER_TOKEN:local-broker-token}
   outbox-relay:

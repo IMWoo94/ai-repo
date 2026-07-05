@@ -82,3 +82,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0064 | JDBC Persistence Adapter Decomposition | Accepted |
 | ADR-0065 | Broker Consumer Endpoint Authentication | Accepted |
 | ADR-0066 | 학습용 opt-in ELK 로깅 스택 | Accepted |
+| ADR-0067 | Outbox Publisher Deployment Wiring | Accepted |
