@@ -137,6 +137,8 @@
 - `0076-jdbc-persistence-adapter-decomposition.md`: JdbcWalletRepository bounded-context 분해와 ArchUnit 레이어 규칙 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/125
 - `0077-elk-logging-stack.md`: ELK 2단계 로깅 스택(Filebeat→Logstash grok→ES→Kibana) 학습용 opt-in 작업 초안
+- `0079-deployed-profile-persistence-guard.md`: 배포 프로파일 postgres 누락 시 In-Memory 저장소 유실 방지 fail-fast 가드 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/145
 
 ## GitHub CLI로 생성
 
