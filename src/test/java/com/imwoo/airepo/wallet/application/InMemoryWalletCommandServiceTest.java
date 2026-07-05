@@ -148,6 +148,39 @@ class InMemoryWalletCommandServiceTest {
                 .hasMessage("currency must be KRW");
     }
 
+    @Test
+    void differentWalletsMayReuseSameIdempotencyKeyWithoutConflict() {
+        WalletCommandResult first = service.charge(
+                "member-001",
+                "wallet-001",
+                new WalletChargeCommand(money("5000"), "shared-key", "테스트 충전")
+        );
+        WalletCommandResult second = service.charge(
+                "member-002",
+                "wallet-002",
+                new WalletChargeCommand(money("7000"), "shared-key", "테스트 충전")
+        );
+
+        assertThat(first.created()).isTrue();
+        assertThat(second.created()).isTrue();
+        assertThat(second.operation().operationId()).isNotEqualTo(first.operation().operationId());
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("130000"));
+        assertThat(repository.findBalance("wallet-002").orElseThrow().money()).isEqualTo(money("37000"));
+    }
+
+    @Test
+    void sameWalletAndKeyWithDifferentFingerprintStillConflicts() {
+        service.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "shared-key", "테스트 충전"));
+
+        assertThatThrownBy(() -> service.charge(
+                "member-001",
+                "wallet-001",
+                new WalletChargeCommand(money("6000"), "shared-key", "테스트 충전")
+        ))
+                .isInstanceOf(IdempotencyKeyConflictException.class)
+                .hasMessage("Idempotency key already used for different request: shared-key");
+    }
+
     private Money money(String amount) {
         return new Money(new BigDecimal(amount), "KRW");
     }

@@ -170,16 +170,17 @@ final class JdbcWalletLedgerRepository implements WalletCommandRepository, Walle
     }
 
     @Override
-    public Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
+    public Optional<WalletOperationRecord> findOperation(String walletId, String idempotencyKey) {
         return support.queryOptional(
                 """
                         select idempotency_key, fingerprint, operation_id, transaction_id, wallet_id,
                                counterparty_wallet_id, occurred_at, type, status, direction, amount, currency,
                                balance_wallet_id, balance_amount, balance_currency, balance_as_of, description
                         from wallet_operations
-                        where idempotency_key = ?
+                        where wallet_id = ? and idempotency_key = ?
                         """,
                 support.operationRecordMapper(),
+                walletId,
                 idempotencyKey
         );
     }

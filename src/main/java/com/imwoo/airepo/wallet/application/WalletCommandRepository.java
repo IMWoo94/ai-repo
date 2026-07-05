@@ -6,7 +6,7 @@ import java.util.Optional;
 
 public interface WalletCommandRepository extends WalletQueryRepository {
 
-    Optional<WalletOperationRecord> findOperation(String idempotencyKey);
+    Optional<WalletOperationRecord> findOperation(String walletId, String idempotencyKey);
 
     WalletOperationRecord applyCharge(
             String idempotencyKey,

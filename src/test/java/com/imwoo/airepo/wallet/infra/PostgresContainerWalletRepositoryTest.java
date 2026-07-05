@@ -257,8 +257,8 @@ class PostgresContainerWalletRepositoryTest {
             assertThat(ledgerQueryService.getLedgerEntries("member-002", "wallet-002")).hasSize(1);
             assertThat(ledgerQueryService.getAuditEvents()).hasSize(1);
             assertThat(
-                    repository.findOperation("postgres-concurrent-transfer-001").isPresent()
-                            ^ repository.findOperation("postgres-concurrent-transfer-002").isPresent()
+                    repository.findOperation("wallet-001", "postgres-concurrent-transfer-001").isPresent()
+                            ^ repository.findOperation("wallet-001", "postgres-concurrent-transfer-002").isPresent()
             ).isTrue();
         } finally {
             executorService.shutdownNow();
@@ -291,7 +291,7 @@ class PostgresContainerWalletRepositoryTest {
             assertThat(ledgerQueryService.getAuditEvents()).isEmpty();
             assertThat(repository.findOperationStepLogs("op-001")).isEmpty();
             assertThat(repository.findOperationOutboxEvents("op-001")).isEmpty();
-            assertThat(repository.findOperation("postgres-lock-timeout-001")).isEmpty();
+            assertThat(repository.findOperation("wallet-001", "postgres-lock-timeout-001")).isEmpty();
         } finally {
             releaseLatch.countDown();
             lockHolder.get(5, TimeUnit.SECONDS);
