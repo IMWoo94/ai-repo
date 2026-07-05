@@ -79,6 +79,7 @@
 - opt-in ELK 로깅 스택(Filebeat→Logstash grok→Elasticsearch→Kibana) — `logging` 네임스페이스에 PLG와 병존, 기본 ArgoCD 자동배포에는 미포함(항상 켜짐 방지), 로그 파싱·역색인 검색 학습용. on/off는 독립 스크립트·`AI_REPO_ELK_ENABLED` env·별도 ArgoCD 수동 sync App(`deploy/argocd/logging-application.yaml`) 3가지 중 택1 (ADR-0066)
 - 배포 프로파일에서 `postgres` 누락 시 In-Memory 지갑 저장소 로드로 인한 잔액 유실을 막는 startup fail-fast 가드(`DeployedProfilePersistenceGuard`, ADR-0068)
 - 멱등키를 지갑 스코프로 한정 — `wallet_operations`를 `(wallet_id, idempotency_key)` 복합 PK로 전환해 회원 간 멱등키 충돌(409)과 cross-tenant operation 재생 차단 (ADR-0072, #149)
+- 미검증 입력/응답 경계 하드닝 — description 255자 초과 400, 지갑 미인증 JSON 401(`WALLET_AUTHENTICATION_REQUIRED`), outbox `last_error` 255자 절단, 프론트 빈 401 본문 방어 (ADR-0070, #147)
 - JWT refresh token 기반 만료/갱신 정책 강화(현재는 401 시 password-less 재발급)
 - 로그인 회원의 실제 보유 지갑 조회 API(현재는 fixture 기반 파생)
 - broker-specific Testcontainers contract

@@ -147,6 +147,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/148
 - `0083-wallet-scoped-idempotency-keys.md`: 멱등키를 지갑 스코프로 한정해 회원 간 409 간섭 차단 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/149
+- `0081-input-response-bounds.md`: 미검증 입력/응답 경계 하드닝(description 길이·401 본문·last_error 절단) 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/147
 
 ## GitHub CLI로 생성
 
