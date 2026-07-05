@@ -214,6 +214,30 @@ class JdbcWalletRepositoryTest {
     }
 
     @Test
+    void outboxBatchClaimMovesAllReadyEventsToProcessing() {
+        commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
+        commandService.transfer("member-001", "wallet-001", new WalletTransferCommand("wallet-002", money("1000"), "transfer-db-001", "DB 송금"));
+
+        assertThat(repository.findPendingOutboxEvents(10)).hasSize(2);
+
+        assertThat(repository.claimReadyOutboxEvents(
+                10,
+                Instant.parse("2026-05-01T00:01:00Z"),
+                Instant.parse("2026-05-01T00:02:00Z")
+        ))
+                .hasSize(2)
+                .allSatisfy(outboxEvent -> {
+                    assertThat(outboxEvent.status()).isEqualTo(OperationOutboxStatus.PROCESSING);
+                    assertThat(outboxEvent.nextRetryAt()).isNull();
+                    assertThat(outboxEvent.claimedAt()).isEqualTo(Instant.parse("2026-05-01T00:01:00Z"));
+                    assertThat(outboxEvent.leaseExpiresAt()).isEqualTo(Instant.parse("2026-05-01T00:02:00Z"));
+                    assertThat(outboxEvent.lastError()).isNull();
+                    assertThat(outboxEvent.publishedAt()).isNull();
+                });
+        assertThat(repository.findPendingOutboxEvents(10)).isEmpty();
+    }
+
+    @Test
     void outboxClaimWaitsUntilFailedEventRetryTime() {
         commandService.charge("member-001", "wallet-001", new WalletChargeCommand(money("5000"), "charge-db-001", "DB 충전"));
         repository.markOutboxEventFailed(

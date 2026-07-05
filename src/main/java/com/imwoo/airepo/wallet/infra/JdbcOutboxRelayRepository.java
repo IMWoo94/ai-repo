@@ -120,20 +120,22 @@ final class JdbcOutboxRelayRepository implements OperationOutboxRelayRepository,
             if (outboxEventIds.isEmpty()) {
                 return List.of();
             }
-            for (String outboxEventId : outboxEventIds) {
-                jdbcTemplate.update(
-                        """
-                                update operation_outbox_events
-                                set status = ?, next_retry_at = null, claimed_at = ?,
-                                    lease_expires_at = ?, published_at = null, last_error = null
-                                where outbox_event_id = ?
-                                """,
-                        OperationOutboxStatus.PROCESSING.name(),
-                        support.timestamp(now),
-                        support.timestamp(leaseExpiresAt),
-                        outboxEventId
-                );
+            Object[] claimArgs = new Object[outboxEventIds.size() + 3];
+            claimArgs[0] = OperationOutboxStatus.PROCESSING.name();
+            claimArgs[1] = support.timestamp(now);
+            claimArgs[2] = support.timestamp(leaseExpiresAt);
+            for (int i = 0; i < outboxEventIds.size(); i++) {
+                claimArgs[i + 3] = outboxEventIds.get(i);
             }
+            jdbcTemplate.update(
+                    """
+                            update operation_outbox_events
+                            set status = ?, next_retry_at = null, claimed_at = ?,
+                                lease_expires_at = ?, published_at = null, last_error = null
+                            where outbox_event_id in (%s)
+                            """.formatted(support.placeholders(outboxEventIds.size())),
+                    claimArgs
+            );
             return jdbcTemplate.query(
                     """
                             select outbox_event_id, operation_id, event_type, aggregate_type,

@@ -85,3 +85,4 @@ ADR은 이 저장소에서 중요한 결정의 source of truth입니다. README�
 | ADR-0067 | Outbox Publisher Deployment Wiring | Accepted |
 | ADR-0068 | Deployed Profile Persistence Guard | Accepted |
 | ADR-0069 | Transfer Idempotency Resolution Ordering | Accepted |
+| ADR-0071 | Hot Query Indexes and Batched Outbox Claim | Accepted |

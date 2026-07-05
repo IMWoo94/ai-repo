@@ -143,6 +143,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/145
 - `0080-transfer-idempotency-order.md`: 송금 멱등 조회를 잔액 검사보다 먼저 수행하는 검사 순서 결함 수정 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/146
+- `0082-hot-query-indexes-and-batched-outbox-claim.md`: 핫 쿼리 인덱스 추가와 outbox claim 배치 UPDATE 전환 작업 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/148
 
 ## GitHub CLI로 생성
 

@@ -50,6 +50,7 @@
 - 배포 broker 토큰 주입 — `deploy/k8s` secret/env에 broker 토큰이 없어 `BrokerTokenGuard`가 배포 앱을 CrashLoopBackOff시키던 회귀 수정
 - 배포 outbox publisher 배선 — 배포 프로파일이 publisher type을 안 줘 memory 기본값으로 event가 유실되던 결함을 `type=http` + 자기 Service endpoint 주입으로 수정, http 기본 경로를 컨슈머 매핑과 정합 (ADR-0067)
 - 송금 멱등 조회 순서 수정 — `transfer`가 멱등 조회를 잔액 검사보다 먼저 수행하도록 변경, 전액 송금 후 동일 키 재시도가 잔액 부족(422)으로 거부되던 회귀 수정, conflict(409) 감지 유지 (ADR-0069, #146)
+- 핫 쿼리 인덱스와 outbox claim 배치 업데이트 — 지갑별 원장/거래내역·outbox relay claim 스캔을 복합 인덱스(V19)로 커버하고 claim UPDATE 행 단위 루프를 단일 IN 배치로 전환 (ADR-0071, #148)
 
 ## 릴리스 후보 검증
 
