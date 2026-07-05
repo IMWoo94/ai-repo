@@ -29,7 +29,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
 
         WalletAccount walletAccount = findOperableWallet(memberId, walletId);
         String fingerprint = chargeFingerprint(walletAccount.walletId(), command);
-        return resolveIdempotency(command.idempotencyKey(), fingerprint)
+        return resolveIdempotency(walletAccount.walletId(), command.idempotencyKey(), fingerprint)
                 .orElseGet(() -> new WalletCommandResult(
                         walletCommandRepository.applyCharge(
                                 command.idempotencyKey(),
@@ -57,7 +57,7 @@ public class InMemoryWalletCommandService implements WalletCommandService {
         WalletAccount targetWallet = WalletAccessPolicy.findQueryableWallet(walletCommandRepository, command.targetWalletId());
 
         String fingerprint = transferFingerprint(sourceWallet.walletId(), targetWallet.walletId(), command);
-        Optional<WalletCommandResult> recorded = resolveIdempotency(command.idempotencyKey(), fingerprint);
+        Optional<WalletCommandResult> recorded = resolveIdempotency(sourceWallet.walletId(), command.idempotencyKey(), fingerprint);
         if (recorded.isPresent()) {
             return recorded.get();
         }
@@ -82,8 +82,8 @@ public class InMemoryWalletCommandService implements WalletCommandService {
         );
     }
 
-    private Optional<WalletCommandResult> resolveIdempotency(String idempotencyKey, String fingerprint) {
-        return walletCommandRepository.findOperation(idempotencyKey)
+    private Optional<WalletCommandResult> resolveIdempotency(String walletId, String idempotencyKey, String fingerprint) {
+        return walletCommandRepository.findOperation(walletId, idempotencyKey)
                 .map(record -> {
                     if (!record.fingerprint().equals(fingerprint)) {
                         throw new IdempotencyKeyConflictException(idempotencyKey);

@@ -31,7 +31,7 @@ CREATE TABLE IF NOT EXISTS transaction_history (
 );
 
 CREATE TABLE IF NOT EXISTS wallet_operations (
-    idempotency_key VARCHAR(128) PRIMARY KEY,
+    idempotency_key VARCHAR(128) NOT NULL,
     fingerprint VARCHAR(512) NOT NULL,
     operation_id VARCHAR(64) NOT NULL,
     transaction_id VARCHAR(64) NOT NULL,
@@ -47,7 +47,8 @@ CREATE TABLE IF NOT EXISTS wallet_operations (
     balance_amount NUMERIC(19, 2) NOT NULL,
     balance_currency VARCHAR(3) NOT NULL,
     balance_as_of TIMESTAMP WITH TIME ZONE NOT NULL,
-    description VARCHAR(255) NOT NULL
+    description VARCHAR(255) NOT NULL,
+    PRIMARY KEY (wallet_id, idempotency_key)
 );
 
 CREATE TABLE IF NOT EXISTS ledger_entries (

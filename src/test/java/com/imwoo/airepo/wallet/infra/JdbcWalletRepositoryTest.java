@@ -9,6 +9,7 @@ import com.imwoo.airepo.wallet.application.InMemoryWalletLedgerQueryService;
 import com.imwoo.airepo.wallet.application.InvalidWalletOperationException;
 import com.imwoo.airepo.wallet.application.WalletChargeCommand;
 import com.imwoo.airepo.wallet.application.WalletCommandResult;
+import com.imwoo.airepo.wallet.application.WalletOperationRecord;
 import com.imwoo.airepo.wallet.application.WalletTransferCommand;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessAudit;
 import com.imwoo.airepo.wallet.domain.AdminApiAccessOutcome;
@@ -121,7 +122,7 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.lastError()).isNull();
                     assertThat(outboxEvent.payload()).contains("\"operationId\":\"op-001\"");
                 });
-        assertThat(repository.findOperation("charge-db-001")).isPresent();
+        assertThat(repository.findOperation("wallet-001", "charge-db-001")).isPresent();
     }
 
     @Test
@@ -912,6 +913,25 @@ class JdbcWalletRepositoryTest {
                     assertThat(outboxEvent.eventType()).isEqualTo("TRANSFER_COMPLETED");
                     assertThat(outboxEvent.payload()).contains("\"counterpartyWalletId\":\"wallet-002\"");
                 });
+    }
+
+    @Test
+    void findOperationIsScopedByWalletSoDifferentWalletsMayShareIdempotencyKey() {
+        commandService.charge("member-001", "wallet-001",
+                new WalletChargeCommand(money("5000"), "shared-db-key", "DB 충전"));
+        commandService.charge("member-002", "wallet-002",
+                new WalletChargeCommand(money("7000"), "shared-db-key", "DB 충전"));
+
+        WalletOperationRecord firstWalletOperation =
+                repository.findOperation("wallet-001", "shared-db-key").orElseThrow();
+        WalletOperationRecord secondWalletOperation =
+                repository.findOperation("wallet-002", "shared-db-key").orElseThrow();
+
+        assertThat(firstWalletOperation.result().walletId()).isEqualTo("wallet-001");
+        assertThat(secondWalletOperation.result().walletId()).isEqualTo("wallet-002");
+        assertThat(secondWalletOperation.result().operationId())
+                .isNotEqualTo(firstWalletOperation.result().operationId());
+        assertThat(repository.findOperation("wallet-001", "unknown-key")).isEmpty();
     }
 
     private Money money(String amount) {

@@ -793,8 +793,12 @@ public class InMemoryWalletRepository implements
     }
 
     @Override
-    public synchronized Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
-        return Optional.ofNullable(operations.get(idempotencyKey));
+    public synchronized Optional<WalletOperationRecord> findOperation(String walletId, String idempotencyKey) {
+        return Optional.ofNullable(operations.get(operationKey(walletId, idempotencyKey)));
+    }
+
+    private static String operationKey(String walletId, String idempotencyKey) {
+        return walletId + " " + idempotencyKey;
     }
 
     @Override
@@ -861,7 +865,7 @@ public class InMemoryWalletRepository implements
                 description
         );
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
-        operations.put(idempotencyKey, record);
+        operations.put(operationKey(walletId, idempotencyKey), record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         addOutboxEvent(result);
         return record;
@@ -963,7 +967,7 @@ public class InMemoryWalletRepository implements
                 description
         );
         WalletOperationRecord record = new WalletOperationRecord(idempotencyKey, fingerprint, result);
-        operations.put(idempotencyKey, record);
+        operations.put(operationKey(sourceWalletId, idempotencyKey), record);
         addStepLog(operationId, OperationStep.IDEMPOTENCY_RECORDED, occurredAt, "Idempotency record stored for operation " + operationId);
         addOutboxEvent(result);
         return record;

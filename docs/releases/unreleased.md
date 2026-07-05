@@ -48,6 +48,7 @@
 - 배포 프로파일 영속성 fail-fast 가드 — `DeployedProfilePersistenceGuard`가 배포 프로파일(`prod`/`postgres`)인데 `postgres`가 없으면 startup을 실패시켜, `prod` 단독 기동이 In-Memory 지갑 저장소를 로드해 재시작 시 잔액이 유실되는 경로를 막음(#145, ADR-0068)
 - 송금 멱등 조회를 잔액 검사보다 먼저 수행 — 전액 송금으로 잔액이 0이 된 뒤 동일 `idempotencyKey` 재시도가 `InsufficientBalanceException`(422)으로 거부되던 회귀 수정. `transfer`에서 fingerprint 계산 후 멱등 조회를 먼저 하고 없을 때만 잔액 검사·`applyTransfer`, conflict(409) 감지는 유지, `charge`와 순서 일관화 (#146, ADR-0069)
 - 핫 쿼리 인덱스 추가 + outbox claim 배치 업데이트 — `ledger_entries(wallet_id, occurred_at)`·`transaction_history(wallet_id, occurred_at)`·`operation_outbox_events(status, occurred_at, outbox_event_id)` 인덱스를 V19 마이그레이션과 통합 스키마에 추가하고, relay claim의 행 단위 UPDATE 루프를 `where outbox_event_id in (...)` 단일 배치로 교체(의미·SKIP LOCKED 선행 claim·트랜잭션 경계 보존, PUBLISHED pruning은 후속) (ADR-0071, #148)
+- 멱등키를 지갑 스코프로 한정 — `wallet_operations` PK를 `(idempotency_key)`에서 `(wallet_id, idempotency_key)` 복합 PK로 전환(V20)하고 `findOperation(walletId, idempotencyKey)`로 조회를 지갑 스코프화해 회원 간 멱등키 충돌(409 DoS 가능성)과 cross-tenant operation 재생을 차단 (ADR-0072, #149)
 
 ## MVP 출시 판단 기준
 

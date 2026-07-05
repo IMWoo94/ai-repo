@@ -97,6 +97,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0079 | [Deployed Profile Persistence Guard](0079-deployed-profile-persistence-guard.md) | 완료 |
 | 0080 | [Transfer Idempotency Resolution Ordering](0080-transfer-idempotency-resolution-ordering.md) | 완료 |
 | 0082 | [Hot Query Indexes and Batched Outbox Claim](0082-hot-query-indexes-and-batched-outbox-claim.md) | 완료 |
+| 0083 | [Wallet-Scoped Idempotency Keys](0083-wallet-scoped-idempotency-keys.md) | 완료 |
 
 ## 현재 기준선
 

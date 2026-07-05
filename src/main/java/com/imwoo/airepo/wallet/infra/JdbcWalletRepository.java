@@ -135,8 +135,8 @@ public class JdbcWalletRepository implements
     }
 
     @Override
-    public Optional<WalletOperationRecord> findOperation(String idempotencyKey) {
-        return walletLedger.findOperation(idempotencyKey);
+    public Optional<WalletOperationRecord> findOperation(String walletId, String idempotencyKey) {
+        return walletLedger.findOperation(walletId, idempotencyKey);
     }
 
     @Override

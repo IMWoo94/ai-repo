@@ -1,0 +1,5 @@
+docs/releases/unreleased.md merge=union
+docs/adr/README.md merge=union
+docs/progress/README.md merge=union
+issue-drafts/README.md merge=union
+wiki-drafts/Release-Notes.md merge=union
