@@ -85,6 +85,22 @@ class InMemoryWalletCommandServiceTest {
     }
 
     @Test
+    void sameTransferIdempotencyKeyReturnsExistingResultEvenWhenBalanceDrainedToZero() {
+        WalletTransferCommand command =
+                new WalletTransferCommand("wallet-002", money("125000"), "transfer-001", "테스트 송금");
+
+        WalletCommandResult first = service.transfer("member-001", "wallet-001", command);
+        assertThat(first.created()).isTrue();
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("0"));
+
+        WalletCommandResult second = service.transfer("member-001", "wallet-001", command);
+
+        assertThat(second.created()).isFalse();
+        assertThat(second.operation().transactionId()).isEqualTo(first.operation().transactionId());
+        assertThat(repository.findBalance("wallet-001").orElseThrow().money()).isEqualTo(money("0"));
+    }
+
+    @Test
     void transferRejectsInsufficientBalance() {
         assertThatThrownBy(() -> service.transfer(
                 "member-002",

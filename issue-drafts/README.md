@@ -137,6 +137,8 @@
 - `0076-jdbc-persistence-adapter-decomposition.md`: JdbcWalletRepository bounded-context 분해와 ArchUnit 레이어 규칙 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/125
 - `0077-elk-logging-stack.md`: ELK 2단계 로깅 스택(Filebeat→Logstash grok→ES→Kibana) 학습용 opt-in 작업 초안
+- `0080-transfer-idempotency-order.md`: 송금 멱등 조회를 잔액 검사보다 먼저 수행하는 검사 순서 결함 수정 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/146
 
 ## GitHub CLI로 생성
 

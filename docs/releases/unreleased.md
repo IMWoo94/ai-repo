@@ -44,6 +44,7 @@
 - JDBC persistence adapter 분해 — `JdbcWalletRepository`를 PostgreSQL profile composite bean으로 유지하면서 wallet/ledger, outbox relay, outbox consumer, operational alert, admin audit SQL을 context별 package-private adapter로 분리하고 ArchUnit 레이어 규칙을 추가
 - `POST /internal/broker/outbox-events` shared secret 헤더(`X-Broker-Token`) 인증 — 전용 SecurityFilterChain(Order 3) + 상수시간 토큰 비교로 미인증 event 주입 차단, publisher가 같은 secret 부착(#123)
 - opt-in ELK 로깅 스택 — 학습용 Filebeat→Logstash(grok)→Elasticsearch(역색인)→Kibana를 `logging` 네임스페이스에 PLG(Loki)와 병존시키되 ArgoCD 미포함·`scripts/elk-local-up.sh`/`down.sh` 수동 기동, 로컬 학습 전제(security off·단일노드·ephemeral), Spring 로그 grok 파싱과 `spring-logs-*` KQL 검색. `AI_REPO_ELK_ENABLED` 토글·독립 스크립트·별도 ArgoCD Application(수동 sync)로 on/off (ADR-0066)
+- 송금 멱등 조회를 잔액 검사보다 먼저 수행 — 전액 송금으로 잔액이 0이 된 뒤 동일 `idempotencyKey` 재시도가 `InsufficientBalanceException`(422)으로 거부되던 회귀 수정. `transfer`에서 fingerprint 계산 후 멱등 조회를 먼저 하고 없을 때만 잔액 검사·`applyTransfer`, conflict(409) 감지는 유지, `charge`와 순서 일관화 (#146, ADR-0069)
 
 ## MVP 출시 판단 기준
 
