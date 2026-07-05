@@ -21,6 +21,8 @@ import org.springframework.transaction.support.TransactionTemplate;
  */
 final class JdbcOutboxRelayRepository implements OperationOutboxRelayRepository, OperationOutboxRelayRunRepository {
 
+    private static final int MAX_LAST_ERROR_LENGTH = 255;
+
     private final WalletJdbcSupport support;
     private final JdbcTemplate jdbcTemplate;
     private final TransactionTemplate transactionTemplate;
@@ -216,7 +218,7 @@ final class JdbcOutboxRelayRepository implements OperationOutboxRelayRepository,
                 OperationOutboxStatus.FAILED.name(),
                 maxAttempts,
                 support.timestamp(nextRetryAt),
-                lastError,
+                truncateLastError(lastError),
                 outboxEventId
         );
     }
@@ -254,7 +256,7 @@ final class JdbcOutboxRelayRepository implements OperationOutboxRelayRepository,
                         OperationOutboxStatus.FAILED.name(),
                         maxAttempts,
                         support.timestamp(nextRetryAt),
-                        lastError,
+                        truncateLastError(lastError),
                         outboxEventId,
                         OperationOutboxStatus.PROCESSING.name(),
                         support.timestamp(claimedAt),
@@ -654,5 +656,12 @@ final class JdbcOutboxRelayRepository implements OperationOutboxRelayRepository,
                 requestId
         )
                 .orElseThrow(() -> new InvalidWalletOperationException("requeue request not found: " + requestId));
+    }
+
+    static String truncateLastError(String lastError) {
+        if (lastError == null || lastError.length() <= MAX_LAST_ERROR_LENGTH) {
+            return lastError;
+        }
+        return lastError.substring(0, MAX_LAST_ERROR_LENGTH);
     }
 }

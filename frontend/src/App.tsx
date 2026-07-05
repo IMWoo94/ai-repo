@@ -150,6 +150,22 @@ const initialApiState: ApiState = {
   auditEvents: [],
 };
 
+async function parseError(response: Response): Promise<Error> {
+  const body = (await response.text()).trim();
+  if (!body) {
+    if (response.status === 401) {
+      return new Error('인증이 필요합니다. 다시 로그인하세요.');
+    }
+    return new Error(`요청이 실패했습니다. (HTTP ${response.status})`);
+  }
+  try {
+    const error = JSON.parse(body) as ApiError;
+    return new Error(`${error.code}: ${error.message}`);
+  } catch {
+    return new Error(`요청이 실패했습니다. (HTTP ${response.status})`);
+  }
+}
+
 async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   const response = await fetch(url, {
     ...init,
@@ -160,8 +176,7 @@ async function requestJson<T>(url: string, init?: RequestInit): Promise<T> {
   });
 
   if (!response.ok) {
-    const error = (await response.json()) as ApiError;
-    throw new Error(`${error.code}: ${error.message}`);
+    throw await parseError(response);
   }
 
   return response.json() as Promise<T>;
@@ -323,8 +338,7 @@ export function App() {
       if (response.status === 401) {
         persistAuth(null);
       }
-      const error = (await response.json()) as ApiError;
-      throw new Error(`${error.code}: ${error.message}`);
+      throw await parseError(response);
     }
     return response.json() as Promise<T>;
   }

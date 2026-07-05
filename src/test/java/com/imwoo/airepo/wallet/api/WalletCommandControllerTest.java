@@ -142,6 +142,42 @@ class WalletCommandControllerTest {
     }
 
     @Test
+    void rejectsChargeWithDescriptionOverMaxLengthAsBadRequest() throws Exception {
+        String tooLongDescription = "a".repeat(256);
+        mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .with(member("member-001"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": 5000,
+                                  "currency": "KRW",
+                                  "idempotencyKey": "charge-api-001",
+                                  "description": "%s"
+                                }
+                                """.formatted(tooLongDescription)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_WALLET_OPERATION"))
+                .andExpect(jsonPath("$.message").value("description must not exceed 255 characters"));
+    }
+
+    @Test
+    void returnsJsonBodyForUnauthenticatedRequest() throws Exception {
+        mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "amount": 5000,
+                                  "currency": "KRW",
+                                  "idempotencyKey": "charge-api-001",
+                                  "description": "API 충전"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("WALLET_AUTHENTICATION_REQUIRED"))
+                .andExpect(jsonPath("$.message").isNotEmpty());
+    }
+
+    @Test
     void rejectsChargeWhenMemberDoesNotOwnWallet() throws Exception {
         mockMvc.perform(post("/api/v1/wallets/wallet-001/charges")
                         .with(member("member-002"))

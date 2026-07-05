@@ -332,6 +332,7 @@ function jsonResponse(body: unknown, status = 200) {
     ok: status >= 200 && status < 300,
     status,
     json: async () => body,
+    text: async () => JSON.stringify(body),
   } as Response;
 }
 
@@ -340,6 +341,7 @@ function emptyResponse(status = 204) {
     ok: status >= 200 && status < 300,
     status,
     json: async () => null,
+    text: async () => '',
   } as Response;
 }
 
@@ -458,6 +460,31 @@ describe('App', () => {
     const tokenCall = fetchMock.mock.calls.find(([url]) => url.toString().endsWith('/api/v1/auth/tokens'));
     expect(tokenCall).toBeDefined();
     expect(balanceCalls).toBeGreaterThanOrEqual(2);
+  });
+
+  it('401 응답 본문이 비어 있어도 SyntaxError 대신 인증 오류 메시지를 표시한다', async () => {
+    const fetchMock = vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = input.toString();
+      const method = init?.method ?? 'GET';
+      if (url.endsWith('/api/v1/auth/tokens') && method === 'POST') {
+        const body = JSON.parse(String(init?.body));
+        return jsonResponse({ token: `fresh-${body.memberId}`, memberId: body.memberId, expiresAt: '2099-01-01T00:00:00Z' });
+      }
+      if (url.endsWith('/balance')) {
+        return emptyResponse(401);
+      }
+      if (url.endsWith('/transactions') || url.endsWith('/ledger-entries') || url.endsWith('/audit-events')) {
+        return jsonResponse([]);
+      }
+      throw new Error(`Unhandled request: ${method} ${url}`);
+    });
+    vi.stubGlobal('fetch', fetchMock);
+
+    render(<App />);
+
+    await waitFor(() => {
+      expect(screen.getByText('인증이 필요합니다. 다시 로그인하세요.')).toBeVisible();
+    });
   });
 
   it('초기 지갑 잔액을 렌더링한다', async () => {

@@ -103,7 +103,11 @@ public class SecurityConfig {
 
     @Bean
     @Order(4)
-    SecurityFilterChain walletSecurityFilterChain(HttpSecurity http, JwtDecoder walletJwtDecoder) throws Exception {
+    SecurityFilterChain walletSecurityFilterChain(
+            HttpSecurity http,
+            JwtDecoder walletJwtDecoder,
+            WalletSecurityErrorHandler walletSecurityErrorHandler
+    ) throws Exception {
         return http
                 .securityMatcher("/api/v1/wallets/**")
                 .csrf(AbstractHttpConfigurer::disable)
@@ -111,8 +115,12 @@ public class SecurityConfig {
                 .formLogin(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .exceptionHandling(exceptionHandling -> exceptionHandling
+                        .authenticationEntryPoint(walletSecurityErrorHandler))
                 .authorizeHttpRequests(authorize -> authorize.anyRequest().authenticated())
-                .oauth2ResourceServer(oauth2 -> oauth2.jwt(jwt -> jwt.decoder(walletJwtDecoder)))
+                .oauth2ResourceServer(oauth2 -> oauth2
+                        .authenticationEntryPoint(walletSecurityErrorHandler)
+                        .jwt(jwt -> jwt.decoder(walletJwtDecoder)))
                 .build();
     }
 

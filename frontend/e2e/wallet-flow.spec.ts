@@ -162,3 +162,17 @@ test('운영자는 manual review requeue 요청을 반려하고 audit 없이 상
   await expect(operatorConsole.getByText('아직 requeue audit이 없습니다.')).toBeVisible();
   await expect(operatorConsole.getByText('MANUAL_REVIEW').first()).toBeVisible();
 });
+
+test('description가 255자를 넘는 충전은 400 검증 오류로 표시된다', async ({ page }) => {
+  await page.goto('/');
+
+  await page.getByLabel('회원 ID').fill('member-001');
+  await page.getByRole('button', { name: '로그인' }).click();
+  await expect(page.locator('.balance-card').getByText('125,000 KRW')).toBeVisible();
+
+  await page.getByLabel('충전 금액').fill('5000');
+  await page.getByLabel('거래 설명').fill('a'.repeat(256));
+  await page.getByRole('button', { name: '충전하기' }).click();
+
+  await expect(page.getByText('INVALID_WALLET_OPERATION: description must not exceed 255 characters')).toBeVisible();
+});

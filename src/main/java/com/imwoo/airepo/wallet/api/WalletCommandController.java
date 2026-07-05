@@ -22,6 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/api/v1/wallets")
 public class WalletCommandController {
 
+    private static final int MAX_DESCRIPTION_LENGTH = 255;
+
     private final WalletCommandService walletCommandService;
 
     public WalletCommandController(WalletCommandService walletCommandService) {
@@ -40,7 +42,7 @@ public class WalletCommandController {
                 new WalletChargeCommand(
                         money(request.amount(), request.currency()),
                         required("idempotencyKey", request.idempotencyKey()),
-                        required("description", request.description())
+                        description(request.description())
                 )
         );
         return ResponseEntity.status(status(result)).body(result.operation());
@@ -59,7 +61,7 @@ public class WalletCommandController {
                         required("targetWalletId", request.targetWalletId()),
                         money(request.amount(), request.currency()),
                         required("idempotencyKey", request.idempotencyKey()),
-                        required("description", request.description())
+                        description(request.description())
                 )
         );
         return ResponseEntity.status(status(result)).body(result.operation());
@@ -91,5 +93,14 @@ public class WalletCommandController {
             throw new InvalidWalletOperationException(fieldName + " must not be null");
         }
         return value;
+    }
+
+    private String description(String value) {
+        String description = required("description", value);
+        if (description.length() > MAX_DESCRIPTION_LENGTH) {
+            throw new InvalidWalletOperationException(
+                    "description must not exceed " + MAX_DESCRIPTION_LENGTH + " characters");
+        }
+        return description;
     }
 }
