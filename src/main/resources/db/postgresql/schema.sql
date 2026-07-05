@@ -192,6 +192,15 @@ CREATE TABLE IF NOT EXISTS operational_alerts (
 CREATE INDEX IF NOT EXISTS idx_operational_alerts_occurred_at_id
     ON operational_alerts (occurred_at DESC, alert_id DESC);
 
+CREATE INDEX IF NOT EXISTS idx_ledger_entries_wallet_id_occurred_at
+    ON ledger_entries (wallet_id, occurred_at);
+
+CREATE INDEX IF NOT EXISTS idx_transaction_history_wallet_id_occurred_at
+    ON transaction_history (wallet_id, occurred_at);
+
+CREATE INDEX IF NOT EXISTS idx_operation_outbox_events_status_occurred_at
+    ON operation_outbox_events (status, occurred_at, outbox_event_id);
+
 CREATE SEQUENCE IF NOT EXISTS transaction_id_seq START WITH 3;
 CREATE SEQUENCE IF NOT EXISTS operation_id_seq START WITH 1;
 CREATE SEQUENCE IF NOT EXISTS ledger_entry_id_seq START WITH 1;

@@ -93,6 +93,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0075 | [Admin Path Drift Guard](0075-admin-path-drift-guard.md) | 완료 |
 | 0076 | [JDBC Persistence Adapter Decomposition](0076-jdbc-persistence-adapter-decomposition.md) | 완료 |
 | 0077 | [ELK 2단계 로깅 스택 (학습용 opt-in)](0077-elk-logging-stack.md) | 완료 |
+| 0082 | [Hot Query Indexes and Batched Outbox Claim](0082-hot-query-indexes-and-batched-outbox-claim.md) | 완료 |
 
 ## 현재 기준선
 

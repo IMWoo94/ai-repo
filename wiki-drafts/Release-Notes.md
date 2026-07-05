@@ -48,6 +48,7 @@
 - Broker consumer endpoint 인증 — `/internal/broker/outbox-events`에 `X-Broker-Token` shared secret(전용 Order 3 체인, 상수시간 비교, 미인증 401), publisher 동반 부착, 배포 프로파일 기본 토큰 `BrokerTokenGuard` fail-fast (ADR-0065)
 - Grafana `ai-repo Overview` 대시보드에 Loki 로그 섹션 추가 — 로그 볼륨(level별 시계열)·앱 로그 스트림·오류/경고 로그 패널로 메트릭+로그를 한 화면에서 관측
 - 배포 broker 토큰 주입 — `deploy/k8s` secret/env에 broker 토큰이 없어 `BrokerTokenGuard`가 배포 앱을 CrashLoopBackOff시키던 회귀 수정
+- 핫 쿼리 인덱스와 outbox claim 배치 업데이트 — 지갑별 원장/거래내역·outbox relay claim 스캔을 복합 인덱스(V19)로 커버하고 claim UPDATE 행 단위 루프를 단일 IN 배치로 전환 (ADR-0071, #148)
 
 ## 릴리스 후보 검증
 
