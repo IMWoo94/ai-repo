@@ -149,6 +149,7 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/149
 - `0081-input-response-bounds.md`: 미검증 입력/응답 경계 하드닝(description 길이·401 본문·last_error 절단) 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/147
+- `0084-stale-cleanup-artifacts.md`: 완료된 계획 문서, 죽은 스킬 동기화 스크립트, 중복 직접 의존성 정리 작업 초안
 
 ## GitHub CLI로 생성
 

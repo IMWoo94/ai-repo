@@ -99,6 +99,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0082 | [Hot Query Indexes and Batched Outbox Claim](0082-hot-query-indexes-and-batched-outbox-claim.md) | 완료 |
 | 0083 | [Wallet-Scoped Idempotency Keys](0083-wallet-scoped-idempotency-keys.md) | 완료 |
 | 0081 | [미검증 입력/응답 경계 하드닝](0081-input-response-bounds.md) | 완료 |
+| 0084 | [Stale Cleanup Artifacts](0084-stale-cleanup-artifacts.md) | 완료 |
 
 ## 현재 기준선
 

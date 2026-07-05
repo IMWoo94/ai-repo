@@ -50,6 +50,5 @@ PR 106 max-effort 코드 리뷰에서 확정된 두 결함 수정:
 ## 관련 문서
 
 - `docs/adr/0056-enduser-jwt-auth-wallet-ownership.md`
-- `docs/superpowers/plans/2026-06-05-enduser-jwt-auth-wallet-ownership.md`
 - `docs/superpowers/specs/2026-06-05-enduser-jwt-auth-wallet-ownership-design.md`
 - `docs/releases/unreleased.md`
