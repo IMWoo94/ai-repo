@@ -33,5 +33,4 @@
 ## 관련 문서
 
 - `docs/adr/0057-enduser-login-bearer-refresh.md`
-- `docs/superpowers/plans/2026-06-05-enduser-jwt-auth-wallet-ownership.md`
 - `docs/releases/unreleased.md`

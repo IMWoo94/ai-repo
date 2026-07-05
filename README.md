@@ -314,15 +314,9 @@ Proposed | Accepted | Deprecated | Superseded
 
 MCP 또는 스킬은 편의를 위한 도구이며, 저장소의 결정 근거를 대체하지 않습니다. 중요한 판단은 Issue, PR, ADR, Wiki에 남깁니다.
 
-### Codex 스킬 동기화
+### Codex 스킬 스냅샷
 
-Claude Code용으로 작성된 로컬 스킬은 `skills/skills`와 `skills/user-scope-skills`에 보관하고, Codex에서 사용할 때는 다음 명령으로 사용자 스킬 디렉터리에 변환 설치합니다.
-
-```bash
-scripts/sync-codex-skills.py
-```
-
-동기화 스크립트는 Codex가 안정적으로 읽을 수 있도록 `SKILL.md` frontmatter를 `name`과 `description`만 남기는 형식으로 변환합니다. `interview` 스킬은 필수 설치 대상으로 검증하며, Codex 내장 스킬과 이름이 충돌하는 `skill-creator`는 기본적으로 설치하지 않습니다.
+프로젝트에서 실제 사용한 스킬은 `project-skills/`에 스냅샷으로 보관합니다. Codex 자동 발견이 필요하면 필요한 스킬 폴더만 `$CODEX_HOME/skills` 또는 `~/.codex/skills`로 복사합니다.
 
 ## 즉시 진행할 첫 작업
 

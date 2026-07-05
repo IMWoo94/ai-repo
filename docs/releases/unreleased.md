@@ -50,6 +50,7 @@
 - 핫 쿼리 인덱스 추가 + outbox claim 배치 업데이트 — `ledger_entries(wallet_id, occurred_at)`·`transaction_history(wallet_id, occurred_at)`·`operation_outbox_events(status, occurred_at, outbox_event_id)` 인덱스를 V19 마이그레이션과 통합 스키마에 추가하고, relay claim의 행 단위 UPDATE 루프를 `where outbox_event_id in (...)` 단일 배치로 교체(의미·SKIP LOCKED 선행 claim·트랜잭션 경계 보존, PUBLISHED pruning은 후속) (ADR-0071, #148)
 - 멱등키를 지갑 스코프로 한정 — `wallet_operations` PK를 `(idempotency_key)`에서 `(wallet_id, idempotency_key)` 복합 PK로 전환(V20)하고 `findOperation(walletId, idempotencyKey)`로 조회를 지갑 스코프화해 회원 간 멱등키 충돌(409 DoS 가능성)과 cross-tenant operation 재생을 차단 (ADR-0072, #149)
 - 미검증 입력/응답 경계 하드닝 — charge/transfer description 255자 초과를 400(`INVALID_WALLET_OPERATION`)으로 차단, 지갑 미인증 요청에 `WALLET_AUTHENTICATION_REQUIRED` JSON 401(`WalletSecurityErrorHandler`) 반환, outbox 실패 기록 `last_error`를 255자로 절단, 프론트가 빈 401 본문을 `SyntaxError` 대신 인증 오류로 처리(ADR-0070, #147)
+- Stale cleanup artifacts — 완료된 end-user JWT 구현 계획과 죽은 `sync-codex-skills.py`를 제거하고, `spring-security-oauth2-jose` 직접 의존성을 starter transitive 의존성으로 정리(ADR-0073)
 
 ## MVP 출시 판단 기준
 

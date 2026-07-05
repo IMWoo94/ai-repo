@@ -13,4 +13,4 @@
 
 - 이 폴더는 레포 기록용입니다.
 - Codex 자동 발견을 원하면 각 스킬 폴더를 `$CODEX_HOME/skills` 또는 `~/.codex/skills`로 복사합니다.
-- 프로젝트에서 수정한 스킬은 `scripts/sync-codex-skills.py`와 별개로 관리합니다.
+- 프로젝트에서 수정한 스킬은 이 폴더에서 직접 관리합니다.
