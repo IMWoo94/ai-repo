@@ -61,6 +61,10 @@ spec:
                   key: AI_REPO_OUTBOX_PUBLISHER_HTTP_BROKER_TOKEN
             - name: AI_REPO_OUTBOX_RELAY_SCHEDULER_ENABLED
               value: "true"
+            - name: AI_REPO_OUTBOX_PUBLISHER_TYPE
+              value: "http"
+            - name: AI_REPO_OUTBOX_PUBLISHER_HTTP_ENDPOINT
+              value: "http://ai-repo:8080/internal/broker/outbox-events"
           ports:
             - containerPort: 8080
           readinessProbe:
