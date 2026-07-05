@@ -46,6 +46,7 @@
 - opt-in ELK 로깅 스택 — 학습용 Filebeat→Logstash(grok)→Elasticsearch(역색인)→Kibana를 `logging` 네임스페이스에 PLG(Loki)와 병존시키되 ArgoCD 미포함·`scripts/elk-local-up.sh`/`down.sh` 수동 기동, 로컬 학습 전제(security off·단일노드·ephemeral), Spring 로그 grok 파싱과 `spring-logs-*` KQL 검색. `AI_REPO_ELK_ENABLED` 토글·독립 스크립트·별도 ArgoCD Application(수동 sync)로 on/off (ADR-0066)
 - 배포 outbox publisher 배선 — `deploy/k8s/app.yaml`이 `AI_REPO_OUTBOX_PUBLISHER_TYPE`를 안 줘 memory 기본값으로 event가 유실되던 결함을 `type=http` + 자기 Service endpoint(`http://ai-repo:8080/internal/broker/outbox-events`) 주입으로 수정하고, http 기본 endpoint 경로를 컨슈머 매핑(`/internal/broker/outbox-events`)과 정합 (ADR-0067, #144)
 - 배포 프로파일 영속성 fail-fast 가드 — `DeployedProfilePersistenceGuard`가 배포 프로파일(`prod`/`postgres`)인데 `postgres`가 없으면 startup을 실패시켜, `prod` 단독 기동이 In-Memory 지갑 저장소를 로드해 재시작 시 잔액이 유실되는 경로를 막음(#145, ADR-0068)
+- 송금 멱등 조회를 잔액 검사보다 먼저 수행 — 전액 송금으로 잔액이 0이 된 뒤 동일 `idempotencyKey` 재시도가 `InsufficientBalanceException`(422)으로 거부되던 회귀 수정. `transfer`에서 fingerprint 계산 후 멱등 조회를 먼저 하고 없을 때만 잔액 검사·`applyTransfer`, conflict(409) 감지는 유지, `charge`와 순서 일관화 (#146, ADR-0069)
 
 ## MVP 출시 판단 기준
 

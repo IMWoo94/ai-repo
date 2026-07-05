@@ -141,6 +141,8 @@
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/144
 - `0079-deployed-profile-persistence-guard.md`: 배포 프로파일 postgres 누락 시 In-Memory 저장소 유실 방지 fail-fast 가드 작업 초안
   - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/145
+- `0080-transfer-idempotency-order.md`: 송금 멱등 조회를 잔액 검사보다 먼저 수행하는 검사 순서 결함 수정 초안
+  - GitHub Issue: https://github.com/IMWoo94/ai-repo/issues/146
 
 ## GitHub CLI로 생성
 

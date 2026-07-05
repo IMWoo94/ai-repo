@@ -95,6 +95,7 @@ ADR은 “왜 그렇게 결정했는가”를 기록하고, 이 폴더는 “각
 | 0077 | [ELK 2단계 로깅 스택 (학습용 opt-in)](0077-elk-logging-stack.md) | 완료 |
 | 0078 | [Outbox Publisher Deployment Wiring](0078-outbox-publisher-deployment-wiring.md) | 완료 |
 | 0079 | [Deployed Profile Persistence Guard](0079-deployed-profile-persistence-guard.md) | 완료 |
+| 0080 | [Transfer Idempotency Resolution Ordering](0080-transfer-idempotency-resolution-ordering.md) | 완료 |
 
 ## 현재 기준선
 
