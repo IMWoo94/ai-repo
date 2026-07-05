@@ -168,7 +168,8 @@ test('description가 255자를 넘는 충전은 400 검증 오류로 표시된�
 
   await page.getByLabel('회원 ID').fill('member-001');
   await page.getByRole('button', { name: '로그인' }).click();
-  await expect(page.locator('.balance-card').getByText('125,000 KRW')).toBeVisible();
+  // 앞선 테스트가 member-001 잔액을 바꾸므로 특정 금액 대신 로그인 완료만 확인한다(직렬 실행·공유 백엔드).
+  await expect(page.getByText('로그인되었습니다.')).toBeVisible();
 
   await page.getByLabel('충전 금액').fill('5000');
   await page.getByLabel('거래 설명').fill('a'.repeat(256));
